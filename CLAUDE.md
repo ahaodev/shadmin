@@ -38,7 +38,7 @@ This is a **shadcn-admin** dashboard built with Vite, React, and TypeScript. The
 - **State Management**: Zustand for auth store
 - **Data Fetching**: TanStack Query with Axios
 - **Authentication**: Custom login system (demo: admin/123)
-- **Styling**: TailwindCSS v4 with custom RTL support
+- **Styling**: TailwindCSS v4
 
 ### Directory Structure
 - `src/features/` - Feature-based modules (auth, dashboard, tasks, users, etc.)
@@ -56,13 +56,12 @@ Uses TanStack Router with file-based routing. Route tree is auto-generated in `s
 
 ### Component Architecture
 - **Layout Components**: `src/components/layout/` contains sidebar, header, and main layout
-- **UI Components**: `src/components/ui/` contains ShadcnUI components (some customized for RTL)
+- **UI Components**: `src/components/ui/` contains ShadcnUI components (some customized)
 - **Feature Components**: Each feature has its own components directory
 
 ### Customized ShadcnUI Components
-Some components have been modified for RTL support and other improvements:
-- **Modified**: scroll-area, sonner, separator
-- **RTL Updated**: alert-dialog, calendar, command, dialog, dropdown-menu, select, table, sheet, sidebar, switch
+Some components have been modified and customized:
+- **Modified**: scroll-area, sonner, separator, alert-dialog, calendar, command, dialog, dropdown-menu, select, table, sheet, sidebar, switch
 
 ### Path Alias
 - `@/*` resolves to `./src/*`
@@ -73,4 +72,3 @@ Some components have been modified for RTL support and other improvements:
 - React Query devtools enabled in development
 - Error handling with global error boundaries and toast notifications
 - Theme system supports light/dark mode with system preference
-- RTL language support with DirectionProvider
