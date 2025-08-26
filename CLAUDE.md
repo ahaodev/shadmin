@@ -37,7 +37,7 @@ This is a **shadcn-admin** dashboard built with Vite, React, and TypeScript. The
 - **Routing**: TanStack Router with file-based routing
 - **State Management**: Zustand for auth store
 - **Data Fetching**: TanStack Query with Axios
-- **Authentication**: Clerk (partial implementation)
+- **Authentication**: Custom login system (demo: admin/123)
 - **Styling**: TailwindCSS v4 with custom RTL support
 
 ### Directory Structure
