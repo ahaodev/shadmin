@@ -18,21 +18,21 @@ var (
 
 // Manager 权限管理器接口 - 简化后只保留核心方法
 type Manager interface {
-	// 核心权限检查 - middleware使用
+	// CheckPermission 核心权限检查 - middleware使用
 	CheckPermission(userID, object, action string) (bool, error)
 
-	// 策略管理 - sync服务使用
+	// AddPolicy 策略管理 - sync服务使用
 	AddPolicy(roleID, object, action string) (bool, error)
 	RemovePolicy(roleID, object, action string) (bool, error)
 	GetAllPolicies() [][]string
 
-	// 角色管理 - sync服务使用
+	// AddRoleForUser 角色管理 - sync服务使用
 	AddRoleForUser(userID, roleID string) (bool, error)
 	DeleteRoleForUser(userID, roleID string) (bool, error)
 	GetRolesForUser(userID string) []string
 	GetAllRoles() [][]string
 
-	// 系统管理 - sync服务使用
+	// SavePolicy 系统管理 - sync服务使用
 	SavePolicy() error
 	LoadPolicy() error
 	GetEnforcer() *casbin.Enforcer

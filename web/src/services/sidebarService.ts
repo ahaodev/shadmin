@@ -23,7 +23,7 @@ export class SidebarService {
         user: userProfile,
         teams: [
           {
-            name: 'Shadcn Admin',
+            name: 'shadmin',
             logo: Command,
             plan: 'Vite + ShadcnUI',
           },
@@ -115,7 +115,7 @@ export class SidebarService {
       user: userData,
       teams: [
         {
-          name: 'Shadcn Admin',
+          name: 'shadmin',
           logo: Command,
           plan: 'Vite + ShadcnUI',
         },

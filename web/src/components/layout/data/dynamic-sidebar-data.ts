@@ -12,7 +12,7 @@ const defaultSidebarData = {
   },
   teams: [
     {
-      name: 'Shadcn Admin',
+      name: 'shadmin',
       logo: Command,
       plan: 'Vite + ShadcnUI',
     },
