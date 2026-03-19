@@ -30,7 +30,42 @@
 - 🗂️ **动态菜单管理** — 后端驱动的菜单树，权限感知渲染
 - 🗄️ **多数据库支持** — 开箱即用支持 SQLite（默认）、PostgreSQL、MySQL
 
-## 📁 项目结构
+## 🚀 跑起来
+
+### 环境要求
+
+- Go 1.25+
+- Node.js 18+ & pnpm（或 npm）
+
+### 运行
+
+```bash
+# 克隆仓库
+git clone https://github.com/ahaodev/shadmin.git
+cd shadmin
+
+# 安装依赖并构建前端
+cd web && pnpm install && pnpm build
+
+# 启动后端（从项目根目录执行）
+# 生成 Ent 代码，内嵌 web/dist/，监听 :55667
+# 首次运行时自动生成 .env
+cd ..
+go generate ./ent
+go run .
+```
+
+> **默认账号：** `admin` / `123`
+
+## 🔐 认证与权限
+
+- **认证**：JWT 访问令牌 + 刷新令牌，通过 `Authorization: Bearer <token>` 传递
+- **API 鉴权**：Casbin 中间件对受保护路由检查 `(userID, path, method)`
+- **前端守卫**：权限感知组件（`PermissionButton`、`PermissionGuard`）
+- **菜单系统**：通过 `/api/v1/resources` 获取动态菜单树，自动适配用户权限
+
+<details>
+<summary>📁 <b>项目结构</b></summary>
 
 ```
 shadmin/
@@ -52,63 +87,7 @@ shadmin/
 └── main.go         # 入口文件
 ```
 
-## 🚀 快速开始
-
-### 环境要求
-
-- Go 1.25+
-- Node.js 18+ & pnpm（或 npm）
-
-### 开发环境
-
-```bash
-# 克隆仓库
-git clone https://github.com/ahaodev/shadmin.git
-cd shadmin
-
-# 启动后端（监听 :55667，.env 缺失时自动生成）
-go run .
-
-# 启动前端（新终端窗口）
-cd web && pnpm install && pnpm dev
-```
-
-### 生产构建
-
-```bash
-# 构建前端
-cd web && pnpm build
-
-# 构建后端（内嵌 web/dist/）
-go build -o shadmin .
-
-# 运行
-./shadmin
-```
-
-## 🔐 认证与权限
-
-- **认证**：JWT 访问令牌 + 刷新令牌，通过 `Authorization: Bearer <token>` 传递
-- **API 鉴权**：Casbin 中间件对受保护路由检查 `(userID, path, method)`
-- **前端守卫**：权限感知组件（`PermissionButton`、`PermissionGuard`）
-- **菜单系统**：通过 `/api/v1/resources` 获取动态菜单树，自动适配用户权限
-
-## 🛠️ 开发指南
-
-```bash
-# Ent 模型代码生成（修改 ent/schema/* 后执行）
-go generate ./ent
-
-# Swagger 文档生成（需安装 swag CLI）
-go install github.com/swaggo/swag/cmd/swag@latest
-go generate
-
-# 运行测试
-go test ./...
-
-# 前端代码检查和格式化
-cd web && pnpm lint && pnpm format:check
-```
+</details>
 
 ## 📚 文档
 
@@ -117,3 +96,6 @@ cd web && pnpm lint && pnpm format:check
 - [开发指南 (中文)](docs/getting-started/development.zh.md) · [Development (EN)](docs/getting-started/development.en.md)
 - [部署 (中文)](docs/getting-started/deployment.zh.md) · [Deployment (EN)](docs/getting-started/deployment.en.md)
 
+## 📄 许可证
+
+[MIT](LICENSE)

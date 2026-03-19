@@ -30,7 +30,42 @@
 - 🗂️ **Dynamic Menus** — Backend‑driven menu tree with permission‑aware rendering
 - 🗄️ **Multi‑Database** — SQLite (default), PostgreSQL, MySQL out of the box
 
-## 📁 Project Structure
+## 🚀 Get Running
+
+### Prerequisites
+
+- Go 1.25+
+- Node.js 18+ & pnpm (or npm)
+
+### Run
+
+```bash
+# Clone the repository
+git clone https://github.com/ahaodev/shadmin.git
+cd shadmin
+
+# Install & build frontend
+cd web && pnpm install && pnpm build
+
+# Start backend (from project root)
+# Generates Ent code, embeds web/dist/, listens on :55667
+# .env auto‑generated on first run
+cd ..
+go generate ./ent
+go run .
+```
+
+> **Default login:** `admin` / `123`
+
+## 🔐 Auth & Permissions
+
+- **Authentication**: JWT access + refresh tokens via `Authorization: Bearer <token>`
+- **API Authorization**: Casbin middleware checks `(userID, path, method)` on protected routes
+- **Frontend Guards**: Permission‑aware components (`PermissionButton`, `PermissionGuard`)
+- **Menu System**: Dynamic menus from `/api/v1/resources`, auto‑adapted to user permissions
+
+<details>
+<summary>📁 <b>Project Structure</b></summary>
 
 ```
 shadmin/
@@ -52,63 +87,7 @@ shadmin/
 └── main.go         # Entry point
 ```
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Go 1.25+
-- Node.js 18+ & pnpm (or npm)
-
-### Development
-
-```bash
-# Clone the repository
-git clone https://github.com/ahaodev/shadmin.git
-cd shadmin
-
-# Start backend (listens on :55667, .env auto‑generated)
-go run .
-
-# Start frontend (in a new terminal)
-cd web && pnpm install && pnpm dev
-```
-
-### Production Build
-
-```bash
-# Build frontend
-cd web && pnpm build
-
-# Build backend (embeds web/dist/)
-go build -o shadmin .
-
-# Run
-./shadmin
-```
-
-## 🔐 Auth & Permissions
-
-- **Authentication**: JWT access + refresh tokens via `Authorization: Bearer <token>`
-- **API Authorization**: Casbin middleware checks `(userID, path, method)` on protected routes
-- **Frontend Guards**: Permission‑aware components (`PermissionButton`, `PermissionGuard`)
-- **Menu System**: Dynamic menus from `/api/v1/resources`, auto‑adapted to user permissions
-
-## 🛠️ Development
-
-```bash
-# Ent schema codegen (after editing ent/schema/*)
-go generate ./ent
-
-# Swagger docs (requires swag CLI)
-go install github.com/swaggo/swag/cmd/swag@latest
-go generate
-
-# Run tests
-go test ./...
-
-# Frontend lint & format
-cd web && pnpm lint && pnpm format:check
-```
+</details>
 
 ## 📚 Documentation
 
@@ -116,3 +95,7 @@ cd web && pnpm lint && pnpm format:check
 - [Quick Start (EN)](docs/getting-started/quickstart.en.md) · [快速开始 (中文)](docs/getting-started/quickstart.zh.md)
 - [Development (EN)](docs/getting-started/development.en.md) · [开发指南 (中文)](docs/getting-started/development.zh.md)
 - [Deployment (EN)](docs/getting-started/deployment.en.md) · [部署 (中文)](docs/getting-started/deployment.zh.md)
+
+## 📄 License
+
+[MIT](LICENSE)

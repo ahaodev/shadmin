@@ -19,6 +19,7 @@ go.work
 
 # Environment variables
 .env
+.env.backup
 .env.local
 .env.*.local
 
