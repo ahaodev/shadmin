@@ -13,7 +13,6 @@ dist-ssr
 *.local
 
 .env
-src/routeTree.gen.ts
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
