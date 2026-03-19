@@ -86,17 +86,6 @@ go build -o shadmin .
 ./shadmin
 ```
 
-### Makefile 快捷命令
-
-| 命令 | 说明 |
-|------|------|
-| `make run` | 仅启动后端 |
-| `make dev` | 启动后端 + 前端开发服务器 |
-| `make build` | 构建后端和前端 |
-| `make check` | 运行所有代码检查和测试 |
-| `make hooks` | 启用 pre‑commit Git 钩子 |
-| `make help` | 列出所有可用目标 |
-
 ## 🔐 认证与权限
 
 - **认证**：JWT 访问令牌 + 刷新令牌，通过 `Authorization: Bearer <token>` 传递

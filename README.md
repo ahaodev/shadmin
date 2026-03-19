@@ -86,17 +86,6 @@ go build -o shadmin .
 ./shadmin
 ```
 
-### Makefile Shortcuts
-
-| Command | Description |
-|---------|-------------|
-| `make run` | Start backend only |
-| `make dev` | Start backend + frontend dev server |
-| `make build` | Build backend and frontend |
-| `make check` | Run all linters and tests |
-| `make hooks` | Enable pre‑commit git hooks |
-| `make help` | List all available targets |
-
 ## 🔐 Auth & Permissions
 
 - **Authentication**: JWT access + refresh tokens via `Authorization: Bearer <token>`
