@@ -2,7 +2,7 @@
 
 # Shadmin
 
-**An enterprise‑grade, full‑stack RBAC admin dashboard built with Go + React.**
+**An Enterprise-Grade Full-Stack RBAC Permission Management System Built with Go + React**
 
 [简体中文](./README.zh.md) · English
 
