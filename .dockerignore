@@ -1,0 +1,9 @@
+web/node_modules
+web/dist
+.database
+.deploy
+.git
+.gitignore
+uploads
+*.md
+LICENSE

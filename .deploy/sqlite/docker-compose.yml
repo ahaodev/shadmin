@@ -1,0 +1,24 @@
+services:
+  shadmin:
+    image: ghcr.io/ahaodev/shadmin:latest
+    container_name: shadmin
+    restart: unless-stopped
+    ports:
+      - "55667:55667"
+    environment:
+      - APP_ENV=production
+      - DB_TYPE=sqlite
+      - ACCESS_TOKEN_SECRET=abcdef1234567890
+      - REFRESH_TOKEN_SECRET=abcdef1234567890
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - ADMIN_EMAIL=admin@example.com
+      - STORAGE_TYPE=disk
+      - STORAGE_BASE_PATH=/app/uploads
+    volumes:
+      - shadmin-data:/app/.database
+      - shadmin-uploads:/app/uploads
+
+volumes:
+  shadmin-data:
+  shadmin-uploads:

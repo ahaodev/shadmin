@@ -1,0 +1,46 @@
+services:
+  shadmin:
+    image: ghcr.io/ahaodev/shadmin:latest
+    container_name: shadmin
+    restart: unless-stopped
+    ports:
+      - "55667:55667"
+    environment:
+      - APP_ENV=production
+      - DB_TYPE=postgres
+      - DB_DSN=postgres://shadmin:shadmin@postgres:5432/shadmin?sslmode=disable
+      - ACCESS_TOKEN_SECRET=change-me-to-a-secure-secret-1
+      - REFRESH_TOKEN_SECRET=change-me-to-a-secure-secret-2
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=abc123
+      - ADMIN_EMAIL=admin@example.com
+      - STORAGE_TYPE=disk
+      - STORAGE_BASE_PATH=/app/uploads
+    volumes:
+      - shadmin-uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:18.3
+    container_name: shadmin-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=shadmin
+      - POSTGRES_USER=shadmin
+      - POSTGRES_PASSWORD=shadmin
+      - PGDATA=/data/postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shadmin"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  shadmin-uploads:
+  postgres-data:

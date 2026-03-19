@@ -1,0 +1,26 @@
+services:
+  shadmin:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    container_name: shadmin
+    restart: unless-stopped
+    ports:
+      - "55667:55667"
+    environment:
+      - APP_ENV=production
+      - DB_TYPE=sqlite
+      - ACCESS_TOKEN_SECRET=your-secure-access-token-secret
+      - REFRESH_TOKEN_SECRET=your-secure-refresh-token-secret
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=abc123
+      - ADMIN_EMAIL=admin@example.com
+      - STORAGE_TYPE=disk
+      - STORAGE_BASE_PATH=/app/uploads
+    volumes:
+      - shadmin-data:/app/.database
+      - shadmin-uploads:/app/uploads
+
+volumes:
+  shadmin-data:
+  shadmin-uploads:

@@ -1,0 +1,46 @@
+services:
+  shadmin:
+    image: ghcr.io/ahaodev/shadmin:latest
+    container_name: shadmin
+    restart: unless-stopped
+    ports:
+      - "55667:55667"
+    environment:
+      - APP_ENV=production
+      - DB_TYPE=mysql
+      - DB_DSN=shadmin:shadmin@tcp(mysql:3306)/shadmin?parseTime=true&loc=Local&charset=utf8mb4
+      - ACCESS_TOKEN_SECRET=change-me-to-a-secure-secret-1
+      - REFRESH_TOKEN_SECRET=change-me-to-a-secure-secret-2
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=abc123
+      - ADMIN_EMAIL=admin@example.com
+      - STORAGE_TYPE=disk
+      - STORAGE_BASE_PATH=/app/uploads
+    volumes:
+      - shadmin-uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    container_name: shadmin-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=shadmin
+      - MYSQL_USER=shadmin
+      - MYSQL_PASSWORD=shadmin
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  shadmin-uploads:
+  mysql-data:
