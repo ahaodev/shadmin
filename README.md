@@ -6,7 +6,7 @@
 
 [简体中文](./README.zh.md) · English
 
-![Shadmin Showcase](docs/images/showcase-dark.jpg)
+![Shadmin Showcase](docs/images/showcase-dark-en.jpg)
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
