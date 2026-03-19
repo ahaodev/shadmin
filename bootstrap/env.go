@@ -75,9 +75,11 @@ func setDefaults() {
 		"S3_BUCKET":     "shadmin",
 		"S3_TOKEN":      "",
 	}
-
+	// 绑定环境变量
+	viper.AutomaticEnv()
 	for key, value := range defaults {
 		viper.SetDefault(key, value)
+		viper.BindEnv(key)
 	}
 }
 
