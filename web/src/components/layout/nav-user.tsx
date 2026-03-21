@@ -98,7 +98,7 @@ export function NavUser({ user: propUser }: NavUserProps) {
                 <DropdownMenuItem asChild>
                   <Link to='/settings/account'>
                     <BadgeCheck />
-                    Account
+                    账户设置
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
