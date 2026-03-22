@@ -7,7 +7,9 @@ import (
 )
 
 var (
-	ErrInvalidPassword = errors.New("invalid password")
+	ErrInvalidPassword   = errors.New("invalid password")
+	ErrCannotDeleteSelf  = errors.New("不能删除自己")
+	ErrCannotDeleteAdmin = errors.New("不能删除管理员账户")
 )
 
 // User 结构体定义了用户的基本信息 (单租户架构)
@@ -87,7 +89,7 @@ type UserUseCase interface {
 	UpdateUserProfile(c context.Context, userID string, updates ProfileUpdate) error
 	UpdateUserPassword(c context.Context, userID string, passwordUpdate PasswordUpdate) error
 	UpdateUserPartial(c context.Context, userID string, updates UserUpdateRequest) error
-	DeleteUser(c context.Context, id string) error
+	DeleteUser(c context.Context, id string, currentUserID string) error
 	InviteUser(c context.Context, request *InviteUserRequest, invitedBy string) (*User, error)
 	GetUserRoles(c context.Context, userID string) ([]string, error)
 }

@@ -34,6 +34,10 @@ func (Role) Fields() []ent.Field {
 		field.Int("sequence").
 			Default(0).
 			Comment("排序序号"),
+		field.Bool("is_system").
+			Default(false).
+			Immutable().
+			Comment("是否为系统内置角色，不可删除/重命名"),
 		field.String("status").
 			MaxLen(20).
 			Default("active").

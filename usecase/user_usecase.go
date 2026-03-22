@@ -86,20 +86,28 @@ func (uu *userUsecase) GetUserByID(c context.Context, id string) (*domain.User, 
 	return uu.userRepository.GetByID(ctx, id)
 }
 
-func (uu *userUsecase) DeleteUser(c context.Context, id string) error {
+func (uu *userUsecase) DeleteUser(c context.Context, id string, currentUserID string) error {
 	ctx, cancel := context.WithTimeout(c, uu.contextTimeout)
 	defer cancel()
 
-	// 1. 获取用户信息用于后续清理
+	// 规则1: 不能删除自己
+	if id == currentUserID {
+		return domain.ErrCannotDeleteSelf
+	}
+
+	// 1. 获取目标用户信息
 	user, err := uu.userRepository.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to get user for deletion: %w", err)
 	}
 
-	// 记录删除操作
-	log.Printf("INFO: Starting deletion process for user %s (ID: %s)", user.Username, id)
+	// 规则2: 不能删除 isAdmin 管理员
+	if user.IsAdmin {
+		return domain.ErrCannotDeleteAdmin
+	}
 
-	// 2. 删除用户记录
+	log.Printf("INFO: User %s starting deletion of user %s (ID: %s)", currentUserID, user.Username, id)
+
 	if err := uu.userRepository.Delete(ctx, id); err != nil {
 		log.Printf("ERROR: Failed to delete user %s from database: %v", user.Username, err)
 		return fmt.Errorf("failed to delete user from database: %w", err)

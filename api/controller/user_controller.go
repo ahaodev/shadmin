@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 	"shadmin/bootstrap"
+	"shadmin/internal/contextutil"
 	"strconv"
 
 	"shadmin/domain"
@@ -230,8 +232,19 @@ func (uc *UserController) GetUserRoles(c *gin.Context) {
 func (uc *UserController) DeleteUser(c *gin.Context) {
 	userID := c.Param("id")
 
-	// 执行删除用户逻辑
-	if err := uc.UserUsecase.DeleteUser(c, userID); err != nil {
+	// 获取当前操作用户ID
+	currentUserID := contextutil.GetUserID(c)
+	if currentUserID == "" {
+		c.JSON(http.StatusUnauthorized, domain.RespError("用户未认证"))
+		return
+	}
+
+	// 执行删除用户逻辑（含权限校验）
+	if err := uc.UserUsecase.DeleteUser(c, userID, currentUserID); err != nil {
+		if errors.Is(err, domain.ErrCannotDeleteSelf) || errors.Is(err, domain.ErrCannotDeleteAdmin) {
+			c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
 	}

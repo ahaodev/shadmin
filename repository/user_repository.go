@@ -247,6 +247,8 @@ func (ur *entUserRepository) GetByID(c context.Context, id string) (*domain.User
 	return entUserToDomainUser(u), nil
 }
 
+// Update 更新用户信息
+// 🔒 安全: IsAdmin 字段在此处被故意排除，仅在创建时设置，不可通过 API 修改
 func (ur *entUserRepository) Update(c context.Context, u *domain.User) error {
 	updateQuery := ur.client.User.
 		UpdateOneID(u.ID).

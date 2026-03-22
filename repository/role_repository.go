@@ -36,6 +36,7 @@ func (rr *entRoleRepository) convertEntRoleToDomain(entRole *ent.Role) *domain.R
 	role := &domain.Role{
 		ID:        entRole.ID,
 		Name:      entRole.Name,
+		IsSystem:  entRole.IsSystem,
 		Sequence:  entRole.Sequence,
 		Status:    entRole.Status,
 		CreatedAt: entRole.CreatedAt,
@@ -152,6 +153,8 @@ func (rr *entRoleRepository) GetByName(c context.Context, name string) (*domain.
 	return rr.convertEntRoleToDomain(entRole), nil
 }
 
+// Update 更新角色信息
+// 🔒 安全: IsSystem 字段是 Immutable 的，Ent 层面禁止更新
 func (rr *entRoleRepository) Update(c context.Context, role *domain.Role) error {
 	role.UpdatedAt = time.Now()
 

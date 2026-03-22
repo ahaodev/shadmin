@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 	bootstrap "shadmin/bootstrap"
 	"shadmin/domain"
@@ -159,6 +160,10 @@ func (rc *RoleController) UpdateRole(c *gin.Context) {
 
 	role, err := rc.RoleUseCase.Update(c.Request.Context(), roleID, &request)
 	if err != nil {
+		if errors.Is(err, domain.ErrCannotRenameAdminRole) {
+			c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
+			return
+		}
 		if err.Error() == "role not found" {
 			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
 			return
@@ -189,9 +194,12 @@ func (rc *RoleController) DeleteRole(c *gin.Context) {
 		return
 	}
 
-	// 删除数据库中的角色
 	err := rc.RoleUseCase.Delete(c.Request.Context(), roleID)
 	if err != nil {
+		if errors.Is(err, domain.ErrCannotDeleteAdminRole) {
+			c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
+			return
+		}
 		if err.Error() == "role not found" {
 			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
 			return

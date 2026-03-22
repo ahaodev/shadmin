@@ -15,7 +15,7 @@ func InitDefaultAdmin(app *Application) {
 
 	// Check if admin user exists
 	adminExists, err := app.DB.User.Query().
-		Where(user.UsernameEQ(app.Env.AdminUsername)).
+		Where(user.IsAdminEQ(true)).
 		Exist(ctx)
 	if err != nil {
 		log.Printf("check admin user failed: %v", err)
@@ -31,6 +31,7 @@ func InitDefaultAdmin(app *Application) {
 
 	adminRole, err := app.DB.Role.Create().
 		SetName("admin").
+		SetIsSystem(true).
 		SetStatus("active").
 		Save(ctx)
 	if err != nil {

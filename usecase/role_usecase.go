@@ -82,6 +82,11 @@ func (ru *roleUsecase) Update(c context.Context, id string, request *domain.Upda
 		return nil, fmt.Errorf("role not found: %w", err)
 	}
 
+	// 系统内置角色名称受保护，不允许修改
+	if existingRole.IsSystem && request.Name != nil && *request.Name != existingRole.Name {
+		return nil, domain.ErrCannotRenameAdminRole
+	}
+
 	if request.Name != nil {
 		existingRole.Name = *request.Name
 	}
@@ -130,6 +135,11 @@ func (ru *roleUsecase) Delete(c context.Context, id string) error {
 	role, err := ru.roleRepository.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("role not found: %w", err)
+	}
+
+	// 系统内置角色受保护，不允许删除
+	if role.IsSystem {
+		return domain.ErrCannotDeleteAdminRole
 	}
 
 	log.Printf("INFO: Starting deletion process for role %s (ID: %s)", role.Name, id)
