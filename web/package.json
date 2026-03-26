@@ -45,6 +45,7 @@
     "dompurify": "3.3.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.539.0",
+    "pnpm": "^10.33.0",
     "react": "^19.2.4",
     "react-day-picker": "9.8.1",
     "react-dom": "^19.2.4",
