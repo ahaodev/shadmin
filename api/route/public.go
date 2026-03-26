@@ -26,10 +26,20 @@ func (pr *PublicRoutes) Setup(router *gin.RouterGroup, app *bootstrap.Applicatio
 	if app.Env.AppEnv == "development" {
 		router.Use(middleware.LogMiddleware())
 	}
+	
+	// Health check
+	healthGroup := router.Group("/health")
+	pr.setupHealthRoutes(healthGroup)
 
 	// Authentication routes
 	authGroup := router.Group("/auth")
 	pr.setupAuthRoutes(authGroup, app)
+}
+
+// setupHealthRoutes configures health check routes
+func (pr *PublicRoutes) setupHealthRoutes(group *gin.RouterGroup) {
+	hc := pr.factory.CreateHealthController()
+	group.GET("", hc.Health)
 }
 
 // setupAuthRoutes configures authentication-related routes
