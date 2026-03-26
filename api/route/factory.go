@@ -2,7 +2,7 @@ package route
 
 import (
 	"shadmin/api/controller"
-	bootstrap "shadmin/bootstrap"
+	"shadmin/bootstrap"
 	"shadmin/internal"
 	"shadmin/internal/casbin"
 	"shadmin/internal/tokenservice"
@@ -131,6 +131,10 @@ func (f *ControllerFactory) CreateLoginLogController() *controller.LoginLogContr
 		LoginLogUsecase: loginLogUseCase,
 		Env:             f.app.Env,
 	}
+}
+// CreateHealthController creates a health check controller
+func (f *ControllerFactory) CreateHealthController() *controller.HealthController {
+	return &controller.HealthController{}
 }
 
 // CreateDictController creates a dictionary controller
