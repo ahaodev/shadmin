@@ -132,6 +132,7 @@ func (f *ControllerFactory) CreateLoginLogController() *controller.LoginLogContr
 		Env:             f.app.Env,
 	}
 }
+
 // CreateHealthController creates a health check controller
 func (f *ControllerFactory) CreateHealthController() *controller.HealthController {
 	return &controller.HealthController{}

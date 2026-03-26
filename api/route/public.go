@@ -26,7 +26,7 @@ func (pr *PublicRoutes) Setup(router *gin.RouterGroup, app *bootstrap.Applicatio
 	if app.Env.AppEnv == "development" {
 		router.Use(middleware.LogMiddleware())
 	}
-	
+
 	// Health check
 	healthGroup := router.Group("/health")
 	pr.setupHealthRoutes(healthGroup)
