@@ -14,7 +14,7 @@ type HealthController struct{}
 // @Summary health check
 // @Description  Returns service health status
 // @Tags         Health
-// @Produce      JSON
+// @Produce      json
 // @Success      200  {object}  domain.Response
 // @Router       /health [get]
 func (hc *HealthController) Health(c *gin.Context) {

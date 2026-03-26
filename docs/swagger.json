@@ -224,6 +224,26 @@
                 }
             }
         },
+        "/health": {
+            "get": {
+                "description": "Returns service health status",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "Authenticate user and return JWT tokens with brute force protection",
@@ -3359,6 +3379,9 @@
                 },
                 "id": {
                     "type": "string"
+                },
+                "is_system": {
+                    "type": "boolean"
                 },
                 "menus": {
                     "type": "array",
