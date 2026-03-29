@@ -3,7 +3,7 @@ package api
 import (
 	"log"
 	"shadmin/api/route"
-	bootstrap "shadmin/bootstrap"
+	"shadmin/bootstrap"
 	"time"
 )
 

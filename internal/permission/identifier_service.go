@@ -21,21 +21,6 @@ const (
 	IdentifierProject = "project" // 项目权限：project:项目A:read
 )
 
-// 权限标识操作
-const (
-	IdentifierActionAccess = "access" // 访问权限
-	IdentifierActionRead   = "read"   // 读权限
-	IdentifierActionWrite  = "write"  // 写权限
-	IdentifierActionDelete = "delete" // 删除权限
-)
-
-// NewPermissionIdentifierService 创建权限标识服务
-func NewPermissionIdentifierService(casManager casbin.Manager) *PermissionIdentifierService {
-	return &PermissionIdentifierService{
-		casManager: casManager,
-	}
-}
-
 // GetPermissionIdentifiersForRole 获取角色的所有权限标识
 func (pis *PermissionIdentifierService) GetPermissionIdentifiersForRole(ctx context.Context, role string) ([]string, error) {
 	// 获取所有策略并过滤出当前角色的权限

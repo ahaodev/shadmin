@@ -2,7 +2,7 @@ package controller
 
 import (
 	"net/http"
-	bootstrap "shadmin/bootstrap"
+	"shadmin/bootstrap"
 	"shadmin/domain"
 	"shadmin/internal/constants"
 	"shadmin/pkg"

@@ -2,7 +2,7 @@ package route
 
 import (
 	"shadmin/api/middleware"
-	bootstrap "shadmin/bootstrap"
+	"shadmin/bootstrap"
 	"time"
 
 	"github.com/gin-gonic/gin"
