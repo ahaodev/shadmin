@@ -126,13 +126,10 @@ func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLog
 	}
 
 	// 应用分页
-	var logs []*ent.LoginLog
-	if filter.Page > 0 && filter.PageSize > 0 {
-		offset := (filter.Page - 1) * filter.PageSize
-		logs, err = baseQuery.Offset(offset).Limit(filter.PageSize).All(c)
-	} else {
-		logs, err = baseQuery.All(c)
+	if offset, limit, ok := filter.Paginate(); ok {
+		baseQuery = baseQuery.Offset(offset).Limit(limit)
 	}
+	logs, err := baseQuery.All(c)
 	if err != nil {
 		return nil, err
 	}

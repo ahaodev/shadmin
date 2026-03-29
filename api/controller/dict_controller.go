@@ -82,7 +82,7 @@ func (dc *DictController) GetDictType(c *gin.Context) {
 
 	dictType, err := dc.DictUseCase.GetDictTypeByID(c, id)
 	if err != nil {
-		if err == domain.ErrDictTypeNotFound {
+		if errors.Is(err, domain.ErrDictTypeNotFound) {
 			c.JSON(http.StatusNotFound, domain.RespError("Dictionary type not found"))
 			return
 		}
@@ -185,11 +185,11 @@ func (dc *DictController) DeleteDictType(c *gin.Context) {
 
 	err := dc.DictUseCase.DeleteDictType(c, id)
 	if err != nil {
-		if err == domain.ErrDictTypeNotFound {
+		if errors.Is(err, domain.ErrDictTypeNotFound) {
 			c.JSON(http.StatusNotFound, domain.RespError("Dictionary type not found"))
 			return
 		}
-		if err == domain.ErrDictTypeHasItems {
+		if errors.Is(err, domain.ErrDictTypeHasItems) {
 			c.JSON(http.StatusBadRequest, domain.RespError("Dictionary type has items, cannot delete"))
 			return
 		}
@@ -273,7 +273,7 @@ func (dc *DictController) GetDictItem(c *gin.Context) {
 
 	dictItem, err := dc.DictUseCase.GetDictItemByID(c, id)
 	if err != nil {
-		if err == domain.ErrDictItemNotFound {
+		if errors.Is(err, domain.ErrDictItemNotFound) {
 			c.JSON(http.StatusNotFound, domain.RespError("Dictionary item not found"))
 			return
 		}
@@ -306,11 +306,11 @@ func (dc *DictController) CreateDictItem(c *gin.Context) {
 
 	dictItem, err := dc.DictUseCase.CreateDictItem(c, &request)
 	if err != nil {
-		if err == domain.ErrDictItemValueExists {
+		if errors.Is(err, domain.ErrDictItemValueExists) {
 			c.JSON(http.StatusConflict, domain.RespError("Dictionary item value already exists in this type"))
 			return
 		}
-		if err == domain.ErrDictItemDefaultConflict {
+		if errors.Is(err, domain.ErrDictItemDefaultConflict) {
 			c.JSON(http.StatusConflict, domain.RespError("Dictionary type already has a default item"))
 			return
 		}
@@ -347,15 +347,15 @@ func (dc *DictController) UpdateDictItem(c *gin.Context) {
 
 	err := dc.DictUseCase.UpdateDictItem(c, id, request)
 	if err != nil {
-		if err == domain.ErrDictItemNotFound {
+		if errors.Is(err, domain.ErrDictItemNotFound) {
 			c.JSON(http.StatusNotFound, domain.RespError("Dictionary item not found"))
 			return
 		}
-		if err == domain.ErrDictItemValueExists {
+		if errors.Is(err, domain.ErrDictItemValueExists) {
 			c.JSON(http.StatusConflict, domain.RespError("Dictionary item value already exists in this type"))
 			return
 		}
-		if err == domain.ErrDictItemDefaultConflict {
+		if errors.Is(err, domain.ErrDictItemDefaultConflict) {
 			c.JSON(http.StatusConflict, domain.RespError("Dictionary type already has a default item"))
 			return
 		}
@@ -383,7 +383,7 @@ func (dc *DictController) DeleteDictItem(c *gin.Context) {
 
 	err := dc.DictUseCase.DeleteDictItem(c, id)
 	if err != nil {
-		if err == domain.ErrDictItemNotFound {
+		if errors.Is(err, domain.ErrDictItemNotFound) {
 			c.JSON(http.StatusNotFound, domain.RespError("Dictionary item not found"))
 			return
 		}

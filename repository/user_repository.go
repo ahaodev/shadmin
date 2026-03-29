@@ -153,13 +153,10 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	query := baseQuery
 
 	// 应用分页
-	var users []*ent.User
-	if filter.Page > 0 && filter.PageSize > 0 {
-		offset := (filter.Page - 1) * filter.PageSize
-		users, err = query.Offset(offset).Limit(filter.PageSize).All(c)
-	} else {
-		users, err = query.All(c)
+	if offset, limit, ok := filter.Paginate(); ok {
+		query = query.Offset(offset).Limit(limit)
 	}
+	users, err := query.All(c)
 	if err != nil {
 		return nil, err
 	}

@@ -88,6 +88,50 @@ func (dr *entDictRepository) convertEntDictItemToDomain(entItem *ent.DictItem) *
 	}
 }
 
+func (dr *entDictRepository) listPagedDictTypes(ctx context.Context, query *ent.DictTypeQuery, page int, pageSize int) ([]*domain.DictType, error) {
+	var entTypes []*ent.DictType
+	var err error
+
+	if page > 0 && pageSize > 0 {
+		offset := (page - 1) * pageSize
+		entTypes, err = query.Offset(offset).Limit(pageSize).All(ctx)
+	} else {
+		entTypes, err = query.All(ctx)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*domain.DictType, 0, len(entTypes))
+	for _, entType := range entTypes {
+		result = append(result, dr.convertEntDictTypeToDomain(entType))
+	}
+
+	return result, nil
+}
+
+func (dr *entDictRepository) listPagedDictItems(ctx context.Context, query *ent.DictItemQuery, page int, pageSize int) ([]*domain.DictItem, error) {
+	var entItems []*ent.DictItem
+	var err error
+
+	if page > 0 && pageSize > 0 {
+		offset := (page - 1) * pageSize
+		entItems, err = query.Offset(offset).Limit(pageSize).All(ctx)
+	} else {
+		entItems, err = query.All(ctx)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*domain.DictItem, 0, len(entItems))
+	for _, entItem := range entItems {
+		result = append(result, dr.convertEntDictItemToDomain(entItem))
+	}
+
+	return result, nil
+}
+
 // 字典类型相关实现
 
 func (dr *entDictRepository) CreateType(ctx context.Context, dictType *domain.DictType) error {
@@ -210,22 +254,9 @@ func (dr *entDictRepository) FetchTypes(ctx context.Context, params domain.DictT
 		query = query.Order(ent.Desc(dicttype.FieldCreatedAt))
 	}
 
-	// 应用分页
-	var entTypes []*ent.DictType
-	if params.Page > 0 && params.PageSize > 0 {
-		offset := (params.Page - 1) * params.PageSize
-		entTypes, err = query.Offset(offset).Limit(params.PageSize).All(ctx)
-	} else {
-		entTypes, err = query.All(ctx)
-	}
+	result, err := dr.listPagedDictTypes(ctx, query, params.Page, params.PageSize)
 	if err != nil {
 		return nil, err
-	}
-
-	// 转换为domain对象
-	var result []*domain.DictType
-	for _, entType := range entTypes {
-		result = append(result, dr.convertEntDictTypeToDomain(entType))
 	}
 
 	return domain.NewPagedResult(result, total, params.Page, params.PageSize), nil
@@ -460,22 +491,9 @@ func (dr *entDictRepository) FetchItems(ctx context.Context, params domain.DictI
 		query = query.Order(ent.Asc(dictitem.FieldSort), ent.Desc(dictitem.FieldCreatedAt))
 	}
 
-	// 应用分页
-	var entItems []*ent.DictItem
-	if params.Page > 0 && params.PageSize > 0 {
-		offset := (params.Page - 1) * params.PageSize
-		entItems, err = query.Offset(offset).Limit(params.PageSize).All(ctx)
-	} else {
-		entItems, err = query.All(ctx)
-	}
+	result, err := dr.listPagedDictItems(ctx, query, params.Page, params.PageSize)
 	if err != nil {
 		return nil, err
-	}
-
-	// 转换为domain对象
-	var result []*domain.DictItem
-	for _, entItem := range entItems {
-		result = append(result, dr.convertEntDictItemToDomain(entItem))
 	}
 
 	return domain.NewPagedResult(result, total, params.Page, params.PageSize), nil

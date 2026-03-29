@@ -33,7 +33,7 @@ func (rr *entRoleRepository) convertEntRoleToDomain(entRole *ent.Role) *domain.R
 		return nil
 	}
 
-	role := &domain.Role{
+	domainRole := &domain.Role{
 		ID:        entRole.ID,
 		Name:      entRole.Name,
 		IsSystem:  entRole.IsSystem,
@@ -49,10 +49,10 @@ func (rr *entRoleRepository) convertEntRoleToDomain(entRole *ent.Role) *domain.R
 		for i, menu := range entRole.Edges.Menus {
 			menuIDs[i] = menu.ID
 		}
-		role.MenusIds = menuIDs
+		domainRole.MenusIds = menuIDs
 	}
 
-	return role
+	return domainRole
 }
 
 func (rr *entRoleRepository) Create(c context.Context, role *domain.Role) error {

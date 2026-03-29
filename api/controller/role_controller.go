@@ -19,6 +19,29 @@ type RoleController struct {
 	MenuRepository domain.MenuRepository
 }
 
+func (rc *RoleController) getRoleIDOrBadRequest(c *gin.Context) (string, bool) {
+	roleID := c.Param("id")
+	if roleID == "" {
+		c.JSON(http.StatusBadRequest, domain.RespError("Role ID is required"))
+		return "", false
+	}
+
+	return roleID, true
+}
+
+func (rc *RoleController) writeRoleMutationError(c *gin.Context, err error, forbiddenErr error) {
+	if errors.Is(err, forbiddenErr) {
+		c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
+		return
+	}
+	if err.Error() == "role not found" {
+		c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+}
+
 // RoleInfo 角色信息结构
 type RoleInfo struct {
 	ID   string `json:"id"`   // 角色ID
@@ -98,6 +121,27 @@ func (rc *RoleController) CreateRole(c *gin.Context) {
 	c.JSON(http.StatusCreated, domain.RespSuccess(err))
 }
 
+// getRoleByID extracts the role ID from the path, fetches the role, and writes
+// an error response when something goes wrong. Returns nil if a response was already sent.
+func (rc *RoleController) getRoleByID(c *gin.Context) *domain.Role {
+	roleID, ok := rc.getRoleIDOrBadRequest(c)
+	if !ok {
+		return nil
+	}
+
+	role, err := rc.RoleUseCase.GetByID(c.Request.Context(), roleID)
+	if err != nil {
+		if err.Error() == "role not found" {
+			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
+			return nil
+		}
+		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		return nil
+	}
+
+	return role
+}
+
 // GetRole 获取角色详情
 // @Summary      Get role by ID
 // @Description  Get a specific role by its ID
@@ -111,19 +155,8 @@ func (rc *RoleController) CreateRole(c *gin.Context) {
 // @Failure      500  {object} domain.Response  "Internal server error"
 // @Router       /system/role/{id} [get]
 func (rc *RoleController) GetRole(c *gin.Context) {
-	roleID := c.Param("id")
-	if roleID == "" {
-		c.JSON(http.StatusBadRequest, domain.RespError("Role ID is required"))
-		return
-	}
-
-	role, err := rc.RoleUseCase.GetByID(c.Request.Context(), roleID)
-	if err != nil {
-		if err.Error() == "role not found" {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+	role := rc.getRoleByID(c)
+	if role == nil {
 		return
 	}
 
@@ -146,9 +179,8 @@ func (rc *RoleController) GetRole(c *gin.Context) {
 // @Failure      500      {object} domain.Response  "Internal server error"
 // @Router       /system/role/{id} [put]
 func (rc *RoleController) UpdateRole(c *gin.Context) {
-	roleID := c.Param("id")
-	if roleID == "" {
-		c.JSON(http.StatusBadRequest, domain.RespError("Role ID is required"))
+	roleID, ok := rc.getRoleIDOrBadRequest(c)
+	if !ok {
 		return
 	}
 
@@ -160,15 +192,7 @@ func (rc *RoleController) UpdateRole(c *gin.Context) {
 
 	role, err := rc.RoleUseCase.Update(c.Request.Context(), roleID, &request)
 	if err != nil {
-		if errors.Is(err, domain.ErrCannotRenameAdminRole) {
-			c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
-			return
-		}
-		if err.Error() == "role not found" {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		rc.writeRoleMutationError(c, err, domain.ErrCannotRenameAdminRole)
 		return
 	}
 
@@ -188,23 +212,14 @@ func (rc *RoleController) UpdateRole(c *gin.Context) {
 // @Failure      500  {object} domain.Response  "Internal server error"
 // @Router       /system/role/{id} [delete]
 func (rc *RoleController) DeleteRole(c *gin.Context) {
-	roleID := c.Param("id")
-	if roleID == "" {
-		c.JSON(http.StatusBadRequest, domain.RespError("Role ID is required"))
+	roleID, ok := rc.getRoleIDOrBadRequest(c)
+	if !ok {
 		return
 	}
 
 	err := rc.RoleUseCase.Delete(c.Request.Context(), roleID)
 	if err != nil {
-		if errors.Is(err, domain.ErrCannotDeleteAdminRole) {
-			c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
-			return
-		}
-		if err.Error() == "role not found" {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		rc.writeRoleMutationError(c, err, domain.ErrCannotDeleteAdminRole)
 		return
 	}
 
@@ -227,18 +242,8 @@ func (rc *RoleController) DeleteRole(c *gin.Context) {
 // @Failure      500  {object} domain.Response  "Internal server error"
 // @Router       /system/role/menus/{id} [get]
 func (rc *RoleController) GetRoleMenus(c *gin.Context) {
-	roleID := c.Param("id")
-	if roleID == "" {
-		c.JSON(http.StatusBadRequest, domain.RespError("Role ID is required"))
-		return
-	}
-	role, err := rc.RoleUseCase.GetByID(c.Request.Context(), roleID)
-	if err != nil {
-		if err.Error() == "role not found" {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+	role := rc.getRoleByID(c)
+	if role == nil {
 		return
 	}
 
