@@ -5,6 +5,7 @@ import (
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/loginlog"
+	"shadmin/ent/predicate"
 )
 
 // Helper function to convert domain status string to ent status enum
@@ -62,29 +63,30 @@ func (lr *entLoginLogRepository) Create(c context.Context, log *domain.LoginLog)
 
 func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLogQueryFilter) (*domain.LoginLogPagedResult, error) {
 	// 构建基础查询
-	baseQuery := lr.client.LoginLog.Query()
-
+	// 构建查询条件
+	var predicates []predicate.LoginLog
 	if filter.Username != "" {
-		baseQuery = baseQuery.Where(loginlog.UsernameContains(filter.Username))
+		predicates = append(predicates, loginlog.UsernameContains(filter.Username))
 	}
 	if filter.LoginIP != "" {
-		baseQuery = baseQuery.Where(loginlog.LoginIPContains(filter.LoginIP))
+		predicates = append(predicates, loginlog.LoginIPContains(filter.LoginIP))
 	}
 	if filter.Status != "" {
-		baseQuery = baseQuery.Where(loginlog.StatusEQ(domainStatusToEntLoginLogStatus(filter.Status)))
+		predicates = append(predicates, loginlog.StatusEQ(domainStatusToEntLoginLogStatus(filter.Status)))
 	}
 	if filter.Browser != "" {
-		baseQuery = baseQuery.Where(loginlog.BrowserContains(filter.Browser))
+		predicates = append(predicates, loginlog.BrowserContains(filter.Browser))
 	}
 	if filter.OS != "" {
-		baseQuery = baseQuery.Where(loginlog.OsContains(filter.OS))
+		predicates = append(predicates, loginlog.OsContains(filter.OS))
 	}
 	if filter.StartTime != nil {
-		baseQuery = baseQuery.Where(loginlog.LoginTimeGTE(*filter.StartTime))
+		predicates = append(predicates, loginlog.LoginTimeGTE(*filter.StartTime))
 	}
 	if filter.EndTime != nil {
-		baseQuery = baseQuery.Where(loginlog.LoginTimeLTE(*filter.EndTime))
+		predicates = append(predicates, loginlog.LoginTimeLTE(*filter.EndTime))
 	}
+	baseQuery := lr.client.LoginLog.Query().Where(predicates...)
 
 	// 获取总数
 	total, err := baseQuery.Clone().Count(c)
