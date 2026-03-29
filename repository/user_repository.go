@@ -4,6 +4,7 @@ import (
 	"context"
 	"shadmin/domain"
 	"shadmin/ent"
+	"shadmin/ent/predicate"
 	"shadmin/ent/user"
 	"shadmin/internal/casbin"
 )
@@ -98,21 +99,21 @@ func (ur *entUserRepository) Create(c context.Context, u *domain.User) error {
 }
 
 func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFilter) (*domain.UserPagedResult, error) {
-	// 构建基础查询
-	baseQuery := ur.client.User.Query()
-
+	// 构建查询条件
+	var predicates []predicate.User
 	if filter.Status != "" {
-		baseQuery = baseQuery.Where(user.StatusEQ(domainStatusToEntStatus(filter.Status)))
+		predicates = append(predicates, user.StatusEQ(domainStatusToEntStatus(filter.Status)))
 	}
 	if filter.Username != "" {
-		baseQuery = baseQuery.Where(user.UsernameContains(filter.Username))
+		predicates = append(predicates, user.UsernameContains(filter.Username))
 	}
 	if filter.Email != "" {
-		baseQuery = baseQuery.Where(user.EmailContains(filter.Email))
+		predicates = append(predicates, user.EmailContains(filter.Email))
 	}
 	if filter.IsAdmin != nil {
-		baseQuery = baseQuery.Where(user.IsAdmin(*filter.IsAdmin))
+		predicates = append(predicates, user.IsAdmin(*filter.IsAdmin))
 	}
+	baseQuery := ur.client.User.Query().Where(predicates...)
 
 	// 默认排除 admin 用户（除非明确查询）
 	//if filter.Username != "admin" {
