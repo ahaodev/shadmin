@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 	"shadmin/domain"
 	"strconv"
@@ -114,7 +115,7 @@ func (dc *DictController) CreateDictType(c *gin.Context) {
 
 	dictType, err := dc.DictUseCase.CreateDictType(c, &request)
 	if err != nil {
-		if err == domain.ErrDictTypeCodeExists {
+		if errors.Is(err, domain.ErrDictTypeCodeExists) {
 			c.JSON(http.StatusConflict, domain.RespError("Dictionary type code already exists"))
 			return
 		}
@@ -151,11 +152,11 @@ func (dc *DictController) UpdateDictType(c *gin.Context) {
 
 	err := dc.DictUseCase.UpdateDictType(c, id, request)
 	if err != nil {
-		if err == domain.ErrDictTypeNotFound {
+		if errors.Is(err, domain.ErrDictTypeNotFound) {
 			c.JSON(http.StatusNotFound, domain.RespError("Dictionary type not found"))
 			return
 		}
-		if err == domain.ErrDictTypeCodeExists {
+		if errors.Is(err, domain.ErrDictTypeCodeExists) {
 			c.JSON(http.StatusConflict, domain.RespError("Dictionary type code already exists"))
 			return
 		}

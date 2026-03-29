@@ -92,11 +92,11 @@ func (mc *MenuController) CreateMenu(c *gin.Context) {
 
 	menu, err := mc.MenuUseCase.CreateMenu(c.Request.Context(), &request)
 	if err != nil {
-		if err == domain.ErrInvalidMenuType {
+		if errors.Is(err, domain.ErrInvalidMenuType) {
 			c.JSON(http.StatusBadRequest, domain.RespError("Invalid menu type"))
 			return
 		}
-		if err == domain.ErrInvalidMenuStatus {
+		if errors.Is(err, domain.ErrInvalidMenuStatus) {
 			c.JSON(http.StatusBadRequest, domain.RespError("Invalid menu status"))
 			return
 		}
