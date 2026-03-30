@@ -128,26 +128,10 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 
 	// 应用排序（在Select之前）
 	if filter.SortBy != "" {
-		switch filter.SortBy {
-		case "username":
-			if filter.Order == "desc" {
-				baseQuery = baseQuery.Order(ent.Desc(user.FieldUsername))
-			} else {
-				baseQuery = baseQuery.Order(ent.Asc(user.FieldUsername))
-			}
-		case "email":
-			if filter.Order == "desc" {
-				baseQuery = baseQuery.Order(ent.Desc(user.FieldEmail))
-			} else {
-				baseQuery = baseQuery.Order(ent.Asc(user.FieldEmail))
-			}
-		default:
-			if filter.Order == "desc" {
-				baseQuery = baseQuery.Order(ent.Desc(user.FieldCreatedAt))
-			} else {
-				baseQuery = baseQuery.Order(ent.Asc(user.FieldCreatedAt))
-			}
-		}
+		baseQuery = baseQuery.Order(ApplySorting(filter.SortBy, filter.Order, map[string]string{
+			"username": user.FieldUsername,
+			"email":    user.FieldEmail,
+		}, user.FieldCreatedAt))
 	}
 
 	// 构建数据查询 (移除租户信息预加载)

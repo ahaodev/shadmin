@@ -1,5 +1,6 @@
 import { apiClient } from '@/services/config'
 import { type ApiResource } from '@/types/api-resource'
+import { buildSearchParams } from '@/lib/query-params'
 
 export interface ApiResourceQueryParams {
   page?: number
@@ -31,16 +32,7 @@ interface ApiResourceApiResponse {
 export async function getApiResources(
   params?: ApiResourceQueryParams
 ): Promise<ApiResourcePagedResult> {
-  const searchParams = new URLSearchParams()
-  if (params?.page) searchParams.append('page', params.page.toString())
-  if (params?.page_size)
-    searchParams.append('page_size', params.page_size.toString())
-  if (params?.method) searchParams.append('method', params.method)
-  if (params?.module) searchParams.append('module', params.module)
-  if (params?.is_public !== undefined)
-    searchParams.append('is_public', params.is_public.toString())
-  if (params?.keyword) searchParams.append('keyword', params.keyword)
-  if (params?.path) searchParams.append('path', params.path)
+  const searchParams = buildSearchParams(params)
 
   const response = await apiClient.get(
     `/api/v1/system/api-resources?${searchParams}`

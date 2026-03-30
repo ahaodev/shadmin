@@ -6,21 +6,14 @@ import {
   type MenuTreeNode,
   type UpdateMenuRequest,
 } from '@/types/menu'
+import { buildSearchParams } from '@/lib/query-params'
 import { apiClient } from './config'
 
 // GET /system/menu - Get /menu
 export const getMenus = async (
   params?: MenuQueryParams
 ): Promise<MenuPagedResult> => {
-  const searchParams = new URLSearchParams()
-
-  if (params?.type) searchParams.append('type', params.type)
-  if (params?.status) searchParams.append('status', params.status)
-  if (params?.parent_id) searchParams.append('parent_id', params.parent_id)
-  if (params?.search) searchParams.append('search', params.search)
-  if (params?.page) searchParams.append('page', params.page.toString())
-  if (params?.page_size)
-    searchParams.append('page_size', params.page_size.toString())
+  const searchParams = buildSearchParams(params)
 
   const response = await apiClient.get(
     `/api/v1/system/menu?${searchParams.toString()}`

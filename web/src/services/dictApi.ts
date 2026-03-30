@@ -10,6 +10,7 @@ import {
   type DictTypePagedResult,
   type DictItemPagedResult,
 } from '@/types/dict'
+import { buildSearchParams } from '@/lib/query-params'
 import { apiClient } from './config'
 
 // Dictionary Type Management API
@@ -31,16 +32,7 @@ const parseDictItem = (i: DictItem): DictItem => ({
 export const getDictTypes = async (
   params?: DictTypeQueryParams
 ): Promise<DictTypePagedResult> => {
-  const searchParams = new URLSearchParams()
-  if (params?.page) searchParams.append('page', params.page.toString())
-  if (params?.page_size)
-    searchParams.append('page_size', params.page_size.toString())
-  if (params?.code) searchParams.append('code', params.code)
-  if (params?.name) searchParams.append('name', params.name)
-  if (params?.status) searchParams.append('status', params.status)
-  if (params?.search) searchParams.append('search', params.search)
-  if (params?.sort_by) searchParams.append('sort_by', params.sort_by)
-  if (params?.order) searchParams.append('order', params.order)
+  const searchParams = buildSearchParams(params)
 
   const response = await apiClient.get(
     `/api/v1/system/dict/types?${searchParams}`
@@ -85,18 +77,7 @@ export const deleteDictType = async (id: string): Promise<void> => {
 export const getDictItems = async (
   params?: DictItemQueryParams
 ): Promise<DictItemPagedResult> => {
-  const searchParams = new URLSearchParams()
-  if (params?.page) searchParams.append('page', params.page.toString())
-  if (params?.page_size)
-    searchParams.append('page_size', params.page_size.toString())
-  if (params?.type_id) searchParams.append('type_id', params.type_id)
-  if (params?.type_code) searchParams.append('type_code', params.type_code)
-  if (params?.label) searchParams.append('label', params.label)
-  if (params?.value) searchParams.append('value', params.value)
-  if (params?.status) searchParams.append('status', params.status)
-  if (params?.search) searchParams.append('search', params.search)
-  if (params?.sort_by) searchParams.append('sort_by', params.sort_by)
-  if (params?.order) searchParams.append('order', params.order)
+  const searchParams = buildSearchParams(params)
 
   const response = await apiClient.get(
     `/api/v1/system/dict/items?${searchParams}`

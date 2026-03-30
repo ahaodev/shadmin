@@ -13,6 +13,7 @@ import type { QueryParams } from '@/types/api'
 import type { UserUpdateRequest } from '@/types/user'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/error'
+import { useCrudMutation } from '@/hooks/use-crud-mutation'
 
 // Query keys for React Query
 const USERS_QUERY_KEY = 'users'
@@ -65,94 +66,53 @@ export function useUser(id: string, enabled = true) {
 
 // Custom hook for creating user
 export function useCreateUser() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
+  return useCrudMutation({
     mutationFn: createUser,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
-      toast.success('用户创建成功')
-      return data
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, '创建用户失败'))
-      throw error
-    },
+    queryKeys: [[USERS_QUERY_KEY]],
+    successMessage: '用户创建成功',
+    errorMessage: '创建用户失败',
   })
 }
 
 // Custom hook for updating user
 export function useUpdateUser() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
+  return useCrudMutation({
     mutationFn: ({ id, data }: { id: string; data: UserUpdateRequest }) =>
       updateUser(id, data),
-    onSuccess: (data, { id }) => {
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
-      queryClient.invalidateQueries({ queryKey: [USER_QUERY_KEY, id] })
-      toast.success('用户更新成功')
-      return data
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, '更新用户失败'))
-      throw error
-    },
+    queryKeys: (_, { id }) => [[USERS_QUERY_KEY], [USER_QUERY_KEY, id]],
+    successMessage: '用户更新成功',
+    errorMessage: '更新用户失败',
   })
 }
 
 // Custom hook for deleting user
 export function useDeleteUser() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
+  return useCrudMutation({
     mutationFn: deleteUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
-      toast.success('用户删除成功')
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, '删除用户失败'))
-      throw error
-    },
+    queryKeys: [[USERS_QUERY_KEY]],
+    successMessage: '用户删除成功',
+    errorMessage: '删除用户失败',
   })
 }
 
 // Custom hook for batch deleting users
 export function useDeleteUsers() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (userIds: string[]) => {
-      const promises = userIds.map((id) => deleteUser(id))
-      return Promise.all(promises)
-    },
-    onSuccess: (_, userIds) => {
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
-      toast.success(`已删除 ${userIds.length} 个用户`)
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, '批量删除用户失败'))
-      throw error
-    },
+  return useCrudMutation({
+    mutationFn: (userIds: string[]) =>
+      Promise.all(userIds.map((id) => deleteUser(id))),
+    queryKeys: [[USERS_QUERY_KEY]],
+    successMessage: (_, userIds) => `已删除 ${userIds.length} 个用户`,
+    errorMessage: '批量删除用户失败',
   })
 }
 
 // Custom hook for inviting user
 export function useInviteUser() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
+  return useCrudMutation({
     mutationFn: inviteUser,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
-      toast.success('邀请发送成功')
-      return data
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, '邀请用户失败'))
-      throw error
-    },
+    queryKeys: [[USERS_QUERY_KEY]],
+    successMessage: '邀请发送成功',
+    errorMessage: '邀请用户失败',
   })
 }
 

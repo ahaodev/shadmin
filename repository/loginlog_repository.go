@@ -96,32 +96,11 @@ func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLog
 
 	// 应用排序（默认按登录时间倒序）
 	if filter.SortBy != "" {
-		switch filter.SortBy {
-		case "username":
-			if filter.Order == "desc" {
-				baseQuery = baseQuery.Order(ent.Desc(loginlog.FieldUsername))
-			} else {
-				baseQuery = baseQuery.Order(ent.Asc(loginlog.FieldUsername))
-			}
-		case "login_ip":
-			if filter.Order == "desc" {
-				baseQuery = baseQuery.Order(ent.Desc(loginlog.FieldLoginIP))
-			} else {
-				baseQuery = baseQuery.Order(ent.Asc(loginlog.FieldLoginIP))
-			}
-		case "status":
-			if filter.Order == "desc" {
-				baseQuery = baseQuery.Order(ent.Desc(loginlog.FieldStatus))
-			} else {
-				baseQuery = baseQuery.Order(ent.Asc(loginlog.FieldStatus))
-			}
-		default:
-			if filter.Order == "desc" {
-				baseQuery = baseQuery.Order(ent.Desc(loginlog.FieldLoginTime))
-			} else {
-				baseQuery = baseQuery.Order(ent.Asc(loginlog.FieldLoginTime))
-			}
-		}
+		baseQuery = baseQuery.Order(ApplySorting(filter.SortBy, filter.Order, map[string]string{
+			"username": loginlog.FieldUsername,
+			"login_ip": loginlog.FieldLoginIP,
+			"status":   loginlog.FieldStatus,
+		}, loginlog.FieldLoginTime))
 	} else {
 		// 默认按登录时间倒序
 		baseQuery = baseQuery.Order(ent.Desc(loginlog.FieldLoginTime))

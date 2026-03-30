@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"shadmin/bootstrap"
 	"shadmin/internal/contextutil"
-	"strconv"
 
 	"shadmin/domain"
 
@@ -35,30 +34,14 @@ type UserController struct {
 func (uc *UserController) GetUsers(c *gin.Context) {
 	// 构建查询过滤器
 	var filter domain.UserQueryFilter
-
-	// 解析分页参数
-	if p := c.Query("page"); p != "" {
-		if v, err := strconv.Atoi(p); err == nil {
-			filter.Page = v
-		}
-	}
-	if ps := c.Query("page_size"); ps != "" {
-		if v, err := strconv.Atoi(ps); err == nil {
-			filter.PageSize = v
-		}
-	}
+	filter.QueryParams = BindQueryParams(c)
 
 	// 解析过滤参数
 	filter.Status = c.Query("status")
 	filter.Role = c.Query("role")
 	filter.Username = c.Query("username")
 	filter.Email = c.Query("email")
-	filter.SortBy = c.Query("sort_by")
-	filter.Order = c.Query("order")
 	filter.IncludeRoles = c.Query("include_roles") == "true"
-
-	// 验证和设置默认参数
-	_ = domain.ValidateQueryParams(&filter.QueryParams)
 
 	// 使用统一查询接口
 	result, err := uc.UserUsecase.ListUsers(c, filter)
@@ -84,8 +67,7 @@ func (uc *UserController) GetUsers(c *gin.Context) {
 // @Router       /system/user [post]
 func (uc *UserController) CreateUser(c *gin.Context) {
 	var request domain.CreateUserRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &request) {
 		return
 	}
 
@@ -135,8 +117,7 @@ func (uc *UserController) GetUser(c *gin.Context) {
 func (uc *UserController) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
 	var updateReq domain.UserUpdateRequest
-	if err := c.ShouldBindJSON(&updateReq); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &updateReq) {
 		return
 	}
 
@@ -171,8 +152,7 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 // @Router       /system/user/invite [post]
 func (uc *UserController) InviteUser(c *gin.Context) {
 	var request domain.InviteUserRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &request) {
 		return
 	}
 

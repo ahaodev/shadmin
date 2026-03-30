@@ -1,12 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   deleteDictType,
   getDictTypes,
   updateDictType,
 } from '@/services/dictApi'
 import type { DictTypeQueryParams } from '@/types/dict'
-import { toast } from 'sonner'
-import { getErrorMessage } from '@/lib/error'
+import { useCrudMutation } from '@/hooks/use-crud-mutation'
 
 // Query keys for React Query
 const DICT_TYPES_QUERY_KEY = 'dict-types'
@@ -22,47 +21,30 @@ export function useDictTypes(params?: DictTypeQueryParams) {
 
 // Custom hook for batch deleting dict types
 export function useDeleteDictTypes() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (typeIds: string[]) => {
-      const promises = typeIds.map((id) => deleteDictType(id))
-      return Promise.all(promises)
-    },
-    onSuccess: (_, typeIds) => {
-      queryClient.invalidateQueries({ queryKey: [DICT_TYPES_QUERY_KEY] })
-      toast.success(`已删除 ${typeIds.length} 个字典类型`)
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, '批量删除字典类型失败'))
-      throw error
-    },
+  return useCrudMutation({
+    mutationFn: (typeIds: string[]) =>
+      Promise.all(typeIds.map((id) => deleteDictType(id))),
+    queryKeys: [[DICT_TYPES_QUERY_KEY]],
+    successMessage: (_, typeIds) => `已删除 ${typeIds.length} 个字典类型`,
+    errorMessage: '批量删除字典类型失败',
   })
 }
 
 // Custom hook for bulk status updates
 export function useBulkUpdateDictTypes() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async ({
+  return useCrudMutation({
+    mutationFn: ({
       typeIds,
       status,
     }: {
       typeIds: string[]
       status: 'active' | 'inactive'
-    }) => {
-      const promises = typeIds.map((id) => updateDictType(id, { status }))
-      return Promise.all(promises)
-    },
-    onSuccess: (_, { typeIds, status }) => {
-      queryClient.invalidateQueries({ queryKey: [DICT_TYPES_QUERY_KEY] })
+    }) => Promise.all(typeIds.map((id) => updateDictType(id, { status }))),
+    queryKeys: [[DICT_TYPES_QUERY_KEY]],
+    successMessage: (_, { typeIds, status }) => {
       const statusText = status === 'active' ? '启用' : '禁用'
-      toast.success(`已${statusText} ${typeIds.length} 个字典类型`)
+      return `已${statusText} ${typeIds.length} 个字典类型`
     },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, '批量更新字典类型状态失败'))
-      throw error
-    },
+    errorMessage: '批量更新字典类型状态失败',
   })
 }

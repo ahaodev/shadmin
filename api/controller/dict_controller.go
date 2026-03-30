@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"shadmin/domain"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,26 +34,13 @@ type DictController struct {
 // @Router       /system/dict/types [get]
 func (dc *DictController) GetDictTypes(c *gin.Context) {
 	var params domain.DictTypeQueryParams
-
-	// 解析分页参数
-	if p := c.Query("page"); p != "" {
-		if v, err := strconv.Atoi(p); err == nil {
-			params.Page = v
-		}
-	}
-	if ps := c.Query("page_size"); ps != "" {
-		if v, err := strconv.Atoi(ps); err == nil {
-			params.PageSize = v
-		}
-	}
+	params.QueryParams = BindQueryParams(c)
 
 	// 解析过滤参数
 	params.Code = c.Query("code")
 	params.Name = c.Query("name")
 	params.Status = c.Query("status")
 	params.Search = c.Query("search")
-	params.SortBy = c.Query("sort_by")
-	params.Order = c.Query("order")
 
 	result, err := dc.DictUseCase.ListDictTypes(c, params)
 	if err != nil {
@@ -108,8 +94,7 @@ func (dc *DictController) GetDictType(c *gin.Context) {
 // @Router       /system/dict/types [post]
 func (dc *DictController) CreateDictType(c *gin.Context) {
 	var request domain.CreateDictTypeRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &request) {
 		return
 	}
 
@@ -145,8 +130,7 @@ func (dc *DictController) UpdateDictType(c *gin.Context) {
 	id := c.Param("id")
 
 	var request domain.UpdateDictTypeRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &request) {
 		return
 	}
 
@@ -224,18 +208,7 @@ func (dc *DictController) DeleteDictType(c *gin.Context) {
 // @Router       /system/dict/items [get]
 func (dc *DictController) GetDictItems(c *gin.Context) {
 	var params domain.DictItemQueryParams
-
-	// 解析分页参数
-	if p := c.Query("page"); p != "" {
-		if v, err := strconv.Atoi(p); err == nil {
-			params.Page = v
-		}
-	}
-	if ps := c.Query("page_size"); ps != "" {
-		if v, err := strconv.Atoi(ps); err == nil {
-			params.PageSize = v
-		}
-	}
+	params.QueryParams = BindQueryParams(c)
 
 	// 解析过滤参数
 	params.TypeID = c.Query("type_id")
@@ -244,8 +217,6 @@ func (dc *DictController) GetDictItems(c *gin.Context) {
 	params.Value = c.Query("value")
 	params.Status = c.Query("status")
 	params.Search = c.Query("search")
-	params.SortBy = c.Query("sort_by")
-	params.Order = c.Query("order")
 
 	result, err := dc.DictUseCase.ListDictItems(c, params)
 	if err != nil {
@@ -299,8 +270,7 @@ func (dc *DictController) GetDictItem(c *gin.Context) {
 // @Router       /system/dict/items [post]
 func (dc *DictController) CreateDictItem(c *gin.Context) {
 	var request domain.CreateDictItemRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &request) {
 		return
 	}
 
@@ -340,8 +310,7 @@ func (dc *DictController) UpdateDictItem(c *gin.Context) {
 	id := c.Param("id")
 
 	var request domain.UpdateDictItemRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &request) {
 		return
 	}
 

@@ -1,7 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { clearAllLoginLogs, getLoginLogs } from '@/services/loginLogApi'
-import { toast } from 'sonner'
-import { getErrorMessage } from '@/lib/error'
+import { useCrudMutation } from '@/hooks/use-crud-mutation'
 import type { LoginLogFilter } from '../data/schema'
 
 // Query keys for React Query
@@ -18,18 +17,11 @@ export function useLoginLogs(params?: LoginLogFilter) {
 
 // Custom hook for clearing all login logs
 export function useClearAllLoginLogs() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
+  return useCrudMutation({
     mutationFn: clearAllLoginLogs,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [LOGIN_LOGS_QUERY_KEY] })
-      toast.success('已清空所有登录日志')
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, '清空登录日志失败'))
-      throw error
-    },
+    queryKeys: [[LOGIN_LOGS_QUERY_KEY]],
+    successMessage: '已清空所有登录日志',
+    errorMessage: '清空登录日志失败',
   })
 }
 

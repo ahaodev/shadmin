@@ -97,8 +97,7 @@ func (rc *RoleController) GetRoles(c *gin.Context) {
 // @Router       /system/role [post]
 func (rc *RoleController) CreateRole(c *gin.Context) {
 	var request domain.CreateRoleRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &request) {
 		return
 	}
 
@@ -185,8 +184,7 @@ func (rc *RoleController) UpdateRole(c *gin.Context) {
 	}
 
 	var request domain.UpdateRoleRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &request) {
 		return
 	}
 

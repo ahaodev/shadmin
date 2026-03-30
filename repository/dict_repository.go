@@ -230,26 +230,10 @@ func (dr *entDictRepository) FetchTypes(ctx context.Context, params domain.DictT
 
 	// 应用排序
 	if params.SortBy != "" {
-		switch params.SortBy {
-		case "code":
-			if params.Order == "desc" {
-				query = query.Order(ent.Desc(dicttype.FieldCode))
-			} else {
-				query = query.Order(ent.Asc(dicttype.FieldCode))
-			}
-		case "name":
-			if params.Order == "desc" {
-				query = query.Order(ent.Desc(dicttype.FieldName))
-			} else {
-				query = query.Order(ent.Asc(dicttype.FieldName))
-			}
-		default:
-			if params.Order == "desc" {
-				query = query.Order(ent.Desc(dicttype.FieldCreatedAt))
-			} else {
-				query = query.Order(ent.Asc(dicttype.FieldCreatedAt))
-			}
-		}
+		query = query.Order(ApplySorting(params.SortBy, params.Order, map[string]string{
+			"code": dicttype.FieldCode,
+			"name": dicttype.FieldName,
+		}, dicttype.FieldCreatedAt))
 	} else {
 		query = query.Order(ent.Desc(dicttype.FieldCreatedAt))
 	}
@@ -460,32 +444,11 @@ func (dr *entDictRepository) FetchItems(ctx context.Context, params domain.DictI
 
 	// 应用排序
 	if params.SortBy != "" {
-		switch params.SortBy {
-		case "label":
-			if params.Order == "desc" {
-				query = query.Order(ent.Desc(dictitem.FieldLabel))
-			} else {
-				query = query.Order(ent.Asc(dictitem.FieldLabel))
-			}
-		case "value":
-			if params.Order == "desc" {
-				query = query.Order(ent.Desc(dictitem.FieldValue))
-			} else {
-				query = query.Order(ent.Asc(dictitem.FieldValue))
-			}
-		case "sort":
-			if params.Order == "desc" {
-				query = query.Order(ent.Desc(dictitem.FieldSort))
-			} else {
-				query = query.Order(ent.Asc(dictitem.FieldSort))
-			}
-		default:
-			if params.Order == "desc" {
-				query = query.Order(ent.Desc(dictitem.FieldCreatedAt))
-			} else {
-				query = query.Order(ent.Asc(dictitem.FieldCreatedAt))
-			}
-		}
+		query = query.Order(ApplySorting(params.SortBy, params.Order, map[string]string{
+			"label": dictitem.FieldLabel,
+			"value": dictitem.FieldValue,
+			"sort":  dictitem.FieldSort,
+		}, dictitem.FieldCreatedAt))
 	} else {
 		// 默认按sort正序，然后按创建时间倒序
 		query = query.Order(ent.Asc(dictitem.FieldSort), ent.Desc(dictitem.FieldCreatedAt))
