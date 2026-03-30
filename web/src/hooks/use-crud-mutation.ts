@@ -60,7 +60,6 @@ export function useCrudMutation<TData = unknown, TVariables = void>(
           ? options.successMessage(data, variables)
           : options.successMessage
       toast.success(msg)
-      return data
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, options.errorMessage))
