@@ -36,6 +36,8 @@ COPY --from=builder_go /app/.env.example .
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates && \
     rm -rf /var/lib/apt/lists/*
+RUN useradd -U -u 1000 appuser && chown -R 1000:1000 /app
+USER 1000
 EXPOSE 55667
 CMD ["./shadmin-runner"]
 
