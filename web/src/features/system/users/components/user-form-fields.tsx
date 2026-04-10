@@ -211,14 +211,19 @@ export function UserFormFields({
         render={({ field }) => (
           <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
             <FormLabel className='col-span-2 text-end'>部门</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value || ''}>
+            <Select
+              onValueChange={(val) =>
+                field.onChange(val === '__none__' ? '' : val)
+              }
+              value={field.value || '__none__'}
+            >
               <FormControl>
                 <SelectTrigger className='col-span-4'>
                   <SelectValue placeholder='选择部门' />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value=''>无</SelectItem>
+                <SelectItem value='__none__'>无</SelectItem>
                 {departmentOptions.map((dept) => (
                   <SelectItem key={dept.id} value={dept.id}>
                     {'　'.repeat(dept.level)}

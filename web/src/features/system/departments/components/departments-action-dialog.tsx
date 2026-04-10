@@ -94,8 +94,10 @@ export function DepartmentsActionDialog({
                 <FormItem>
                   <FormLabel>上级部门</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
-                    value={field.value || ''}
+                    onValueChange={(val) =>
+                      field.onChange(val === '__none__' ? '' : val)
+                    }
+                    value={field.value || '__none__'}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -103,7 +105,9 @@ export function DepartmentsActionDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value=''>无（顶级部门）</SelectItem>
+                      <SelectItem value='__none__'>
+                        无（顶级部门）
+                      </SelectItem>
                       {parentOptions.map((opt) => (
                         <SelectItem key={opt.id} value={opt.id}>
                           {'　'.repeat(opt.level)}
