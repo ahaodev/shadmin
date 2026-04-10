@@ -6,6 +6,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { login } from '@/services/authApi'
 import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
+import { AxiosError } from 'axios'
 import { useAuthStore, type AuthUser } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -157,8 +158,13 @@ export function UserAuthForm({
     } catch (error: unknown) {
       // eslint-disable-next-line no-console
       console.error('Login error', error)
-      const msg =
-        error instanceof Error ? error.message : '网络错误，请稍后重试'
+      let msg = '网络错误，请稍后重试'
+      if (error instanceof AxiosError) {
+        // Prefer backend response message (e.g. 423 lock message) over generic Axios message
+        msg = error.response?.data?.msg || error.message
+      } else if (error instanceof Error) {
+        msg = error.message
+      }
       toast.error(msg)
     } finally {
       setIsLoading(false)

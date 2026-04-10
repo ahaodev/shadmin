@@ -101,8 +101,12 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       fetchProfile: async () => {
         const currentState = get()
 
-        // Prevent duplicate calls if already loading or already have profile
-        if (currentState.auth.isLoadingProfile || currentState.auth.profile) {
+        // Prevent duplicate calls if already loading, already have profile, or no token
+        if (
+          currentState.auth.isLoadingProfile ||
+          currentState.auth.profile ||
+          !currentState.auth.accessToken
+        ) {
           return
         }
 

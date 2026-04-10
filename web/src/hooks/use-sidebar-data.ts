@@ -26,6 +26,11 @@ export function useSidebarData() {
     let mounted = true
 
     const loadData = async () => {
+      // Skip loading if user is not authenticated (e.g. during logout)
+      if (!useAuthStore.getState().auth.accessToken) {
+        return
+      }
+
       try {
         setIsLoading(true)
         setError(null)
