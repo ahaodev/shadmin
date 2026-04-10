@@ -1,5 +1,5 @@
-import { type MenuTreeNode, type ResourcesResponse } from '@/types/menu'
-import { apiClient } from './config'
+import {type MenuTreeNode, type ResourcesResponse} from '@/types/menu'
+import {apiClient} from './config'
 
 /**
  * Resource API service for fetching menu resources from backend
@@ -36,12 +36,9 @@ export const getResourcesWithPermissions =
       const response = await apiClient.get(`/api/v1/resources`)
 
       if (response.data && response.data.data) {
-        const resourcesData: ResourcesResponse = response.data.data
-        console.log('API Response - Complete resources:', resourcesData)
-        return resourcesData
+        return response.data.data
       } else {
-        console.warn('No resources data returned from API')
-        return { menus: [], permissions: null }
+        return { menus: [], permissions: null, roles: [], is_admin: false }
       }
     } catch (error) {
       console.error('Failed to fetch resources:', error)

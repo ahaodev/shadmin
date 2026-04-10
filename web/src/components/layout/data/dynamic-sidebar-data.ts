@@ -28,12 +28,6 @@ export async function getDynamicSidebarData(): Promise<SidebarData> {
     const sidebarData = await sidebarService.getSidebarData()
 
     if (sidebarData.navGroups && sidebarData.navGroups.length > 0) {
-      console.log(
-        'Dynamic sidebar data: Loaded',
-        sidebarData.navGroups.length,
-        'dynamic nav groups'
-      )
-
       return {
         user: sidebarData.user,
         teams: sidebarData.teams,

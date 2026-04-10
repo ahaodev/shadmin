@@ -30,15 +30,10 @@ export function useSidebarData() {
         setIsLoading(true)
         setError(null)
 
-        console.log('Loading sidebar data for user:', userKey)
         const dynamicData = await getDynamicSidebarData()
 
         if (mounted) {
           setSidebarData(dynamicData)
-          console.log(
-            'Sidebar data updated, nav groups count:',
-            dynamicData.navGroups?.length || 0
-          )
         }
       } catch (err) {
         if (mounted) {

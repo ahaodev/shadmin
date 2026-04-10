@@ -92,6 +92,8 @@ export interface MenuQueryParams {
 export interface ResourcesResponse {
   menus: MenuTreeNode[]
   permissions: string[] | null
+  roles: string[]
+  is_admin: boolean
 }
 
 // Type definitions

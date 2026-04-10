@@ -53,11 +53,10 @@ export class MenuService {
         const { setPermissions } = useAuthStore.getState().auth
         setPermissions({
           permissions: resourcesData.permissions.map((p) => [p]), // Convert string[] to string[][]
-          roles: [], // TODO: get roles from API if available
+          roles: resourcesData.roles ?? [],
           menus: resourcesData.menus.map((m) => m.id), // Extract menu IDs
-          is_admin: false, // TODO: determine admin status from API
+          is_admin: resourcesData.is_admin ?? false,
         })
-        console.log('Permissions set to auth store:', resourcesData.permissions)
       }
 
       // Transform the backend data using the backend adapter

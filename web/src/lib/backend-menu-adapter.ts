@@ -1,5 +1,5 @@
-import { type MenuTreeNode } from '@/types/menu'
-import { type NavGroup, type NavItem } from '@/components/layout/types'
+import {type MenuTreeNode} from '@/types/menu'
+import {type NavGroup, type NavItem} from '@/components/layout/types'
 
 /**
  * Convert a single MenuTreeNode to NavItem
@@ -13,11 +13,6 @@ function convertMenuNodeToNavItem(menu: MenuTreeNode): NavItem | null {
 
   // Filter out button types - buttons should not be rendered in navigation menu
   if (menu.type === 'button') {
-    console.log(
-      'Skipping button type:',
-      menu.name,
-      'buttons are handled via permissions on pages'
-    )
     return null
   }
 
@@ -30,10 +25,6 @@ function convertMenuNodeToNavItem(menu: MenuTreeNode): NavItem | null {
     // If this menu item has a path and no visible children (all children are buttons),
     // render it as a single menu item instead of a group
     if (visibleChildren.length === 0 && menu.path) {
-      console.log(
-        'Rendering menu item with no visible children as single item:',
-        menu.name
-      )
       return {
         title: menu.name,
         icon: menu.icon,
@@ -78,23 +69,9 @@ export class BackendMenuAdapter {
       console.log('BackendMenuAdapter: No menu nodes to transform')
       return []
     }
-
-    console.log(
-      'BackendMenuAdapter: Transforming',
-      menuNodes.length,
-      'menu nodes'
-    )
-
-    const result = menuNodes
-      .map(this.convertToNavGroup)
-      .filter((group): group is NavGroup => group !== null)
-    console.log(
-      'BackendMenuAdapter: Transformed to',
-      result.length,
-      'nav groups'
-    )
-
-    return result
+    return menuNodes
+        .map(this.convertToNavGroup)
+        .filter((group): group is NavGroup => group !== null)
   }
 
   /**
