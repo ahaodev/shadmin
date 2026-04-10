@@ -15,6 +15,8 @@ const userSchema = z.object({
   phone: z.string().optional(),
   avatar: z.string().optional(),
   status: userStatusSchema,
+  department_id: z.string().optional(),
+  department_name: z.string().optional(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
   invited_at: z.coerce.date().optional(),

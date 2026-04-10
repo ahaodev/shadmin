@@ -96,3 +96,16 @@ func (pr *ProtectedRoutes) setupDictionaryManagement(systemGroup *gin.RouterGrou
 	// Convenience API
 	dictGroup.GET("/types/code/:code/items", dictController.GetDictItemsByTypeCode) // GET /api/v1/system/dict/types/code/:code/items
 }
+
+// setupDepartmentManagement configures department management routes with unified API permission check
+func (pr *ProtectedRoutes) setupDepartmentManagement(systemGroup *gin.RouterGroup, casbinMiddleware *middleware.CasbinMiddleware) {
+	deptGroup := systemGroup.Group("/department")
+	deptGroup.Use(casbinMiddleware.CheckAPIPermission())
+	deptController := pr.factory.CreateDepartmentController()
+
+	deptGroup.GET("/tree", deptController.GetDepartmentTree)  // GET /api/v1/system/department/tree
+	deptGroup.POST("", deptController.CreateDepartment)       // POST /api/v1/system/department
+	deptGroup.GET("/:id", deptController.GetDepartment)       // GET /api/v1/system/department/:id
+	deptGroup.PUT("/:id", deptController.UpdateDepartment)    // PUT /api/v1/system/department/:id
+	deptGroup.DELETE("/:id", deptController.DeleteDepartment) // DELETE /api/v1/system/department/:id
+}

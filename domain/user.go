@@ -14,30 +14,33 @@ var (
 
 // User 结构体定义了用户的基本信息 (单租户架构)
 type User struct {
-	ID        string     `json:"id"`
-	Username  string     `json:"username"`
-	Email     string     `json:"email"`
-	Phone     string     `json:"phone,omitempty"`
-	Password  string     `json:"password,omitempty"`
-	Avatar    string     `json:"avatar,omitempty"`
-	IsAdmin   bool       `json:"is_admin,omitempty"`
-	Status    string     `json:"status"`              // active, inactive, invited, suspended
-	Roles     []string   `json:"role,omitempty"`      // 用户的角色
-	IsActive  bool       `json:"is_active,omitempty"` // 用户是否活跃
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	InvitedAt *time.Time `json:"invited_at,omitempty"`
-	InvitedBy string     `json:"invited_by,omitempty"`
+	ID             string     `json:"id"`
+	Username       string     `json:"username"`
+	Email          string     `json:"email"`
+	Phone          string     `json:"phone,omitempty"`
+	Password       string     `json:"password,omitempty"`
+	Avatar         string     `json:"avatar,omitempty"`
+	IsAdmin        bool       `json:"is_admin,omitempty"`
+	Status         string     `json:"status"`              // active, inactive, invited, suspended
+	Roles          []string   `json:"role,omitempty"`      // 用户的角色
+	IsActive       bool       `json:"is_active,omitempty"` // 用户是否活跃
+	DepartmentID   *string    `json:"department_id,omitempty"`
+	DepartmentName string     `json:"department_name,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+	InvitedAt      *time.Time `json:"invited_at,omitempty"`
+	InvitedBy      string     `json:"invited_by,omitempty"`
 }
 
 // CreateUserRequest 创建用户请求 (单租户架构)
 type CreateUserRequest struct {
-	Username string   `json:"username" binding:"required"`
-	Email    string   `json:"email" binding:"required,email"`
-	Phone    string   `json:"phone,omitempty"`
-	Password string   `json:"password" binding:"required"`
-	Status   string   `json:"status,omitempty"`   // active, inactive, invited, suspended
-	RoleIDs  []string `json:"role_ids,omitempty"` // 用户角色ID列表
+	Username     string   `json:"username" binding:"required"`
+	Email        string   `json:"email" binding:"required,email"`
+	Phone        string   `json:"phone,omitempty"`
+	Password     string   `json:"password" binding:"required"`
+	Status       string   `json:"status,omitempty"`        // active, inactive, invited, suspended
+	RoleIDs      []string `json:"role_ids,omitempty"`      // 用户角色ID列表
+	DepartmentID *string  `json:"department_id,omitempty"` // 所属部门ID
 }
 
 // InviteUserRequest 邀请用户请求 (单租户架构)
@@ -49,13 +52,14 @@ type InviteUserRequest struct {
 
 // UserUpdateRequest 更新用户请求
 type UserUpdateRequest struct {
-	Username *string  `json:"username,omitempty"`
-	Email    *string  `json:"email,omitempty"`
-	Phone    *string  `json:"phone,omitempty"`
-	Password *string  `json:"password,omitempty"`
-	Status   *string  `json:"status,omitempty"`
-	Avatar   *string  `json:"avatar,omitempty"`
-	RoleIDs  []string `json:"role_ids,omitempty"`
+	Username     *string  `json:"username,omitempty"`
+	Email        *string  `json:"email,omitempty"`
+	Phone        *string  `json:"phone,omitempty"`
+	Password     *string  `json:"password,omitempty"`
+	Status       *string  `json:"status,omitempty"`
+	Avatar       *string  `json:"avatar,omitempty"`
+	RoleIDs      []string `json:"role_ids,omitempty"`
+	DepartmentID *string  `json:"department_id,omitempty"`
 }
 
 // UserPagedResult 用户分页查询结果
@@ -69,6 +73,7 @@ type UserQueryFilter struct {
 	Email        string `json:"email,omitempty"`
 	IsAdmin      *bool  `json:"is_admin,omitempty"`
 	IncludeRoles bool   `json:"include_roles,omitempty"`
+	DepartmentID string `json:"department_id,omitempty" form:"department_id"`
 	QueryParams
 }
 

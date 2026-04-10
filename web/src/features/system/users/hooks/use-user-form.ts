@@ -42,6 +42,7 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
       password: '',
       confirmPassword: '',
       roles: [],
+      department_id: isEdit ? currentRow.department_id || '' : '',
       isEdit,
     },
   })
@@ -64,6 +65,7 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
           email: values.email,
           phone: values.phone || undefined,
           status: values.status,
+          department_id: values.department_id || undefined,
         }
 
         if (values.password) {
@@ -123,6 +125,7 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
           password: values.password,
           status: values.status as UserStatus,
           role_ids: roleIds,
+          department_id: values.department_id || undefined,
         })
 
         queryClient.invalidateQueries({ queryKey: ['users'] })

@@ -189,6 +189,13 @@ func initMenu(app *Application, roleID string) {
 	app.DB.Menu.Create().SetParentID(dictMgmt.ID).SetName("编辑字典项").SetSequence(0).SetType("button").SetPath("").SetIcon("Edit").SetIsFrame(false).SetVisible("show").SetPermissions("system:dict:edit_item").AddAPIResourceIDs("PUT:/api/v1/system/dict/items/:id", "GET:/api/v1/system/dict/items/:id").SetStatus("active").Save(ctx)
 	app.DB.Menu.Create().SetParentID(dictMgmt.ID).SetName("删除字典项").SetSequence(0).SetType("button").SetPath("").SetIcon("Trash").SetIsFrame(false).SetVisible("show").SetPermissions("system:dict:delete_item").AddAPIResourceIDs("DELETE:/api/v1/system/dict/items/:id").SetStatus("active").Save(ctx)
 
+	// Department management
+	deptMgmt, _ := app.DB.Menu.Create().SetParentID(system.ID).SetName("部门管理").SetSequence(7).SetType("menu").SetPath("/system/departments").SetIcon("Building2").SetIsFrame(false).SetVisible("show").AddAPIResourceIDs("GET:/api/v1/system/department/tree").SetStatus("active").Save(ctx)
+	// Department management buttons
+	app.DB.Menu.Create().SetParentID(deptMgmt.ID).SetName("创建部门").SetSequence(0).SetType("button").SetPath("").SetIcon("PlusCircle").SetIsFrame(false).SetVisible("show").SetPermissions("system:dept:add").AddAPIResourceIDs("POST:/api/v1/system/department").SetStatus("active").Save(ctx)
+	app.DB.Menu.Create().SetParentID(deptMgmt.ID).SetName("编辑部门").SetSequence(0).SetType("button").SetPath("").SetIcon("Edit").SetIsFrame(false).SetVisible("show").SetPermissions("system:dept:edit").AddAPIResourceIDs("PUT:/api/v1/system/department/:id", "GET:/api/v1/system/department/:id").SetStatus("active").Save(ctx)
+	app.DB.Menu.Create().SetParentID(deptMgmt.ID).SetName("删除部门").SetSequence(0).SetType("button").SetPath("").SetIcon("Trash2").SetIsFrame(false).SetVisible("show").SetPermissions("system:dept:delete").AddAPIResourceIDs("DELETE:/api/v1/system/department/:id").SetStatus("active").Save(ctx)
+
 	log.Println("menu data initialized")
 
 	// Bind all menus to the role if provided

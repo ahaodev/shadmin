@@ -71,4 +71,5 @@ func (pr *ProtectedRoutes) setupSystemRoutes(router *gin.RouterGroup, app *boots
 	pr.setupApiResourceManagement(systemGroup, casbinMiddleware, engine)
 	pr.setupLoginLogManagement(systemGroup, casbinMiddleware)
 	pr.setupDictionaryManagement(systemGroup, casbinMiddleware)
+	pr.setupDepartmentManagement(systemGroup, casbinMiddleware)
 }

@@ -31,6 +31,7 @@ import { Route as AuthenticatedSystemRoleRouteImport } from './routes/_authentic
 import { Route as AuthenticatedSystemMenuRouteImport } from './routes/_authenticated/system/menu'
 import { Route as AuthenticatedSystemLoginLogsRouteImport } from './routes/_authenticated/system/login-logs'
 import { Route as AuthenticatedSystemDictRouteImport } from './routes/_authenticated/system/dict'
+import { Route as AuthenticatedSystemDepartmentsRouteImport } from './routes/_authenticated/system/departments'
 import { Route as AuthenticatedSystemApiResourcesRouteImport } from './routes/_authenticated/system/api-resources'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
@@ -149,6 +150,12 @@ const AuthenticatedSystemDictRoute = AuthenticatedSystemDictRouteImport.update({
   path: '/system/dict',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSystemDepartmentsRoute =
+  AuthenticatedSystemDepartmentsRouteImport.update({
+    id: '/system/departments',
+    path: '/system/departments',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSystemApiResourcesRoute =
   AuthenticatedSystemApiResourcesRouteImport.update({
     id: '/system/api-resources',
@@ -190,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/system/api-resources': typeof AuthenticatedSystemApiResourcesRoute
+  '/system/departments': typeof AuthenticatedSystemDepartmentsRoute
   '/system/dict': typeof AuthenticatedSystemDictRoute
   '/system/login-logs': typeof AuthenticatedSystemLoginLogsRoute
   '/system/menu': typeof AuthenticatedSystemMenuRoute
@@ -216,6 +224,7 @@ export interface FileRoutesByTo {
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/system/api-resources': typeof AuthenticatedSystemApiResourcesRoute
+  '/system/departments': typeof AuthenticatedSystemDepartmentsRoute
   '/system/dict': typeof AuthenticatedSystemDictRoute
   '/system/login-logs': typeof AuthenticatedSystemLoginLogsRoute
   '/system/menu': typeof AuthenticatedSystemMenuRoute
@@ -245,6 +254,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/system/api-resources': typeof AuthenticatedSystemApiResourcesRoute
+  '/_authenticated/system/departments': typeof AuthenticatedSystemDepartmentsRoute
   '/_authenticated/system/dict': typeof AuthenticatedSystemDictRoute
   '/_authenticated/system/login-logs': typeof AuthenticatedSystemLoginLogsRoute
   '/_authenticated/system/menu': typeof AuthenticatedSystemMenuRoute
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/settings/account'
     | '/settings/appearance'
     | '/system/api-resources'
+    | '/system/departments'
     | '/system/dict'
     | '/system/login-logs'
     | '/system/menu'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/settings/account'
     | '/settings/appearance'
     | '/system/api-resources'
+    | '/system/departments'
     | '/system/dict'
     | '/system/login-logs'
     | '/system/menu'
@@ -328,6 +340,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/system/api-resources'
+    | '/_authenticated/system/departments'
     | '/_authenticated/system/dict'
     | '/_authenticated/system/login-logs'
     | '/_authenticated/system/menu'
@@ -509,6 +522,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSystemDictRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system/departments': {
+      id: '/_authenticated/system/departments'
+      path: '/system/departments'
+      fullPath: '/system/departments'
+      preLoaderRoute: typeof AuthenticatedSystemDepartmentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/system/api-resources': {
       id: '/_authenticated/system/api-resources'
       path: '/system/api-resources'
@@ -563,6 +583,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedSystemApiResourcesRoute: typeof AuthenticatedSystemApiResourcesRoute
+  AuthenticatedSystemDepartmentsRoute: typeof AuthenticatedSystemDepartmentsRoute
   AuthenticatedSystemDictRoute: typeof AuthenticatedSystemDictRoute
   AuthenticatedSystemLoginLogsRoute: typeof AuthenticatedSystemLoginLogsRoute
   AuthenticatedSystemMenuRoute: typeof AuthenticatedSystemMenuRoute
@@ -579,6 +600,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedSystemApiResourcesRoute: AuthenticatedSystemApiResourcesRoute,
+  AuthenticatedSystemDepartmentsRoute: AuthenticatedSystemDepartmentsRoute,
   AuthenticatedSystemDictRoute: AuthenticatedSystemDictRoute,
   AuthenticatedSystemLoginLogsRoute: AuthenticatedSystemLoginLogsRoute,
   AuthenticatedSystemMenuRoute: AuthenticatedSystemMenuRoute,

@@ -38,6 +38,7 @@ export const userFormSchema = z
     confirmPassword: z.string().transform((pwd) => pwd.trim()),
     status: z.string().min(1, '状态为必填项。'),
     roles: z.array(z.string()),
+    department_id: z.string().optional(),
     isEdit: z.boolean(),
   })
   .refine((data) => passwordValidation.isRequired(data.password, data.isEdit), {

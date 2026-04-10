@@ -9,6 +9,8 @@ export interface User {
   phone?: string
   avatar?: string
   status: UserStatus
+  department_id?: string
+  department_name?: string
   created_at: Date
   updated_at: Date
   invited_at?: Date
@@ -23,6 +25,7 @@ export interface CreateUserRequest {
   password: string
   status?: UserStatus
   role_ids?: string[]
+  department_id?: string
 }
 
 export interface InviteUserRequest {
@@ -39,6 +42,7 @@ export interface UserUpdateRequest {
   status?: UserStatus
   avatar?: string
   role_ids?: string[]
+  department_id?: string
 }
 
 export interface MenuItem {

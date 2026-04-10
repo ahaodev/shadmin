@@ -147,3 +147,14 @@ func (f *ControllerFactory) CreateDictController() *controller.DictController {
 		DictUseCase: dictUseCase,
 	}
 }
+
+// CreateDepartmentController creates a department controller
+func (f *ControllerFactory) CreateDepartmentController() *controller.DepartmentController {
+	departmentRepository := repository.NewDepartmentRepository(f.db)
+	departmentUseCase := usecase.NewDepartmentUsecase(departmentRepository, f.timeout)
+
+	return &controller.DepartmentController{
+		DepartmentUseCase: departmentUseCase,
+		Env:               f.app.Env,
+	}
+}

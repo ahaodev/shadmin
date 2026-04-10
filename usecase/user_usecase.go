@@ -35,11 +35,12 @@ func (uu *userUsecase) CreateUser(c context.Context, request *domain.CreateUserR
 
 	// 创建用户对象
 	user := &domain.User{
-		Username: request.Username,
-		Email:    request.Email,
-		Phone:    request.Phone,
-		Password: request.Password,
-		Status:   request.Status,
+		Username:     request.Username,
+		Email:        request.Email,
+		Phone:        request.Phone,
+		Password:     request.Password,
+		Status:       request.Status,
+		DepartmentID: request.DepartmentID,
 	}
 
 	// 设置默认状态
@@ -195,6 +196,9 @@ func (uu *userUsecase) UpdateUserPartial(c context.Context, userID string, updat
 			return err
 		}
 		user.Password = string(hashedPassword)
+	}
+	if updates.DepartmentID != nil {
+		user.DepartmentID = updates.DepartmentID
 	}
 
 	// Update user basic info first

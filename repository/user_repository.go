@@ -33,16 +33,17 @@ func entStatusToDomainStatus(status user.Status) string {
 // entUserToDomainUser converts an ent.User to domain.User and extracts role IDs from edges
 func entUserToDomainUser(u *ent.User) *domain.User {
 	domainUser := &domain.User{
-		ID:        u.ID,
-		Username:  u.Username,
-		Email:     u.Email,
-		Phone:     u.Phone,
-		Password:  u.Password,
-		Avatar:    u.Avatar,
-		IsAdmin:   u.IsAdmin,
-		Status:    entStatusToDomainStatus(u.Status),
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
+		ID:           u.ID,
+		Username:     u.Username,
+		Email:        u.Email,
+		Phone:        u.Phone,
+		Password:     u.Password,
+		Avatar:       u.Avatar,
+		IsAdmin:      u.IsAdmin,
+		Status:       entStatusToDomainStatus(u.Status),
+		DepartmentID: u.DepartmentID,
+		CreatedAt:    u.CreatedAt,
+		UpdatedAt:    u.UpdatedAt,
 	}
 
 	// Extract role IDs from database relationship
@@ -55,6 +56,11 @@ func entUserToDomainUser(u *ent.User) *domain.User {
 		if len(roleIDs) > 0 {
 			domainUser.IsActive = true
 		}
+	}
+
+	// Extract department name from edge
+	if u.Edges.Department != nil {
+		domainUser.DepartmentName = u.Edges.Department.Name
 	}
 
 	return domainUser
@@ -75,7 +81,7 @@ func NewUserRepository(client *ent.Client, casManager casbin.Manager) domain.Use
 func (ur *entUserRepository) Create(c context.Context, u *domain.User) error {
 	status := domainStatusToEntStatus(u.Status)
 
-	created, err := ur.client.User.
+	createQuery := ur.client.User.
 		Create().
 		SetUsername(u.Username).
 		SetEmail(u.Email).
@@ -85,7 +91,9 @@ func (ur *entUserRepository) Create(c context.Context, u *domain.User) error {
 		SetStatus(status).
 		SetNillableInvitedAt(u.InvitedAt).
 		SetNillableInvitedBy(&u.InvitedBy).
-		Save(c)
+		SetNillableDepartmentID(u.DepartmentID)
+
+	created, err := createQuery.Save(c)
 
 	if err != nil {
 		return err
@@ -112,6 +120,9 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	}
 	if filter.IsAdmin != nil {
 		predicates = append(predicates, user.IsAdmin(*filter.IsAdmin))
+	}
+	if filter.DepartmentID != "" {
+		predicates = append(predicates, user.DepartmentID(filter.DepartmentID))
 	}
 	baseQuery := ur.client.User.Query().Where(predicates...)
 
@@ -150,15 +161,16 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	var result []*domain.User
 	for _, u := range users {
 		domainUser := &domain.User{
-			ID:        u.ID,
-			Username:  u.Username,
-			Email:     u.Email,
-			Phone:     u.Phone,
-			Avatar:    u.Avatar,
-			IsAdmin:   u.IsAdmin,
-			Status:    entStatusToDomainStatus(u.Status),
-			CreatedAt: u.CreatedAt,
-			UpdatedAt: u.UpdatedAt,
+			ID:           u.ID,
+			Username:     u.Username,
+			Email:        u.Email,
+			Phone:        u.Phone,
+			Avatar:       u.Avatar,
+			IsAdmin:      u.IsAdmin,
+			Status:       entStatusToDomainStatus(u.Status),
+			DepartmentID: u.DepartmentID,
+			CreatedAt:    u.CreatedAt,
+			UpdatedAt:    u.UpdatedAt,
 		}
 
 		// 如果需要包含角色信息 (从数据库关系获取)
@@ -192,6 +204,7 @@ func (ur *entUserRepository) GetByUsername(c context.Context, userName string) (
 		Query().
 		Where(user.Username(userName)).
 		WithRoles().
+		WithDepartment().
 		First(c)
 
 	if err != nil {
@@ -206,6 +219,7 @@ func (ur *entUserRepository) GetByEmail(c context.Context, email string) (*domai
 		Query().
 		Where(user.Email(email)).
 		WithRoles().
+		WithDepartment().
 		First(c)
 
 	if err != nil {
@@ -220,6 +234,7 @@ func (ur *entUserRepository) GetByID(c context.Context, id string) (*domain.User
 		Query().
 		Where(user.ID(id)).
 		WithRoles().
+		WithDepartment().
 		First(c)
 
 	if err != nil {
@@ -239,6 +254,13 @@ func (ur *entUserRepository) Update(c context.Context, u *domain.User) error {
 		SetPhone(u.Phone).
 		SetAvatar(u.Avatar).
 		SetStatus(domainStatusToEntStatus(u.Status))
+
+	// Handle department_id
+	if u.DepartmentID != nil && *u.DepartmentID != "" {
+		updateQuery = updateQuery.SetDepartmentID(*u.DepartmentID)
+	} else {
+		updateQuery = updateQuery.ClearDepartmentID()
+	}
 
 	// 🔒 如果提供了密码，则更新密码哈希
 	if u.Password != "" {

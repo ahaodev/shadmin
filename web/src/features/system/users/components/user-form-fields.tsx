@@ -1,4 +1,7 @@
 import { type UseFormReturn } from 'react-hook-form'
+import { useQuery } from '@tanstack/react-query'
+import { getDepartmentTree } from '@/services/departmentApi'
+import type { Department } from '@/types/department'
 import type { RoleInfo } from '@/types/role'
 import {
   FormControl,
@@ -8,6 +11,13 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { MultiSelectDropdown } from '@/components/multi-select-dropdown'
 import { PasswordInput } from '@/components/password-input'
 import { SelectDropdown } from '@/components/select-dropdown'
@@ -20,11 +30,32 @@ interface UserFormFieldsProps {
   allRoles?: RoleInfo[]
 }
 
+function flattenDepartmentsForSelect(
+  departments: Department[],
+  level = 0
+): { id: string; name: string; level: number }[] {
+  const result: { id: string; name: string; level: number }[] = []
+  for (const dept of departments) {
+    result.push({ id: dept.id, name: dept.name, level })
+    if (dept.children) {
+      result.push(...flattenDepartmentsForSelect(dept.children, level + 1))
+    }
+  }
+  return result
+}
+
 export function UserFormFields({
   form,
   isPasswordTouched,
   allRoles = [],
 }: UserFormFieldsProps) {
+  const { data: departmentTree = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: getDepartmentTree,
+    staleTime: 5 * 60 * 1000,
+  })
+  const departmentOptions = flattenDepartmentsForSelect(departmentTree)
+
   return (
     <>
       <FormField
@@ -172,6 +203,33 @@ export function UserFormFields({
             </FormItem>
           )
         }}
+      />
+
+      <FormField
+        control={form.control}
+        name='department_id'
+        render={({ field }) => (
+          <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+            <FormLabel className='col-span-2 text-end'>部门</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value || ''}>
+              <FormControl>
+                <SelectTrigger className='col-span-4'>
+                  <SelectValue placeholder='选择部门' />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value=''>无</SelectItem>
+                {departmentOptions.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.id}>
+                    {'　'.repeat(dept.level)}
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage className='col-span-4 col-start-3' />
+          </FormItem>
+        )}
       />
     </>
   )

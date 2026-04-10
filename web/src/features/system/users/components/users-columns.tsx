@@ -91,6 +91,23 @@ export const usersColumns: ColumnDef<User>[] = [
     enableSorting: false,
   },
   {
+    accessorKey: 'department_name',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='部门' />
+    ),
+    cell: ({ row }) => {
+      const deptName = row.getValue('department_name') as string | undefined
+      return deptName ? (
+        <Badge variant='outline' className='text-xs'>
+          {deptName}
+        </Badge>
+      ) : (
+        <span className='text-muted-foreground'>-</span>
+      )
+    },
+    enableSorting: false,
+  },
+  {
     accessorKey: 'status',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='状态' />

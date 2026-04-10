@@ -49,6 +49,10 @@ func (User) Fields() []ent.Field {
 		field.String("avatar").
 			MaxLen(255).
 			Optional(),
+		field.String("department_id").
+			Optional().
+			Nillable().
+			Comment("所属部门ID"),
 		field.String("password").
 			Sensitive().
 			MaxLen(128),
@@ -64,6 +68,10 @@ func (User) Fields() []ent.Field {
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("roles", Role.Type).Comment("用户角色关系"),
+		edge.From("department", Department.Type).
+			Ref("users").
+			Field("department_id").
+			Unique(),
 	}
 }
 

@@ -19,6 +19,11 @@ export const PERMISSIONS = {
     LOGIN_LOGS: {
       CLEAN: 'system:login_logs:clean',
     },
+    DEPT: {
+      ADD: 'system:dept:add',
+      EDIT: 'system:dept:edit',
+      DELETE: 'system:dept:delete',
+    },
     DICT: {
       ADD_TYPE: 'system:dict:add_type',
       EDIT_TYPE: 'system:dict:edit_type',
