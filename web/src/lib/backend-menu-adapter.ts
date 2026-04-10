@@ -1,5 +1,5 @@
-import {type MenuTreeNode} from '@/types/menu'
-import {type NavGroup, type NavItem} from '@/components/layout/types'
+import { type MenuTreeNode } from '@/types/menu'
+import { type NavGroup, type NavItem } from '@/components/layout/types'
 
 /**
  * Convert a single MenuTreeNode to NavItem
@@ -70,8 +70,8 @@ export class BackendMenuAdapter {
       return []
     }
     return menuNodes
-        .map(this.convertToNavGroup)
-        .filter((group): group is NavGroup => group !== null)
+      .map(this.convertToNavGroup)
+      .filter((group): group is NavGroup => group !== null)
   }
 
   /**

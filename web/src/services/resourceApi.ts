@@ -1,5 +1,5 @@
-import {type MenuTreeNode, type ResourcesResponse} from '@/types/menu'
-import {apiClient} from './config'
+import { type MenuTreeNode, type ResourcesResponse } from '@/types/menu'
+import { apiClient } from './config'
 
 /**
  * Resource API service for fetching menu resources from backend
