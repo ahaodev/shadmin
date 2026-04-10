@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/dictitem"
@@ -309,16 +310,16 @@ func (dr *entDictRepository) DeleteType(ctx context.Context, id string) error {
 
 // 字典项相关实现
 
-func (dr *entDictRepository) CreateItem(ctx context.Context, dictItem *domain.DictItem) error {
+func (dr *entDictRepository) CreateItem(ctx context.Context, dictItem *domain.DictItem) (err error) {
 	// 开启事务
-	tx, err := dr.client.Tx(ctx)
-	if err != nil {
-		return err
+	tx, txErr := dr.client.Tx(ctx)
+	if txErr != nil {
+		return txErr
 	}
 	defer func() {
 		if v := recover(); v != nil {
 			_ = tx.Rollback()
-			panic(v)
+			err = fmt.Errorf("panic recovered in CreateItem: %v", v)
 		}
 	}()
 
@@ -462,16 +463,16 @@ func (dr *entDictRepository) FetchItems(ctx context.Context, params domain.DictI
 	return domain.NewPagedResult(result, total, params.Page, params.PageSize), nil
 }
 
-func (dr *entDictRepository) UpdateItem(ctx context.Context, id string, updates domain.UpdateDictItemRequest) error {
+func (dr *entDictRepository) UpdateItem(ctx context.Context, id string, updates domain.UpdateDictItemRequest) (err error) {
 	// 开启事务
-	tx, err := dr.client.Tx(ctx)
-	if err != nil {
-		return err
+	tx, txErr := dr.client.Tx(ctx)
+	if txErr != nil {
+		return txErr
 	}
 	defer func() {
 		if v := recover(); v != nil {
-			tx.Rollback()
-			panic(v)
+			_ = tx.Rollback()
+			err = fmt.Errorf("panic recovered in UpdateItem: %v", v)
 		}
 	}()
 
