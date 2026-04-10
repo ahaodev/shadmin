@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -48,14 +49,11 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
   })
 
   // Update form roles when userRoles data is loaded
-  if (
-    isEdit &&
-    userRoles &&
-    userRoles.length > 0 &&
-    form.getValues('roles').length === 0
-  ) {
-    form.setValue('roles', userRoles)
-  }
+  useEffect(() => {
+    if (isEdit && userRoles.length > 0) {
+      form.setValue('roles', userRoles)
+    }
+  }, [isEdit, userRoles, form])
 
   const onSubmit = async (values: UserFormData) => {
     try {
