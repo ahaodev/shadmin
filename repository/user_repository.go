@@ -152,7 +152,7 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	if offset, limit, ok := filter.Paginate(); ok {
 		query = query.Offset(offset).Limit(limit)
 	}
-	users, err := query.All(c)
+	users, err := query.WithDepartment().All(c)
 	if err != nil {
 		return nil, err
 	}
@@ -171,6 +171,9 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 			DepartmentID: u.DepartmentID,
 			CreatedAt:    u.CreatedAt,
 			UpdatedAt:    u.UpdatedAt,
+		}
+		if u.Edges.Department != nil {
+			domainUser.DepartmentName = u.Edges.Department.Name
 		}
 
 		// 如果需要包含角色信息 (从数据库关系获取)
