@@ -3306,6 +3306,9 @@ const docTemplate = `{
         "domain.Profile": {
             "type": "object",
             "properties": {
+                "bio": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -3314,9 +3317,6 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
-                },
-                "is_admin": {
-                    "type": "boolean"
                 },
                 "phone": {
                     "type": "string"
@@ -3336,6 +3336,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "avatar": {
+                    "type": "string"
+                },
+                "bio": {
                     "type": "string"
                 },
                 "name": {

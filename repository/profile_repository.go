@@ -33,6 +33,7 @@ func (pr *entProfileRepository) GetByID(c context.Context, id string) (*domain.P
 		Username:  u.Username,
 		Email:     u.Email,
 		Phone:     u.Phone,
+		Bio:       u.Bio,
 		Status:    string(u.Status),
 		CreatedAt: u.CreatedAt,
 		UpdatedAt: u.UpdatedAt,
@@ -50,6 +51,9 @@ func (pr *entProfileRepository) UpdateProfile(c context.Context, userID string, 
 	}
 	if updateData.Avatar != "" {
 		updateQuery = updateQuery.SetAvatar(updateData.Avatar)
+	}
+	if updateData.Avatar != "" {
+		updateQuery = updateQuery.SetBio(updateData.Bio)
 	}
 
 	_, err := updateQuery.Save(c)

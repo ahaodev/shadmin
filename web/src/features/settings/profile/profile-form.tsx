@@ -1,9 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { showSubmittedData } from '@/lib/show-submitted-data'
+import { updateProfile } from '@/services'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -35,9 +36,10 @@ const defaultValues: Partial<ProfileFormValues> = {
 }
 
 export function ProfileForm() {
-  const { profile, fetchProfile, isLoadingProfile } = useAuthStore(
+  const { profile, fetchProfile, isLoadingProfile, setProfile } = useAuthStore(
     (state) => state.auth
   )
+  const [isPending, setIsPending] = useState(false)
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -56,15 +58,30 @@ export function ProfileForm() {
       form.reset({
         username: profile.username || '',
         email: profile.email || '',
-        bio: '', // Keep bio empty as it's not part of the Profile type
+        bio: profile.bio || '',
       })
     }
   }, [profile, form])
 
+  async function onSubmit(data: ProfileFormValues) {
+    try {
+      setIsPending(true)
+      await updateProfile({ bio: data.bio })
+      // Refresh profile in store to reflect changes
+      const updatedProfile = profile ? { ...profile, bio: data.bio } : profile
+      setProfile(updatedProfile)
+      toast.success('个人资料更新成功！')
+    } catch {
+      toast.error('更新失败，请重试。')
+    } finally {
+      setIsPending(false)
+    }
+  }
+
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit((data) => showSubmittedData(data))}
+        onSubmit={form.handleSubmit(onSubmit)}
         className='space-y-8'
       >
         <FormField
@@ -118,8 +135,8 @@ export function ProfileForm() {
             </FormItem>
           )}
         />
-        <Button type='submit' disabled={isLoadingProfile}>
-          {isLoadingProfile ? '加载中...' : '更新个人资料'}
+        <Button type='submit' disabled={isLoadingProfile || isPending}>
+          {isPending ? '保存中...' : isLoadingProfile ? '加载中...' : '更新个人资料'}
         </Button>
       </form>
     </Form>

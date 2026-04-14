@@ -31,6 +31,7 @@ type RefreshTokenResponse struct {
 type ProfileUpdate struct {
 	Name   string `json:"name"`
 	Avatar string `json:"avatar"`
+	Bio    string `json:"bio"`
 }
 
 // PasswordUpdate 密码更新请求

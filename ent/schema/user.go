@@ -56,6 +56,9 @@ func (User) Fields() []ent.Field {
 		field.String("password").
 			Sensitive().
 			MaxLen(128),
+		field.String("bio").
+			Optional().
+			MaxLen(160),
 		field.Time("created_at").
 			Default(time.Now),
 		field.Time("updated_at").

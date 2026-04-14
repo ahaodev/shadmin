@@ -454,14 +454,14 @@ definitions:
     type: object
   domain.Profile:
     properties:
+      bio:
+        type: string
       created_at:
         type: string
       email:
         type: string
       id:
         type: string
-      is_admin:
-        type: boolean
       phone:
         type: string
       status:
@@ -474,6 +474,8 @@ definitions:
   domain.ProfileUpdate:
     properties:
       avatar:
+        type: string
+      bio:
         type: string
       name:
         type: string

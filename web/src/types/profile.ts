@@ -5,6 +5,7 @@ export interface Profile {
   username: string
   email: string
   phone?: string
+  bio?: string
   avatar?: string
   status: UserStatus
   created_at: Date
@@ -16,6 +17,7 @@ export interface ProfileUpdateRequest {
   username?: string
   email?: string
   phone?: string
+  bio?: string
   avatar?: string
 }
 

@@ -3300,6 +3300,9 @@
         "domain.Profile": {
             "type": "object",
             "properties": {
+                "bio": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -3308,9 +3311,6 @@
                 },
                 "id": {
                     "type": "string"
-                },
-                "is_admin": {
-                    "type": "boolean"
                 },
                 "phone": {
                     "type": "string"
@@ -3330,6 +3330,9 @@
             "type": "object",
             "properties": {
                 "avatar": {
+                    "type": "string"
+                },
+                "bio": {
                     "type": "string"
                 },
                 "name": {
