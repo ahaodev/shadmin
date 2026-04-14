@@ -28,15 +28,6 @@ func (u *departmentUsecase) Create(ctx context.Context, req *domain.CreateDepart
 		req.Status = "active"
 	}
 
-	// Check same-level name uniqueness
-	existing, err := u.departmentRepo.GetByNameAndParent(ctx, req.Name, req.ParentID)
-	if err != nil {
-		return fmt.Errorf("check department name: %w", err)
-	}
-	if existing != nil {
-		return domain.ErrDepartmentNameExists
-	}
-
 	// If parent_id is provided, verify parent exists
 	if req.ParentID != nil && *req.ParentID != "" {
 		_, err := u.departmentRepo.GetByID(ctx, *req.ParentID)
@@ -125,17 +116,6 @@ func (u *departmentUsecase) Update(ctx context.Context, id string, req *domain.U
 				}
 			}
 			dept.ParentID = newParentID
-		}
-	}
-
-	// Check same-level name uniqueness (if name or parent changed)
-	if req.Name != nil || req.ParentID != nil {
-		existing, err := u.departmentRepo.GetByNameAndParent(ctx, dept.Name, dept.ParentID)
-		if err != nil {
-			return nil, fmt.Errorf("check department name: %w", err)
-		}
-		if existing != nil && existing.ID != id {
-			return nil, domain.ErrDepartmentNameExists
 		}
 	}
 

@@ -70,7 +70,6 @@ type DepartmentRepository interface {
 	Delete(ctx context.Context, id string) error
 	HasChildren(ctx context.Context, id string) (bool, error)
 	HasUsers(ctx context.Context, id string) (bool, error)
-	GetByNameAndParent(ctx context.Context, name string, parentID *string) (*Department, error)
 	GetAllChildrenIDs(ctx context.Context, id string) ([]string, error)
 }
 

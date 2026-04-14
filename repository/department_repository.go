@@ -27,6 +27,9 @@ func (r *entDepartmentRepository) Create(ctx context.Context, dept *domain.Depar
 
 	d, err := create.Save(ctx)
 	if err != nil {
+		if ent.IsConstraintError(err) {
+			return domain.ErrDepartmentNameExists
+		}
 		return err
 	}
 	dept.ID = d.ID
@@ -109,6 +112,9 @@ func (r *entDepartmentRepository) Update(ctx context.Context, dept *domain.Depar
 
 	d, err := update.Save(ctx)
 	if err != nil {
+		if ent.IsConstraintError(err) {
+			return domain.ErrDepartmentNameExists
+		}
 		return err
 	}
 	dept.UpdatedAt = d.UpdatedAt
@@ -131,26 +137,6 @@ func (r *entDepartmentRepository) HasUsers(ctx context.Context, id string) (bool
 		return false, err
 	}
 	return d.QueryUsers().Exist(ctx)
-}
-
-func (r *entDepartmentRepository) GetByNameAndParent(ctx context.Context, name string, parentID *string) (*domain.Department, error) {
-	query := r.client.Department.Query().
-		Where(department.NameEQ(name))
-
-	if parentID != nil && *parentID != "" {
-		query = query.Where(department.ParentID(*parentID))
-	} else {
-		query = query.Where(department.ParentIDIsNil())
-	}
-
-	d, err := query.First(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return entDepartmentToDomain(d), nil
 }
 
 func (r *entDepartmentRepository) GetAllChildrenIDs(ctx context.Context, id string) ([]string, error) {
