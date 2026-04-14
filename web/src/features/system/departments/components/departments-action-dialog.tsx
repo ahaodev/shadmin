@@ -105,9 +105,7 @@ export function DepartmentsActionDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value='__none__'>
-                        无（顶级部门）
-                      </SelectItem>
+                      <SelectItem value='__none__'>无（顶级部门）</SelectItem>
                       {parentOptions.map((opt) => (
                         <SelectItem key={opt.id} value={opt.id}>
                           {'　'.repeat(opt.level)}

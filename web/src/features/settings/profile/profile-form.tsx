@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { updateProfile } from '@/services'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { updateProfile } from '@/services'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -80,10 +80,7 @@ export function ProfileForm() {
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className='space-y-8'
-      >
+      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-8'>
         <FormField
           control={form.control}
           name='username'
@@ -136,7 +133,11 @@ export function ProfileForm() {
           )}
         />
         <Button type='submit' disabled={isLoadingProfile || isPending}>
-          {isPending ? '保存中...' : isLoadingProfile ? '加载中...' : '更新个人资料'}
+          {isPending
+            ? '保存中...'
+            : isLoadingProfile
+              ? '加载中...'
+              : '更新个人资料'}
         </Button>
       </form>
     </Form>
