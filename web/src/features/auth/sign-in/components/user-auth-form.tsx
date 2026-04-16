@@ -124,10 +124,11 @@ export function UserAuthForm({
       // Persist token for both auth store and axios interceptor (localStorage)
       auth.setUser(user)
       auth.setAccessToken(accessToken)
-      try {
-        localStorage.setItem('access_token', accessToken)
-      } catch (_e) {
-        // ignore localStorage errors
+
+      // Store refresh token for silent token renewal
+      const refreshTokenValue = payload?.refreshToken
+      if (refreshTokenValue) {
+        auth.setRefreshToken(refreshTokenValue)
       }
 
       // Clear sidebar cache since user has changed

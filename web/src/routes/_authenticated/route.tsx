@@ -1,6 +1,10 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import { menuService } from '@/services/menu-service'
 import { useAuthStore } from '@/stores/auth-store'
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout'
+
+// Routes that are always accessible for authenticated users (not menu-managed)
+const ALWAYS_ALLOWED_PATHS = ['/', '/settings', '/errors']
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }) => {
@@ -21,8 +25,21 @@ export const Route = createFileRoute('/_authenticated')({
         await auth.fetchProfile()
       } catch (error) {
         console.error('Failed to fetch profile on route load:', error)
-        // Don't redirect on profile fetch failure, user can still navigate
       }
+    }
+
+    // Load menu data (cached after first load) and check route authorization
+    await menuService.loadMenuData()
+
+    const pathname = location.pathname
+
+    // Skip check for always-allowed non-menu routes
+    const isAlwaysAllowed = ALWAYS_ALLOWED_PATHS.some(
+      (p) => pathname === p || pathname.startsWith(p + '/')
+    )
+
+    if (!isAlwaysAllowed && !menuService.isPathAllowed(pathname)) {
+      throw redirect({ to: '/403' })
     }
   },
   component: AuthenticatedLayout,

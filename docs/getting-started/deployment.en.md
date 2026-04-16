@@ -91,8 +91,8 @@ The following settings must be changed for production (via `.env` file or enviro
 |----------|---------|-------------|
 | `PORT` | `:55667` | Server port |
 | `CONTEXT_TIMEOUT` | `60` | Request timeout (seconds) |
-| `ACCESS_TOKEN_EXPIRY_HOUR` | `3` | Access token expiry (hours) |
-| `REFRESH_TOKEN_EXPIRY_HOUR` | `24` | Refresh token expiry (hours) |
+| `ACCESS_TOKEN_EXPIRY_MINUTE` | `180` | Access token expiry (minutes) |
+| `REFRESH_TOKEN_EXPIRY_MINUTE` | `1440` | Refresh token expiry (minutes) |
 | `DB_TYPE` | `sqlite` | Database type: `sqlite` / `postgres` / `mysql` |
 | `DB_DSN` | empty (SQLite defaults to `.database/data.db`) | Database connection string |
 | `STORAGE_TYPE` | `disk` | Storage type: `disk` / `s3` / `minio` |

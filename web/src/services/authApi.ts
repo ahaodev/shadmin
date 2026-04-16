@@ -35,7 +35,7 @@ export async function refreshToken(
   refreshToken: string
 ): Promise<ApiResponse<RefreshTokenResponse>> {
   const resp = await apiClient.post('/api/v1/auth/refresh', {
-    refresh_token: refreshToken,
+    refreshToken: refreshToken,
   })
   return resp.data
 }

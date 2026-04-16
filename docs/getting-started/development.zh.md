@@ -1669,4 +1669,4 @@ curl -v -H "Authorization: Bearer YOUR_TOKEN" http://localhost:55667/api/v1/syst
 
 ### 前端请求 401
 
-检查 JWT Token 是否过期。Access Token 默认 3 小时过期，可通过 `.env` 中的 `ACCESS_TOKEN_EXPIRY_HOUR` 调整。
+检查 JWT Token 是否过期。Access Token 默认 180 分钟过期，可通过 `.env` 中的 `ACCESS_TOKEN_EXPIRY_MINUTE` 调整。

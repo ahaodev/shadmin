@@ -18,7 +18,7 @@ type LoginResponse struct {
 
 // RefreshTokenRequest 刷新令牌请求
 type RefreshTokenRequest struct {
-	RefreshToken string `form:"refreshToken" binding:"required"`
+	RefreshToken string `json:"refreshToken" form:"refreshToken" binding:"required"`
 }
 
 // RefreshTokenResponse 刷新令牌响应

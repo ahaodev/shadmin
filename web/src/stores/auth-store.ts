@@ -1,9 +1,15 @@
+import { registerAuthStoreReset } from '@/services/config'
 import { menuService } from '@/services/menu-service'
 import { getProfile } from '@/services/profileApi'
-import { ACCESS_TOKEN } from '@/types/constants.ts'
 import { type User } from '@/types/user'
 import { create } from 'zustand'
-import { getCookie, removeCookie, setCookie } from '@/lib/cookies'
+import {
+  getAccessToken,
+  setAccessToken as persistAccessToken,
+  getRefreshToken,
+  setRefreshToken as persistRefreshToken,
+  removeAllTokens,
+} from '@/lib/token-storage'
 
 export interface AuthUser {
   accountNo: string
@@ -30,6 +36,8 @@ interface AuthState {
     accessToken: string
     setAccessToken: (accessToken: string) => void
     resetAccessToken: () => void
+    refreshToken: string
+    setRefreshToken: (refreshToken: string) => void
     permissions: UserPermissions | null
     setPermissions: (permissions: UserPermissions | null) => void
     reset: () => void
@@ -65,8 +73,8 @@ function decodeJwt(token: string): Record<string, unknown> | null {
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => {
-  const cookieState = getCookie(ACCESS_TOKEN)
-  const initToken = cookieState || ''
+  const initToken = getAccessToken()
+  const initRefreshToken = getRefreshToken()
 
   // Initialize user from lightweight JWT token (identity only)
   let initUser: AuthUser | null = null
@@ -146,33 +154,30 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       accessToken: initToken,
       setAccessToken: (accessToken) =>
         set((state) => {
-          setCookie(ACCESS_TOKEN, accessToken)
-          localStorage.setItem(ACCESS_TOKEN, accessToken)
+          persistAccessToken(accessToken)
           return { ...state, auth: { ...state.auth, accessToken } }
         }),
       resetAccessToken: () =>
         set((state) => {
-          removeCookie(ACCESS_TOKEN)
+          removeAllTokens()
           return { ...state, auth: { ...state.auth, accessToken: '' } }
+        }),
+      refreshToken: initRefreshToken,
+      setRefreshToken: (refreshToken) =>
+        set((state) => {
+          persistRefreshToken(refreshToken)
+          return { ...state, auth: { ...state.auth, refreshToken } }
         }),
       permissions: null,
       setPermissions: (permissions) =>
         set((state) => ({ ...state, auth: { ...state.auth, permissions } })),
       reset: () =>
         set((state) => {
-          // 清理所有token相关的cookies和localStorage
-          removeCookie(ACCESS_TOKEN)
-          removeCookie('refreshToken')
-          localStorage.removeItem(ACCESS_TOKEN)
-          localStorage.removeItem('refreshToken')
-          localStorage.removeItem('userProfile')
-          localStorage.removeItem('userPermissions')
-          localStorage.removeItem('lastLoginTime')
+          removeAllTokens()
 
           // 清除侧边栏缓存
           try {
             menuService.clearCache()
-            console.log('Menu cache cleared during auth reset')
           } catch (error) {
             console.warn('Failed to clear menu cache:', error)
           }
@@ -185,6 +190,7 @@ export const useAuthStore = create<AuthState>()((set, get) => {
               profile: null,
               isLoadingProfile: false,
               accessToken: '',
+              refreshToken: '',
               permissions: null,
             },
           }
@@ -227,4 +233,9 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       },
     },
   }
+})
+
+// Register store reset with the axios interceptor (breaks circular import)
+registerAuthStoreReset(() => {
+  useAuthStore.getState().auth.reset()
 })

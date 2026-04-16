@@ -18,8 +18,10 @@ func Setup(app *bootstrap.Application, timeout time.Duration, engine *gin.Engine
 		return err
 	}
 
-	// Register static assets and Swagger documentation
-	web.Register(engine)
+	// Register static assets (skip in development — Vite dev server handles frontend)
+	if app.Env.AppEnv != "development" {
+		web.Register(engine)
+	}
 	setupSwagger(engine)
 
 	// Setup API routes

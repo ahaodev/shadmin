@@ -81,8 +81,8 @@ DB_TYPE=sqlite
 DB_DSN=
 
 # Authentication tokens
-ACCESS_TOKEN_EXPIRY_HOUR=3
-REFRESH_TOKEN_EXPIRY_HOUR=24
+ACCESS_TOKEN_EXPIRY_MINUTE=180
+REFRESH_TOKEN_EXPIRY_MINUTE=1440
 ACCESS_TOKEN_SECRET=default-access-secret    # Must change in production
 REFRESH_TOKEN_SECRET=default-refresh-secret  # Must change in production
 

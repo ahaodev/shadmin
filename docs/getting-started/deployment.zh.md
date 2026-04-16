@@ -91,8 +91,8 @@ docker run -d \
 |------|--------|------|
 | `PORT` | `:55667` | 服务端口 |
 | `CONTEXT_TIMEOUT` | `60` | 请求超时（秒） |
-| `ACCESS_TOKEN_EXPIRY_HOUR` | `3` | Access Token 有效期（小时） |
-| `REFRESH_TOKEN_EXPIRY_HOUR` | `24` | Refresh Token 有效期（小时） |
+| `ACCESS_TOKEN_EXPIRY_MINUTE` | `180` | Access Token 有效期（分钟） |
+| `REFRESH_TOKEN_EXPIRY_MINUTE` | `1440` | Refresh Token 有效期（分钟） |
 | `DB_TYPE` | `sqlite` | 数据库类型：`sqlite` / `postgres` / `mysql` |
 | `DB_DSN` | 空（SQLite 默认 `.database/data.db`） | 数据库连接串 |
 | `STORAGE_TYPE` | `disk` | 存储类型：`disk` / `s3` / `minio` |

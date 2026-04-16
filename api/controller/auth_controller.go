@@ -168,13 +168,13 @@ func (lc *AuthController) Login(c *gin.Context) {
 	// 登录成功，清除失败记录
 	lc.SecurityManager.RecordSuccessfulLogin(request.UserName)
 
-	accessToken, err := lc.TokenService.CreateAccessToken(user, lc.Env.AccessTokenSecret, lc.Env.AccessTokenExpiryHour)
+	accessToken, err := lc.TokenService.CreateAccessToken(user, lc.Env.AccessTokenSecret, lc.Env.AccessTokenExpiryMinute)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
 	}
 
-	refreshToken, err := lc.TokenService.CreateRefreshToken(user, lc.Env.RefreshTokenSecret, lc.Env.RefreshTokenExpiryHour)
+	refreshToken, err := lc.TokenService.CreateRefreshToken(user, lc.Env.RefreshTokenSecret, lc.Env.RefreshTokenExpiryMinute)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
@@ -234,14 +234,14 @@ func (lc *AuthController) RefreshToken(c *gin.Context) {
 	}
 
 	// 创建新的访问令牌
-	newAccessToken, err := lc.TokenService.CreateAccessToken(user, lc.Env.AccessTokenSecret, lc.Env.AccessTokenExpiryHour)
+	newAccessToken, err := lc.TokenService.CreateAccessToken(user, lc.Env.AccessTokenSecret, lc.Env.AccessTokenExpiryMinute)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError("Failed to create access token"))
 		return
 	}
 
 	// 创建新的刷新令牌
-	newRefreshToken, err := lc.TokenService.CreateRefreshToken(user, lc.Env.RefreshTokenSecret, lc.Env.RefreshTokenExpiryHour)
+	newRefreshToken, err := lc.TokenService.CreateRefreshToken(user, lc.Env.RefreshTokenSecret, lc.Env.RefreshTokenExpiryMinute)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError("Failed to create refresh token"))
 		return

@@ -1669,4 +1669,4 @@ Re-run `swag init -g main.go --output ./docs`, ensure the `@Router` annotation p
 
 ### Frontend Request 401
 
-Check if the JWT token has expired. Access tokens default to 3-hour expiry, configurable via `ACCESS_TOKEN_EXPIRY_HOUR` in `.env`.
+Check if the JWT token has expired. Access tokens default to 180-minute expiry, configurable via `ACCESS_TOKEN_EXPIRY_MINUTE` in `.env`.

@@ -20,10 +20,10 @@ type Env struct {
 	DBType string `mapstructure:"DB_TYPE"` // "sqlite" or "postgres"
 	DBDSN  string `mapstructure:"DB_DSN"`  // PostgreSQL connection string
 	// 令牌配置
-	AccessTokenExpiryHour  int    `mapstructure:"ACCESS_TOKEN_EXPIRY_HOUR"`
-	RefreshTokenExpiryHour int    `mapstructure:"REFRESH_TOKEN_EXPIRY_HOUR"`
-	AccessTokenSecret      string `mapstructure:"ACCESS_TOKEN_SECRET"`
-	RefreshTokenSecret     string `mapstructure:"REFRESH_TOKEN_SECRET"`
+	AccessTokenExpiryMinute  int    `mapstructure:"ACCESS_TOKEN_EXPIRY_MINUTE"`
+	RefreshTokenExpiryMinute int    `mapstructure:"REFRESH_TOKEN_EXPIRY_MINUTE"`
+	AccessTokenSecret        string `mapstructure:"ACCESS_TOKEN_SECRET"`
+	RefreshTokenSecret       string `mapstructure:"REFRESH_TOKEN_SECRET"`
 
 	// 管理员配置
 	AdminUsername string `mapstructure:"ADMIN_USERNAME"`
@@ -54,10 +54,10 @@ func setDefaults() {
 		"DB_DSN":  "",
 
 		// 令牌配置
-		"ACCESS_TOKEN_EXPIRY_HOUR":  3,
-		"REFRESH_TOKEN_EXPIRY_HOUR": 24,
-		"ACCESS_TOKEN_SECRET":       "default-access-secret",
-		"REFRESH_TOKEN_SECRET":      "default-refresh-secret",
+		"ACCESS_TOKEN_EXPIRY_MINUTE":  180,
+		"REFRESH_TOKEN_EXPIRY_MINUTE": 1800,
+		"ACCESS_TOKEN_SECRET":         "default-access-secret",
+		"REFRESH_TOKEN_SECRET":        "default-refresh-secret",
 
 		// 管理员配置
 		"ADMIN_USERNAME": "admin",
@@ -98,7 +98,7 @@ func generateEnvFile() error {
 		},
 		{
 			title: "# 令牌配置",
-			keys:  []string{"ACCESS_TOKEN_EXPIRY_HOUR", "REFRESH_TOKEN_EXPIRY_HOUR", "ACCESS_TOKEN_SECRET", "REFRESH_TOKEN_SECRET"},
+			keys:  []string{"ACCESS_TOKEN_EXPIRY_MINUTE", "REFRESH_TOKEN_EXPIRY_MINUTE", "ACCESS_TOKEN_SECRET", "REFRESH_TOKEN_SECRET"},
 		},
 		{
 			title: "# 管理员配置",
@@ -163,12 +163,12 @@ func (e *Env) validate() error {
 		errs = append(errs, "使用PostgreSQL或MySQL时必须提供DB_DSN")
 	}
 
-	if e.AccessTokenExpiryHour <= 0 {
-		errs = append(errs, "ACCESS_TOKEN_EXPIRY_HOUR必须大于0")
+	if e.AccessTokenExpiryMinute <= 0 {
+		errs = append(errs, "ACCESS_TOKEN_EXPIRY_MINUTE必须大于0")
 	}
 
-	if e.RefreshTokenExpiryHour <= 0 {
-		errs = append(errs, "REFRESH_TOKEN_EXPIRY_HOUR必须大于0")
+	if e.RefreshTokenExpiryMinute <= 0 {
+		errs = append(errs, "REFRESH_TOKEN_EXPIRY_MINUTE必须大于0")
 	}
 
 	if len(e.AccessTokenSecret) < 16 {
