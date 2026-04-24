@@ -1,0 +1,12 @@
+[
+  {
+    "id": "d7f386iu2lv4ba09av90",
+    "name": "admin",
+    "type": "role"
+  },
+  {
+    "id": "d7g5uhau2lv908tm7evg",
+    "name": "dev",
+    "type": "role"
+  }
+]

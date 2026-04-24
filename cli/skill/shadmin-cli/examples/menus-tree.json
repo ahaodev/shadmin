@@ -1,0 +1,312 @@
+[
+  {
+    "id": "d7f386iu2lv4ba09ava0",
+    "name": "仪表盘",
+    "sequence": 0,
+    "type": "menu",
+    "path": "/",
+    "icon": "Home",
+    "is_frame": false,
+    "visible": "show",
+    "status": "active"
+  },
+  {
+    "id": "d7f386iu2lv4ba09avag",
+    "name": "系统管理",
+    "sequence": 0,
+    "type": "menu",
+    "path": "/",
+    "icon": "Settings",
+    "is_frame": false,
+    "visible": "show",
+    "status": "active",
+    "children": [
+      {
+        "id": "d7f386iu2lv4ba09avb0",
+        "name": "菜单管理",
+        "sequence": 1,
+        "type": "menu",
+        "path": "/system/menu",
+        "icon": "Menu",
+        "is_frame": false,
+        "visible": "show",
+        "status": "active",
+        "parent_id": "d7f386iu2lv4ba09avag",
+        "children": [
+          {
+            "id": "d7f386iu2lv4ba09ave0",
+            "name": "创建菜单",
+            "sequence": 0,
+            "type": "button",
+            "icon": "PlusCircle",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:menu:add",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avb0"
+          },
+          {
+            "id": "d7f386iu2lv4ba09aveg",
+            "name": "编辑菜单",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Edit",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:menu:edit",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avb0"
+          },
+          {
+            "id": "d7f386iu2lv4ba09avf0",
+            "name": "删除菜单",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Trash2",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:menu:delete",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avb0"
+          }
+        ]
+      },
+      {
+        "id": "d7f386iu2lv4ba09avbg",
+        "name": "角色管理",
+        "sequence": 2,
+        "type": "menu",
+        "path": "/system/role",
+        "icon": "UserCheck",
+        "is_frame": false,
+        "visible": "show",
+        "status": "active",
+        "parent_id": "d7f386iu2lv4ba09avag",
+        "children": [
+          {
+            "id": "d7f386iu2lv4ba09avfg",
+            "name": "创建角色",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Plus",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:role:add",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avbg"
+          },
+          {
+            "id": "d7f386iu2lv4ba09avg0",
+            "name": "删除角色",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Trash2",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:role:delete",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avbg"
+          },
+          {
+            "id": "d7f386iu2lv4ba09avgg",
+            "name": "编辑角色",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Edit",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:role:edit",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avbg"
+          }
+        ]
+      },
+      {
+        "id": "d7f386iu2lv4ba09avc0",
+        "name": "用户管理",
+        "sequence": 3,
+        "type": "menu",
+        "path": "/system/user",
+        "icon": "Users",
+        "is_frame": false,
+        "visible": "show",
+        "status": "active",
+        "parent_id": "d7f386iu2lv4ba09avag",
+        "children": [
+          {
+            "id": "d7f386iu2lv4ba09avh0",
+            "name": "创建用户",
+            "sequence": 0,
+            "type": "button",
+            "icon": "PlusCircle",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:user:add",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avc0"
+          },
+          {
+            "id": "d7f386iu2lv4ba09avhg",
+            "name": "邀请用户",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Phone",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:user:invite",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avc0"
+          },
+          {
+            "id": "d7f386iu2lv4ba09avi0",
+            "name": "删除用户",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Trash",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:user:delete",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avc0"
+          },
+          {
+            "id": "d7f386iu2lv4ba09avig",
+            "name": "编辑用户",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Edit",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:user:edit",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avc0"
+          }
+        ]
+      },
+      {
+        "id": "d7f386iu2lv4ba09avcg",
+        "name": "API资源",
+        "sequence": 4,
+        "type": "menu",
+        "path": "/system/api-resources",
+        "icon": "Code2",
+        "is_frame": false,
+        "visible": "show",
+        "status": "active",
+        "parent_id": "d7f386iu2lv4ba09avag"
+      },
+      {
+        "id": "d7f386iu2lv4ba09avd0",
+        "name": "登录日志",
+        "sequence": 5,
+        "type": "menu",
+        "path": "/system/login-logs",
+        "icon": "Layers3",
+        "is_frame": false,
+        "visible": "show",
+        "status": "active",
+        "parent_id": "d7f386iu2lv4ba09avag",
+        "children": [
+          {
+            "id": "d7f386iu2lv4ba09avj0",
+            "name": "清空日志",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Trash2",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:login_logs:clean",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avd0"
+          }
+        ]
+      },
+      {
+        "id": "d7f386iu2lv4ba09avdg",
+        "name": "字典管理",
+        "sequence": 6,
+        "type": "menu",
+        "path": "/system/dict",
+        "icon": "BookMarked",
+        "is_frame": false,
+        "visible": "show",
+        "status": "active",
+        "parent_id": "d7f386iu2lv4ba09avag",
+        "children": [
+          {
+            "id": "d7f386iu2lv4ba09avjg",
+            "name": "创建字典类型",
+            "sequence": 0,
+            "type": "button",
+            "icon": "PlusCircle",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:dict:add_type",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avdg"
+          },
+          {
+            "id": "d7f386iu2lv4ba09avk0",
+            "name": "编辑字典类型",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Edit",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:dict:edit_type",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avdg"
+          },
+          {
+            "id": "d7f386iu2lv4ba09avkg",
+            "name": "删除字典类型",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Trash2",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:dict:delete_type",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avdg"
+          },
+          {
+            "id": "d7f386iu2lv4ba09avl0",
+            "name": "创建字典项",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Plus",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:dict:add_item",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avdg"
+          },
+          {
+            "id": "d7f386iu2lv4ba09avlg",
+            "name": "编辑字典项",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Edit",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:dict:edit_item",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avdg"
+          },
+          {
+            "id": "d7f386iu2lv4ba09avm0",
+            "name": "删除字典项",
+            "sequence": 0,
+            "type": "button",
+            "icon": "Trash",
+            "is_frame": false,
+            "visible": "show",
+            "permissions": "system:dict:delete_item",
+            "status": "active",
+            "parent_id": "d7f386iu2lv4ba09avdg"
+          }
+        ]
+      }
+    ]
+  }
+]

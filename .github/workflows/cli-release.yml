@@ -1,0 +1,88 @@
+name: CLI Release
+
+# 触发：推送 cli/v* 格式的 tag，例如 cli/v0.1.0
+on:
+  push:
+    tags:
+      - 'cli/v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read  # 只读主仓库；shadmin-cli 用 PAT 写入
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: cli/go.sum
+
+      # 从 tag 名提取版本号，cli/v0.1.0 → v0.1.0
+      - name: Extract version
+        id: ver
+        run: |
+          TAG=${GITHUB_REF#refs/tags/cli/}   # v0.1.0
+          echo "VERSION=$TAG" >> $GITHUB_OUTPUT
+          echo "SEMVER=${TAG#v}" >> $GITHUB_OUTPUT  # 0.1.0
+
+      # 交叉编译：linux amd64/arm64, darwin amd64/arm64, windows amd64
+      - name: Build binaries
+        working-directory: cli
+        env:
+          VERSION: ${{ steps.ver.outputs.VERSION }}
+          COMMIT: ${{ github.sha }}
+          DATE: ${{ github.event.head_commit.timestamp }}
+        run: |
+          mkdir -p ../dist
+          LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}"
+          for TARGET in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+            GOOS=${TARGET%/*}
+            GOARCH=${TARGET#*/}
+            EXT=""
+            [ "$GOOS" = "windows" ] && EXT=".exe"
+            OUT="shadmin-cli-${GOOS}-${GOARCH}${EXT}"
+            echo "→ Building $OUT"
+            GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "$LDFLAGS" -o ../dist/$OUT .
+          done
+          ls -lh ../dist/
+
+      # 同步文档到 ahaodev/shadmin-cli（README, SKILL.md, examples）
+      - name: Sync docs to shadmin-cli repo
+        env:
+          GH_TOKEN: ${{ secrets.CLI_RELEASE_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.VERSION }}
+        run: |
+          git clone https://x-access-token:${GH_TOKEN}@github.com/ahaodev/shadmin-cli.git _target
+
+          # 同步文档
+          cp cli/README.md          _target/README.md
+          cp cli/skill/shadmin-cli/SKILL.md  _target/SKILL.md
+          mkdir -p _target/examples
+          cp cli/skill/shadmin-cli/examples/* _target/examples/
+
+          # 提交（仅内容有变更时）
+          cd _target
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name  "github-actions[bot]"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No doc changes, skipping commit."
+          else
+            git commit -m "docs: sync from ahaodev/shadmin@${VERSION}"
+            git push
+          fi
+
+      # 在 ahaodev/shadmin-cli 创建 GitHub Release 并上传二进制
+      - name: Create GitHub Release in shadmin-cli
+        env:
+          GH_TOKEN: ${{ secrets.CLI_RELEASE_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.VERSION }}
+        run: |
+          gh release create "${VERSION}" \
+            --repo ahaodev/shadmin-cli \
+            --title "shadmin-cli ${VERSION}" \
+            --generate-notes \
+            dist/*
