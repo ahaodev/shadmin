@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -22,6 +23,7 @@ type AuthController struct {
 	Env             *bootstrap.Env
 	SecurityManager *internal.LoginSecurityManager
 	TokenService    *tokenservice.TokenService
+	CaptchaUsecase  domain.CaptchaUsecase
 }
 
 // getClientIP 获取客户端真实IP地址
@@ -80,6 +82,25 @@ func (lc *AuthController) Login(c *gin.Context) {
 	// 获取客户端IP和User-Agent
 	clientIP := getClientIP(c)
 	userAgent := c.Request.Header.Get("User-Agent")
+
+	// 先校验验证码：失败/过期直接返回，不查用户、不计入密码失败次数
+	if lc.CaptchaUsecase == nil {
+		c.JSON(http.StatusInternalServerError, domain.RespError("Captcha service not initialized"))
+		return
+	}
+	if err := lc.CaptchaUsecase.VerifySlide(c, request.CaptchaID, request.CaptchaX, request.CaptchaY); err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCaptchaRequired):
+			c.JSON(http.StatusBadRequest, domain.RespError("请先完成验证码"))
+		case errors.Is(err, domain.ErrCaptchaExpired):
+			c.JSON(http.StatusBadRequest, domain.RespError("验证码已过期，请刷新"))
+		case errors.Is(err, domain.ErrCaptchaInvalid):
+			c.JSON(http.StatusBadRequest, domain.RespError("验证码校验失败，请重试"))
+		default:
+			c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		}
+		return
+	}
 
 	// 创建记录登录日志的辅助函数
 	recordLoginLog := func(status, failureReason string) {

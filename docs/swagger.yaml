@@ -315,11 +315,18 @@ definitions:
     type: object
   domain.LoginRequest:
     properties:
+      captcha_id:
+        type: string
+      captcha_x:
+        type: integer
+      captcha_y:
+        type: integer
       password:
         type: string
       username:
         type: string
     required:
+    - captcha_id
     - password
     - username
     type: object
@@ -522,6 +529,29 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  domain.SlideCaptchaChallenge:
+    properties:
+      captcha_id:
+        type: string
+      expires_in:
+        type: integer
+      master_height:
+        type: integer
+      master_image:
+        type: string
+      master_width:
+        type: integer
+      tile_height:
+        type: integer
+      tile_image:
+        type: string
+      tile_width:
+        type: integer
+      tile_x:
+        type: integer
+      tile_y:
+        type: integer
     type: object
   domain.UpdateDictItemRequest:
     properties:
@@ -738,6 +768,34 @@ paths:
       summary: Get API resources with pagination
       tags:
       - API Resources
+  /auth/captcha/slide:
+    get:
+      description: Generate a new slide captcha challenge for login. Pass old_captcha_id
+        to invalidate the previous challenge when refreshing.
+      parameters:
+      - description: Previous captcha id to invalidate
+        in: query
+        name: old_captcha_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/domain.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.SlideCaptchaChallenge'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.Response'
+      summary: Get slide captcha challenge
+      tags:
+      - Authentication
   /auth/logout:
     post:
       consumes:

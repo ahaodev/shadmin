@@ -121,6 +121,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/captcha/slide": {
+            "get": {
+                "description": "Generate a new slide captcha challenge for login. Pass old_captcha_id to invalidate the previous challenge when refreshing.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Get slide captcha challenge",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Previous captcha id to invalidate",
+                        "name": "old_captcha_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.SlideCaptchaChallenge"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/logout": {
             "post": {
                 "description": "Logout user and invalidate tokens",
@@ -3097,10 +3143,20 @@ const docTemplate = `{
         "domain.LoginRequest": {
             "type": "object",
             "required": [
+                "captcha_id",
                 "password",
                 "username"
             ],
             "properties": {
+                "captcha_id": {
+                    "type": "string"
+                },
+                "captcha_x": {
+                    "type": "integer"
+                },
+                "captcha_y": {
+                    "type": "integer"
+                },
                 "password": {
                     "type": "string"
                 },
@@ -3409,6 +3465,41 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.SlideCaptchaChallenge": {
+            "type": "object",
+            "properties": {
+                "captcha_id": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "master_height": {
+                    "type": "integer"
+                },
+                "master_image": {
+                    "type": "string"
+                },
+                "master_width": {
+                    "type": "integer"
+                },
+                "tile_height": {
+                    "type": "integer"
+                },
+                "tile_image": {
+                    "type": "string"
+                },
+                "tile_width": {
+                    "type": "integer"
+                },
+                "tile_x": {
+                    "type": "integer"
+                },
+                "tile_y": {
+                    "type": "integer"
                 }
             }
         },

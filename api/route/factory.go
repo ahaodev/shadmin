@@ -1,9 +1,11 @@
 package route
 
 import (
+	"log"
 	"shadmin/api/controller"
 	"shadmin/bootstrap"
 	"shadmin/internal"
+	captchapkg "shadmin/internal/captcha"
 	"shadmin/internal/casbin"
 	"shadmin/internal/tokenservice"
 	"shadmin/repository"
@@ -17,17 +19,23 @@ import (
 
 // ControllerFactory creates and manages controller instances
 type ControllerFactory struct {
-	app     *bootstrap.Application
-	timeout time.Duration
-	db      *ent.Client
+	app            *bootstrap.Application
+	timeout        time.Duration
+	db             *ent.Client
+	captchaManager *captchapkg.SlideManager
 }
 
 // NewControllerFactory creates a new controller factory
 func NewControllerFactory(app *bootstrap.Application, timeout time.Duration, db *ent.Client) *ControllerFactory {
+	cm, err := captchapkg.NewSlideManager()
+	if err != nil {
+		log.Fatalf("failed to initialize slide captcha manager: %v", err)
+	}
 	return &ControllerFactory{
-		app:     app,
-		timeout: timeout,
-		db:      db,
+		app:            app,
+		timeout:        timeout,
+		db:             db,
+		captchaManager: cm,
 	}
 }
 
@@ -46,6 +54,14 @@ func (f *ControllerFactory) CreateAuthController(casManager casbin.Manager) *con
 		Env:             f.app.Env,
 		SecurityManager: internal.NewLoginSecurityManager(),
 		TokenService:    ts,
+		CaptchaUsecase:  usecase.NewCaptchaUsecase(f.captchaManager, f.timeout),
+	}
+}
+
+// CreateCaptchaController creates a public captcha controller
+func (f *ControllerFactory) CreateCaptchaController() *controller.CaptchaController {
+	return &controller.CaptchaController{
+		CaptchaUsecase: usecase.NewCaptchaUsecase(f.captchaManager, f.timeout),
 	}
 }
 

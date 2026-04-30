@@ -25,7 +25,11 @@ const refreshClient = axios.create({
 })
 
 // Auth routes that should never carry an Authorization header or trigger refresh
-const AUTH_ROUTES = ['/api/v1/auth/login', '/api/v1/auth/refresh']
+const AUTH_ROUTES = [
+  '/api/v1/auth/login',
+  '/api/v1/auth/refresh',
+  '/api/v1/auth/captcha/slide',
+]
 function isAuthRoute(url?: string): boolean {
   return AUTH_ROUTES.some((r) => url?.includes(r))
 }
