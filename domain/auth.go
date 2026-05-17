@@ -6,8 +6,11 @@ import (
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	UserName string `form:"username" binding:"required"`
-	Password string `form:"password" binding:"required"`
+	UserName  string `form:"username" json:"username" binding:"required"`
+	Password  string `form:"password" json:"password" binding:"required"`
+	CaptchaID string `form:"captcha_id" json:"captcha_id" binding:"required"`
+	CaptchaX  int    `form:"captcha_x" json:"captcha_x"`
+	CaptchaY  int    `form:"captcha_y" json:"captcha_y"`
 }
 
 // LoginResponse 登录响应

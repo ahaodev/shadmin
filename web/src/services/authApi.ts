@@ -7,6 +7,23 @@ import { type User } from '@/features/system/users/data/schema.ts'
 export interface LoginRequest {
   username: string
   password: string
+  captcha_id: string
+  captcha_x: number
+  captcha_y: number
+}
+
+// Slide 验证码挑战
+export interface SlideCaptchaChallenge {
+  captcha_id: string
+  master_image: string
+  tile_image: string
+  tile_x: number
+  tile_y: number
+  tile_width: number
+  tile_height: number
+  master_width: number
+  master_height: number
+  expires_in: number
 }
 
 // 登录响应类型
@@ -27,6 +44,15 @@ export async function login(
   credentials: LoginRequest
 ): Promise<ApiResponse<LoginResponse>> {
   const resp = await apiClient.post('/api/v1/auth/login', credentials)
+  return resp.data
+}
+
+// 获取/刷新 Slide 验证码挑战
+export async function getSlideCaptcha(
+  oldCaptchaId?: string
+): Promise<ApiResponse<SlideCaptchaChallenge>> {
+  const params = oldCaptchaId ? { old_captcha_id: oldCaptchaId } : undefined
+  const resp = await apiClient.get('/api/v1/auth/captcha/slide', { params })
   return resp.data
 }
 

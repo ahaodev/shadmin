@@ -47,29 +47,6 @@ definitions:
       total_pages:
         type: integer
     type: object
-  domain.CreateDepartmentRequest:
-    properties:
-      email:
-        maxLength: 100
-        type: string
-      leader:
-        maxLength: 64
-        type: string
-      name:
-        maxLength: 100
-        type: string
-      parent_id:
-        type: string
-      phone:
-        maxLength: 20
-        type: string
-      sequence:
-        type: integer
-      status:
-        type: string
-    required:
-    - name
-    type: object
   domain.CreateDictItemRequest:
     properties:
       color:
@@ -178,9 +155,6 @@ definitions:
     type: object
   domain.CreateUserRequest:
     properties:
-      department_id:
-        description: 所属部门ID
-        type: string
       email:
         type: string
       password:
@@ -201,33 +175,6 @@ definitions:
     - email
     - password
     - username
-    type: object
-  domain.Department:
-    properties:
-      children:
-        items:
-          $ref: '#/definitions/domain.Department'
-        type: array
-      created_at:
-        type: string
-      email:
-        type: string
-      id:
-        type: string
-      leader:
-        type: string
-      name:
-        type: string
-      parent_id:
-        type: string
-      phone:
-        type: string
-      sequence:
-        type: integer
-      status:
-        type: string
-      updated_at:
-        type: string
     type: object
   domain.DictItem:
     properties:
@@ -368,11 +315,18 @@ definitions:
     type: object
   domain.LoginRequest:
     properties:
+      captcha_id:
+        type: string
+      captcha_x:
+        type: integer
+      captcha_y:
+        type: integer
       password:
         type: string
       username:
         type: string
     required:
+    - captcha_id
     - password
     - username
     type: object
@@ -576,26 +530,28 @@ definitions:
       updated_at:
         type: string
     type: object
-  domain.UpdateDepartmentRequest:
+  domain.SlideCaptchaChallenge:
     properties:
-      email:
-        maxLength: 100
+      captcha_id:
         type: string
-      leader:
-        maxLength: 64
-        type: string
-      name:
-        maxLength: 100
-        type: string
-      parent_id:
-        type: string
-      phone:
-        maxLength: 20
-        type: string
-      sequence:
+      expires_in:
         type: integer
-      status:
+      master_height:
+        type: integer
+      master_image:
         type: string
+      master_width:
+        type: integer
+      tile_height:
+        type: integer
+      tile_image:
+        type: string
+      tile_width:
+        type: integer
+      tile_x:
+        type: integer
+      tile_y:
+        type: integer
     type: object
   domain.UpdateDictItemRequest:
     properties:
@@ -688,10 +644,6 @@ definitions:
         type: string
       created_at:
         type: string
-      department_id:
-        type: string
-      department_name:
-        type: string
       email:
         type: string
       id:
@@ -725,8 +677,6 @@ definitions:
   domain.UserUpdateRequest:
     properties:
       avatar:
-        type: string
-      department_id:
         type: string
       email:
         type: string
@@ -818,6 +768,34 @@ paths:
       summary: Get API resources with pagination
       tags:
       - API Resources
+  /auth/captcha/slide:
+    get:
+      description: Generate a new slide captcha challenge for login. Pass old_captcha_id
+        to invalidate the previous challenge when refreshing.
+      parameters:
+      - description: Previous captcha id to invalidate
+        in: query
+        name: old_captcha_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/domain.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.SlideCaptchaChallenge'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.Response'
+      summary: Get slide captcha challenge
+      tags:
+      - Authentication
   /auth/logout:
     post:
       consumes:
@@ -1310,173 +1288,6 @@ paths:
       summary: Get user accessible resources
       tags:
       - Resources
-  /system/department:
-    post:
-      consumes:
-      - application/json
-      description: Create a new department
-      parameters:
-      - description: Department information
-        in: body
-        name: department
-        required: true
-        schema:
-          $ref: '#/definitions/domain.CreateDepartmentRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Successfully created department
-          schema:
-            $ref: '#/definitions/domain.Response'
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/domain.Response'
-        "409":
-          description: Conflict - duplicate name
-          schema:
-            $ref: '#/definitions/domain.Response'
-      security:
-      - BearerAuth: []
-      summary: Create department
-      tags:
-      - Departments
-  /system/department/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a specific department by its ID
-      parameters:
-      - description: Department ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully deleted department
-          schema:
-            $ref: '#/definitions/domain.Response'
-        "400":
-          description: Has children or users
-          schema:
-            $ref: '#/definitions/domain.Response'
-        "404":
-          description: Department not found
-          schema:
-            $ref: '#/definitions/domain.Response'
-      security:
-      - BearerAuth: []
-      summary: Delete department
-      tags:
-      - Departments
-    get:
-      consumes:
-      - application/json
-      description: Get a specific department by its ID
-      parameters:
-      - description: Department ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully retrieved department
-          schema:
-            allOf:
-            - $ref: '#/definitions/domain.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/domain.Department'
-              type: object
-        "404":
-          description: Department not found
-          schema:
-            $ref: '#/definitions/domain.Response'
-      security:
-      - BearerAuth: []
-      summary: Get department by ID
-      tags:
-      - Departments
-    put:
-      consumes:
-      - application/json
-      description: Update a specific department by its ID
-      parameters:
-      - description: Department ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Updated department information
-        in: body
-        name: department
-        required: true
-        schema:
-          $ref: '#/definitions/domain.UpdateDepartmentRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully updated department
-          schema:
-            allOf:
-            - $ref: '#/definitions/domain.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/domain.Department'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/domain.Response'
-        "404":
-          description: Department not found
-          schema:
-            $ref: '#/definitions/domain.Response'
-        "409":
-          description: Conflict - duplicate name or circular ref
-          schema:
-            $ref: '#/definitions/domain.Response'
-      security:
-      - BearerAuth: []
-      summary: Update department
-      tags:
-      - Departments
-  /system/department/tree:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve departments in hierarchical tree structure
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully retrieved department tree
-          schema:
-            allOf:
-            - $ref: '#/definitions/domain.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/domain.Department'
-                  type: array
-              type: object
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/domain.Response'
-      security:
-      - BearerAuth: []
-      summary: Get department tree
-      tags:
-      - Departments
   /system/dict/items:
     get:
       consumes:

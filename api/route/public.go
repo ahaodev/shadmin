@@ -45,8 +45,10 @@ func (pr *PublicRoutes) setupHealthRoutes(group *gin.RouterGroup) {
 // setupAuthRoutes configures authentication-related routes
 func (pr *PublicRoutes) setupAuthRoutes(group *gin.RouterGroup, app *bootstrap.Application) {
 	authController := pr.factory.CreateAuthController(app.CasManager)
+	captchaController := pr.factory.CreateCaptchaController()
 
 	group.POST("/login", authController.Login)
 	group.POST("/refresh", authController.RefreshToken)
 	group.POST("/logout", authController.Logout)
+	group.GET("/captcha/slide", captchaController.GetSlideCaptcha)
 }

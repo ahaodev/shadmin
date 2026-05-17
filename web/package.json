@@ -43,6 +43,7 @@
     "cmdk": "1.1.1",
     "date-fns": "^4.1.0",
     "dompurify": "3.3.2",
+    "go-captcha-react": "^1.0.4",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.539.0",
     "pnpm": "^10.33.0",

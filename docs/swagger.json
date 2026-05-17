@@ -115,6 +115,52 @@
                 }
             }
         },
+        "/auth/captcha/slide": {
+            "get": {
+                "description": "Generate a new slide captcha challenge for login. Pass old_captcha_id to invalidate the previous challenge when refreshing.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Get slide captcha challenge",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Previous captcha id to invalidate",
+                        "name": "old_captcha_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.SlideCaptchaChallenge"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/logout": {
             "post": {
                 "description": "Logout user and invalidate tokens",
@@ -915,282 +961,6 @@
                     },
                     "500": {
                         "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/system/department": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create a new department",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Departments"
-                ],
-                "summary": "Create department",
-                "parameters": [
-                    {
-                        "description": "Department information",
-                        "name": "department",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.CreateDepartmentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Successfully created department",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict - duplicate name",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/system/department/tree": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve departments in hierarchical tree structure",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Departments"
-                ],
-                "summary": "Get department tree",
-                "responses": {
-                    "200": {
-                        "description": "Successfully retrieved department tree",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/domain.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/domain.Department"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/system/department/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get a specific department by its ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Departments"
-                ],
-                "summary": "Get department by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Department ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully retrieved department",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/domain.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/domain.Department"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "404": {
-                        "description": "Department not found",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update a specific department by its ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Departments"
-                ],
-                "summary": "Update department",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Department ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Updated department information",
-                        "name": "department",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.UpdateDepartmentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully updated department",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/domain.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/domain.Department"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Department not found",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict - duplicate name or circular ref",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete a specific department by its ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Departments"
-                ],
-                "summary": "Delete department",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Department ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully deleted department",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Has children or users",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Department not found",
                         "schema": {
                             "$ref": "#/definitions/domain.Response"
                         }
@@ -2979,39 +2749,6 @@
                 }
             }
         },
-        "domain.CreateDepartmentRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "leader": {
-                    "type": "string",
-                    "maxLength": 64
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "parent_id": {
-                    "type": "string"
-                },
-                "phone": {
-                    "type": "string",
-                    "maxLength": 20
-                },
-                "sequence": {
-                    "type": "integer"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.CreateDictItemRequest": {
             "type": "object",
             "required": [
@@ -3170,10 +2907,6 @@
                 "username"
             ],
             "properties": {
-                "department_id": {
-                    "description": "所属部门ID",
-                    "type": "string"
-                },
                 "email": {
                     "type": "string"
                 },
@@ -3195,47 +2928,6 @@
                     "type": "string"
                 },
                 "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.Department": {
-            "type": "object",
-            "properties": {
-                "children": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Department"
-                    }
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "leader": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "parent_id": {
-                    "type": "string"
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "sequence": {
-                    "type": "integer"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "updated_at": {
                     "type": "string"
                 }
             }
@@ -3445,10 +3137,20 @@
         "domain.LoginRequest": {
             "type": "object",
             "required": [
+                "captcha_id",
                 "password",
                 "username"
             ],
             "properties": {
+                "captcha_id": {
+                    "type": "string"
+                },
+                "captcha_x": {
+                    "type": "integer"
+                },
+                "captcha_y": {
+                    "type": "integer"
+                },
                 "password": {
                     "type": "string"
                 },
@@ -3760,33 +3462,38 @@
                 }
             }
         },
-        "domain.UpdateDepartmentRequest": {
+        "domain.SlideCaptchaChallenge": {
             "type": "object",
             "properties": {
-                "email": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "leader": {
-                    "type": "string",
-                    "maxLength": 64
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 100
-                },
-                "parent_id": {
+                "captcha_id": {
                     "type": "string"
                 },
-                "phone": {
-                    "type": "string",
-                    "maxLength": 20
-                },
-                "sequence": {
+                "expires_in": {
                     "type": "integer"
                 },
-                "status": {
+                "master_height": {
+                    "type": "integer"
+                },
+                "master_image": {
                     "type": "string"
+                },
+                "master_width": {
+                    "type": "integer"
+                },
+                "tile_height": {
+                    "type": "integer"
+                },
+                "tile_image": {
+                    "type": "string"
+                },
+                "tile_width": {
+                    "type": "integer"
+                },
+                "tile_x": {
+                    "type": "integer"
+                },
+                "tile_y": {
+                    "type": "integer"
                 }
             }
         },
@@ -3926,12 +3633,6 @@
                 "created_at": {
                     "type": "string"
                 },
-                "department_id": {
-                    "type": "string"
-                },
-                "department_name": {
-                    "type": "string"
-                },
                 "email": {
                     "type": "string"
                 },
@@ -3980,9 +3681,6 @@
             "type": "object",
             "properties": {
                 "avatar": {
-                    "type": "string"
-                },
-                "department_id": {
                     "type": "string"
                 },
                 "email": {
