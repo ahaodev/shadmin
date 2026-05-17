@@ -1,0 +1,26 @@
+{
+  "list": [
+    {
+      "id": "d7f386iu2lv4ba09av9g",
+      "username": "admin",
+      "email": "admin@gmail.com",
+      "is_admin": true,
+      "status": "active",
+      "created_at": "2026-04-14T20:33:30.213986035+08:00",
+      "updated_at": "2026-04-14T20:33:30.213986476+08:00"
+    },
+    {
+      "id": "d7g5uequ2lv908tm7ev0",
+      "username": "ahao",
+      "email": "hao88@qq.com",
+      "phone": "18872027428",
+      "status": "active",
+      "created_at": "2026-04-16T12:02:03.955310813+08:00",
+      "updated_at": "2026-04-16T12:02:20.303445613+08:00"
+    }
+  ],
+  "total": 2,
+  "page": 1,
+  "page_size": 5,
+  "total_pages": 1
+}

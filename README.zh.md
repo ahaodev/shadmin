@@ -95,6 +95,7 @@ shadmin/
 - [快速开始 (中文)](docs/getting-started/quickstart.zh.md) · [Quick Start (EN)](docs/getting-started/quickstart.en.md)
 - [开发指南 (中文)](docs/getting-started/development.zh.md) · [Development (EN)](docs/getting-started/development.en.md)
 - [部署 (中文)](docs/getting-started/deployment.zh.md) · [Deployment (EN)](docs/getting-started/deployment.en.md)
+- [面向 AI Agent 的 CLI](cli/README.md) — `shadmin-cli`，REST API 的薄封装，默认 JSON 输出，权限沿用登录用户的 RBAC；附 Anthropic [SKILL.md](cli/skill/shadmin-cli/SKILL.md)。
 
 ## 📄 许可证
 
