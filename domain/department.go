@@ -53,11 +53,12 @@ type DepartmentQueryFilter struct {
 
 // Department sentinel errors
 var (
-	ErrDepartmentHasChildren = errors.New("该部门下存在子部门，无法删除")
-	ErrDepartmentHasUsers    = errors.New("该部门下存在用户，无法删除")
-	ErrDepartmentNotFound    = errors.New("部门不存在")
-	ErrDepartmentNameExists  = errors.New("同级下已存在同名部门")
-	ErrCircularDepartment    = errors.New("不能将部门移动到其子部门下")
+	ErrDepartmentHasChildren       = errors.New("该部门下存在子部门，无法删除")
+	ErrDepartmentHasUsers          = errors.New("该部门下存在用户，无法删除")
+	ErrDepartmentNotFound          = errors.New("部门不存在")
+	ErrDepartmentNameExists        = errors.New("同级下已存在同名部门")
+	ErrCircularDepartment          = errors.New("不能将部门移动到其子部门下")
+	ErrDepartmentHasActiveChildren = errors.New("存在已启用的子部门，请先停用所有子部门后再操作")
 )
 
 // DepartmentRepository defines the interface for department data operations
@@ -71,6 +72,7 @@ type DepartmentRepository interface {
 	HasChildren(ctx context.Context, id string) (bool, error)
 	HasUsers(ctx context.Context, id string) (bool, error)
 	GetAllChildrenIDs(ctx context.Context, id string) ([]string, error)
+	HasActiveChildren(ctx context.Context, id string) (bool, error)
 }
 
 // DepartmentUseCase defines the interface for department business logic

@@ -165,6 +165,38 @@ func (r *entDepartmentRepository) GetAllChildrenIDs(ctx context.Context, id stri
 	return ids, nil
 }
 
+func (r *entDepartmentRepository) HasActiveChildren(ctx context.Context, id string) (bool, error) {
+	all, err := r.client.Department.Query().All(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	// Build parent→children map and status map in one pass
+	childMap := make(map[string][]string)
+	statusMap := make(map[string]string)
+	for _, d := range all {
+		statusMap[d.ID] = string(d.Status)
+		if d.ParentID != nil {
+			childMap[*d.ParentID] = append(childMap[*d.ParentID], d.ID)
+		}
+	}
+
+	// DFS to find any active descendant
+	var hasActive bool
+	var walk func(parentID string)
+	walk = func(parentID string) {
+		for _, cid := range childMap[parentID] {
+			if statusMap[cid] == "active" {
+				hasActive = true
+				return
+			}
+			walk(cid)
+		}
+	}
+	walk(id)
+	return hasActive, nil
+}
+
 // entDepartmentToDomain converts ent Department to domain Department
 func entDepartmentToDomain(d *ent.Department) *domain.Department {
 	return &domain.Department{

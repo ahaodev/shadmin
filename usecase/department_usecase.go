@@ -92,6 +92,16 @@ func (u *departmentUsecase) Update(ctx context.Context, id string, req *domain.U
 		dept.Email = *req.Email
 	}
 	if req.Status != nil {
+		// If disabling, ensure no active descendants exist
+		if *req.Status == "inactive" && dept.Status == "active" {
+			hasActive, err := u.departmentRepo.HasActiveChildren(ctx, id)
+			if err != nil {
+				return nil, fmt.Errorf("check active children: %w", err)
+			}
+			if hasActive {
+				return nil, domain.ErrDepartmentHasActiveChildren
+			}
+		}
 		dept.Status = *req.Status
 	}
 

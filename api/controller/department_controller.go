@@ -126,6 +126,10 @@ func (dc *DepartmentController) UpdateDepartment(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, domain.RespError("不能将部门移动到其子部门下"))
 			return
 		}
+		if errors.Is(err, domain.ErrDepartmentHasActiveChildren) {
+			c.JSON(http.StatusBadRequest, domain.RespError(domain.ErrDepartmentHasActiveChildren.Error()))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, domain.RespError("更新部门失败: "+err.Error()))
 		return
 	}
