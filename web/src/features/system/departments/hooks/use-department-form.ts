@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { Department } from '@/types/department'
@@ -20,15 +21,40 @@ export function useDepartmentForm({
   const form = useForm<DepartmentFormData>({
     resolver: zodResolver(departmentFormSchema),
     defaultValues: {
-      parent_id: isEdit ? currentRow.parent_id || '' : '',
-      name: isEdit ? currentRow.name : '',
-      sequence: isEdit ? currentRow.sequence : 0,
-      leader: isEdit ? currentRow.leader || '' : '',
-      phone: isEdit ? currentRow.phone || '' : '',
-      email: isEdit ? currentRow.email || '' : '',
-      status: isEdit ? currentRow.status : 'active',
+      parent_id: '',
+      name: '',
+      sequence: 0,
+      leader: '',
+      phone: '',
+      email: '',
+      status: 'active',
     },
   })
+
+  // Backfill form with existing data when editing
+  useEffect(() => {
+    if (currentRow) {
+      form.reset({
+        parent_id: currentRow.parent_id || '',
+        name: currentRow.name,
+        sequence: currentRow.sequence,
+        leader: currentRow.leader || '',
+        phone: currentRow.phone || '',
+        email: currentRow.email || '',
+        status: currentRow.status,
+      })
+    } else {
+      form.reset({
+        parent_id: '',
+        name: '',
+        sequence: 0,
+        leader: '',
+        phone: '',
+        email: '',
+        status: 'active',
+      })
+    }
+  }, [currentRow, form])
 
   const onSubmit = async (values: DepartmentFormData) => {
     try {
