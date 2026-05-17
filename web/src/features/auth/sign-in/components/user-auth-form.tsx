@@ -180,13 +180,21 @@ export function UserAuthForm({
         // eslint-disable-next-line no-console
         console.error('Login error', error)
         let msg = '网络错误，请稍后重试'
+        let isCredentialError = false
         if (error instanceof AxiosError) {
           msg = error.response?.data?.msg || error.message
+          const status = error.response?.status
+          // 401 = 账号密码错误, 423 = 账户锁定 — 无需刷新验证码，直接关闭弹窗
+          isCredentialError = status === 401 || status === 423
         } else if (error instanceof Error) {
           msg = error.message
         }
         toast.error(msg)
-        captchaRef.current?.refresh()
+        if (isCredentialError) {
+          setCaptchaOpen(false)
+        } else {
+          captchaRef.current?.refresh()
+        }
       } finally {
         setIsLoading(false)
       }
