@@ -7,17 +7,43 @@ import (
 	"strconv"
 )
 
-// Login 调用 /auth/login，返回 access + refresh token
-func (c *Client) Login(ctx context.Context, username, password string) (access, refresh string, err error) {
-	body := map[string]string{"username": username, "password": password}
-	var data struct {
-		AccessToken  string `json:"accessToken"`
-		RefreshToken string `json:"refreshToken"`
+type DeviceCodeResponse struct {
+	DeviceCode      string `json:"device_code"`
+	UserCode        string `json:"user_code"`
+	VerificationURI string `json:"verification_uri"`
+	ExpiresIn       int    `json:"expires_in"`
+	Interval        int    `json:"interval"`
+}
+
+type LoginTokenResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
+// RequestDeviceCode starts the OAuth device authorization flow.
+func (c *Client) RequestDeviceCode(ctx context.Context, clientID, clientName string) (*DeviceCodeResponse, error) {
+	body := map[string]string{"client_id": clientID}
+	if clientName != "" {
+		body["client_name"] = clientName
 	}
-	if err := c.Do(ctx, "POST", "/api/v1/auth/login", nil, body, &data); err != nil {
-		return "", "", err
+	var data DeviceCodeResponse
+	if err := c.Do(ctx, "POST", "/api/v1/auth/device/code", nil, body, &data); err != nil {
+		return nil, err
 	}
-	return data.AccessToken, data.RefreshToken, nil
+	return &data, nil
+}
+
+// PollDeviceToken polls for device authorization completion.
+func (c *Client) PollDeviceToken(ctx context.Context, clientID, deviceCode string) (*LoginTokenResponse, error) {
+	body := map[string]string{
+		"client_id":   clientID,
+		"device_code": deviceCode,
+	}
+	var data LoginTokenResponse
+	if err := c.Do(ctx, "POST", "/api/v1/auth/device/token", nil, body, &data); err != nil {
+		return nil, err
+	}
+	return &data, nil
 }
 
 // Logout 调用 /auth/logout

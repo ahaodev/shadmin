@@ -3,7 +3,6 @@ package route
 import (
 	"shadmin/api/middleware"
 	"shadmin/bootstrap"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,9 +13,9 @@ type ProtectedRoutes struct {
 }
 
 // NewProtectedRoutes creates a new protected routes manager
-func NewProtectedRoutes(app *bootstrap.Application, timeout time.Duration) *ProtectedRoutes {
+func NewProtectedRoutes(factory *ControllerFactory) *ProtectedRoutes {
 	return &ProtectedRoutes{
-		factory: NewControllerFactory(app, timeout, app.DB),
+		factory: factory,
 	}
 }
 
@@ -41,6 +40,9 @@ func (pr *ProtectedRoutes) setupUserRoutes(router *gin.RouterGroup, app *bootstr
 	resourcesGroup := router.Group("/resources")
 	pr.setupResourceRoutes(resourcesGroup)
 
+	// Device authorization activation (authenticated, no Casbin menu permission required)
+	deviceAuthGroup := router.Group("/auth/device")
+	pr.setupDeviceAuthRoutes(deviceAuthGroup)
 }
 
 // setupProfileRoutes configures profile management routes
@@ -57,6 +59,13 @@ func (pr *ProtectedRoutes) setupResourceRoutes(group *gin.RouterGroup) {
 	resourceController := pr.factory.CreateResourceController()
 
 	group.GET("", resourceController.GetResources)
+}
+
+// setupDeviceAuthRoutes configures authenticated device authorization routes.
+func (pr *ProtectedRoutes) setupDeviceAuthRoutes(group *gin.RouterGroup) {
+	deviceAuthController := pr.factory.CreateDeviceAuthController()
+
+	group.POST("/activate", deviceAuthController.Activate)
 }
 
 // setupSystemRoutes configures system administration routes

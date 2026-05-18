@@ -113,8 +113,6 @@ export const SlideCaptcha = forwardRef<SlideCaptchaHandle, SlideCaptchaProps>(
     )
     return (
       <div className='flex flex-col gap-3'>
-
-
         {challenge ? (
           <div className='flex justify-center'>
             <GoCaptcha.Slide

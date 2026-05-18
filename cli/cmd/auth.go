@@ -1,17 +1,14 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 
 	"shadmin-cli/internal/client"
 	"shadmin-cli/internal/clierr"
@@ -19,14 +16,9 @@ import (
 	"shadmin-cli/internal/output"
 )
 
-var (
-	loginUsername      string
-	loginPasswordStdin bool
-)
-
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "Log in to Shadmin and cache tokens locally",
+	Short: "Log in to Shadmin with device authorization flow",
 	RunE: runE(func(cmd *cobra.Command, args []string) error {
 		cfg, err := loadConfig()
 		if err != nil {
@@ -39,52 +31,41 @@ var loginCmd = &cobra.Command{
 			return clierr.New(clierr.ExitUsage, "server url required: pass --server URL or set SHADMIN_SERVER")
 		}
 
-		username := loginUsername
-		if username == "" {
-			fmt.Fprint(os.Stderr, "Username: ")
-			line, err := bufio.NewReader(os.Stdin).ReadString('\n')
-			if err != nil && !errors.Is(err, io.EOF) {
-				return clierr.Wrap(clierr.ExitGeneric, err, "read username")
-			}
-			username = strings.TrimSpace(line)
-		}
-		if username == "" {
-			return clierr.New(clierr.ExitUsage, "username required")
-		}
-
-		var password string
-		if loginPasswordStdin {
-			b, err := io.ReadAll(os.Stdin)
-			if err != nil {
-				return clierr.Wrap(clierr.ExitGeneric, err, "read password from stdin")
-			}
-			password = strings.TrimRight(string(b), "\r\n")
-		} else {
-			fmt.Fprint(os.Stderr, "Password: ")
-			pw, err := term.ReadPassword(int(os.Stdin.Fd()))
-			fmt.Fprintln(os.Stderr)
-			if err != nil {
-				return clierr.Wrap(clierr.ExitGeneric, err, "read password")
-			}
-			password = string(pw)
-		}
-		if password == "" {
-			return clierr.New(clierr.ExitUsage, "password required")
-		}
-
 		cli := client.NewUnauth(cfg.ServerURL)
 		ctx, cancel := context.WithTimeout(context.Background(), 30*sec())
 		defer cancel()
-		access, refresh, err := cli.Login(ctx, username, password)
+
+		deviceCode, err := cli.RequestDeviceCode(ctx, "shadmin-cli", "Shadmin CLI")
+		if err != nil {
+			return err
+		}
+		cancel()
+
+		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(deviceCode.ExpiresIn)*sec()+15*sec())
+		defer cancel()
+
+		fmt.Fprintf(os.Stderr, "Open this URL in your browser:\n\n  %s\n\n", deviceCode.VerificationURI)
+		fmt.Fprintf(os.Stderr, "Then enter this code:\n\n  %s\n\n", deviceCode.UserCode)
+		fmt.Fprintln(os.Stderr, "Waiting for authorization...")
+
+		token, err := pollDeviceAuthorization(ctx, cli, deviceCode)
 		if err != nil {
 			return err
 		}
 
-		cfg.Username = username
-		cfg.AccessToken = access
-		cfg.RefreshToken = refresh
+		cfg.AccessToken = token.AccessToken
+		cfg.RefreshToken = token.RefreshToken
 		if err := config.Save(cfg); err != nil {
 			return err
+		}
+
+		username := cfg.Username
+		profileCtx, profileCancel := context.WithTimeout(context.Background(), 15*sec())
+		defer profileCancel()
+		if profile, err := fetchLoginProfile(profileCtx, cfg); err == nil {
+			username = profile
+			cfg.Username = profile
+			_ = config.Save(cfg)
 		}
 
 		out := output.New(outputFormat())
@@ -96,6 +77,67 @@ var loginCmd = &cobra.Command{
 			"logged_in": true,
 		})
 	}),
+}
+
+func pollDeviceAuthorization(ctx context.Context, cli *client.Client, deviceCode *client.DeviceCodeResponse) (*client.LoginTokenResponse, error) {
+	interval := deviceCode.Interval
+	if interval <= 0 {
+		interval = 5
+	}
+	timer := time.NewTimer(time.Duration(interval) * sec())
+	defer timer.Stop()
+
+	deadline := time.NewTimer(time.Duration(deviceCode.ExpiresIn) * sec())
+	defer deadline.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, clierr.Wrap(clierr.ExitGeneric, ctx.Err(), "device authorization timed out")
+		case <-deadline.C:
+			return nil, clierr.New(clierr.ExitGeneric, "device authorization expired; run login again")
+		case <-timer.C:
+			token, err := cli.PollDeviceToken(ctx, "shadmin-cli", deviceCode.DeviceCode)
+			if err == nil {
+				return token, nil
+			}
+			msg := err.Error()
+			switch {
+			case strings.Contains(msg, "authorization_pending"):
+				timer.Reset(time.Duration(interval) * sec())
+			case strings.Contains(msg, "slow_down"):
+				interval += 5
+				timer.Reset(time.Duration(interval) * sec())
+			case strings.Contains(msg, "expired_token"):
+				return nil, clierr.New(clierr.ExitGeneric, "device authorization expired; run login again")
+			case strings.Contains(msg, "access_denied"):
+				return nil, clierr.New(clierr.ExitUnauth, "device authorization denied")
+			default:
+				return nil, err
+			}
+		}
+	}
+}
+
+func fetchLoginProfile(ctx context.Context, cfg *config.Config) (string, error) {
+	cli, err := client.New(cfg)
+	if err != nil {
+		return "", err
+	}
+	raw, err := cli.Profile(ctx)
+	if err != nil {
+		return "", err
+	}
+	var profile map[string]any
+	if err := json.Unmarshal(raw, &profile); err != nil {
+		return "", err
+	}
+	for _, key := range []string{"username", "name", "email", "id"} {
+		if value, ok := profile[key].(string); ok && value != "" {
+			return value, nil
+		}
+	}
+	return "", nil
 }
 
 var logoutCmd = &cobra.Command{
@@ -178,8 +220,5 @@ func capitalize(s string) string {
 }
 
 func init() {
-	loginCmd.Flags().StringVarP(&loginUsername, "username", "u", "", "username (prompted if empty)")
-	loginCmd.Flags().BoolVar(&loginPasswordStdin, "password-stdin", false, "read password from stdin (non-interactive)")
-
 	rootCmd.AddCommand(loginCmd, logoutCmd, whoamiCmd)
 }

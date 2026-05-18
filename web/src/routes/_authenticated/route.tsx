@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout'
 
 // Routes that are always accessible for authenticated users (not menu-managed)
-const ALWAYS_ALLOWED_PATHS = ['/', '/settings', '/errors']
+const ALWAYS_ALLOWED_PATHS = ['/', '/settings', '/errors', '/device']
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }) => {
