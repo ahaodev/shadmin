@@ -79,7 +79,7 @@ var loginCmd = &cobra.Command{
 func resolveVerificationURI(serverURL, verificationURI string) string {
 	uri := strings.TrimSpace(verificationURI)
 	if uri == "" {
-		uri = "/device"
+		uri = "/auth/device"
 	}
 	if parsed, err := url.Parse(uri); err == nil && parsed.IsAbs() {
 		return uri

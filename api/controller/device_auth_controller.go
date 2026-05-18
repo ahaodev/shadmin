@@ -49,7 +49,7 @@ func (dc *DeviceAuthController) RequestCode(c *gin.Context) {
 		return
 	}
 
-	resp, err := dc.DeviceAuthUsecase.RequestCode(c, request, "/device")
+	resp, err := dc.DeviceAuthUsecase.RequestCode(c, request, "/auth/device")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return

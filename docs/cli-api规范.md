@@ -88,7 +88,7 @@ CLI ──POST /api/v1/auth/device/code──► 后端
      
 用户看到：
   📋 授权码: WDJB-MJHT
-  🔗 访问: http://your-shadmin/device
+  🔗 访问: http://your-shadmin/auth/device
 
 CLI ──轮询 /api/v1/auth/device/token──► 后端（每5s）
      ◄── authorization_pending ─────── （用户未确认）
@@ -107,7 +107,7 @@ POST /api/v1/auth/device/token
   Response: { access_token, refresh_token } | { error: "authorization_pending" }
 ```
 
-**前端需新增授权页** `/device`：输入 `user_code` → 确认授权。
+**前端需新增授权页** `/auth/device`：输入 `user_code` → 确认授权。
 
 **CLI 实现要点**（`cli/cmd/auth.go`）：
 ```go
