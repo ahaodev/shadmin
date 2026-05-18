@@ -176,6 +176,50 @@ definitions:
     - password
     - username
     type: object
+  domain.DeviceActivateRequest:
+    properties:
+      user_code:
+        type: string
+    required:
+    - user_code
+    type: object
+  domain.DeviceActivateResponse:
+    properties:
+      status:
+        type: string
+    type: object
+  domain.DeviceCodeRequest:
+    properties:
+      client_id:
+        type: string
+      client_name:
+        type: string
+    required:
+    - client_id
+    type: object
+  domain.DeviceCodeResponse:
+    properties:
+      device_code:
+        type: string
+      expires_in:
+        type: integer
+      interval:
+        type: integer
+      user_code:
+        type: string
+      verification_uri:
+        type: string
+    type: object
+  domain.DeviceTokenRequest:
+    properties:
+      client_id:
+        type: string
+      device_code:
+        type: string
+    required:
+    - client_id
+    - device_code
+    type: object
   domain.DictItem:
     properties:
       color:
@@ -794,6 +838,115 @@ paths:
           schema:
             $ref: '#/definitions/domain.Response'
       summary: Get slide captcha challenge
+      tags:
+      - Authentication
+  /auth/device/activate:
+    post:
+      consumes:
+      - application/json
+      description: Authorize a CLI device code using the current web user session
+      parameters:
+      - description: Device activation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.DeviceActivateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/domain.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.DeviceActivateResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/domain.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/domain.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.Response'
+      summary: Activate device authorization code
+      tags:
+      - Authentication
+  /auth/device/code:
+    post:
+      consumes:
+      - application/json
+      description: Create a device authorization session for CLI login
+      parameters:
+      - description: Device code request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.DeviceCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/domain.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.DeviceCodeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/domain.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.Response'
+      summary: Request device authorization code
+      tags:
+      - Authentication
+  /auth/device/token:
+    post:
+      consumes:
+      - application/json
+      description: Poll until user authorizes a device code, then return JWT tokens
+      parameters:
+      - description: Device token request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.DeviceTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/domain.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.LoginResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/domain.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/domain.Response'
+      summary: Poll device authorization token
       tags:
       - Authentication
   /auth/logout:

@@ -19,9 +19,9 @@ func Setup(app *bootstrap.Application, timeout time.Duration, engine *gin.Engine
 	}
 
 	// Register static assets (skip in development — Vite dev server handles frontend)
-	if app.Env.AppEnv != "development" {
-		web.Register(engine)
-	}
+	//if app.Env.AppEnv != "development" {
+	web.Register(engine)
+	//}
 	setupSwagger(engine)
 
 	// Setup API routes
@@ -33,12 +33,13 @@ func Setup(app *bootstrap.Application, timeout time.Duration, engine *gin.Engine
 // setupApiRoutes configures all API routes
 func setupApiRoutes(app *bootstrap.Application, timeout time.Duration, engine *gin.Engine) {
 	apiV1 := engine.Group(ApiUri)
+	factory := NewControllerFactory(app, timeout, app.DB)
 
 	// Setup public routes (no authentication required)
-	publicRoutes := NewPublicRoutes(app, timeout)
+	publicRoutes := NewPublicRoutes(factory)
 	publicRoutes.Setup(apiV1, app)
 
 	// Setup protected routes (authentication required)
-	protectedRoutes := NewProtectedRoutes(app, timeout)
+	protectedRoutes := NewProtectedRoutes(factory)
 	protectedRoutes.Setup(apiV1, app, engine)
 }

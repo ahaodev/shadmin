@@ -19,10 +19,11 @@ import (
 
 // ControllerFactory creates and manages controller instances
 type ControllerFactory struct {
-	app            *bootstrap.Application
-	timeout        time.Duration
-	db             *ent.Client
-	captchaManager *captchapkg.SlideManager
+	app                  *bootstrap.Application
+	timeout              time.Duration
+	db                   *ent.Client
+	captchaManager       *captchapkg.SlideManager
+	deviceAuthController *controller.DeviceAuthController
 }
 
 // NewControllerFactory creates a new controller factory
@@ -63,6 +64,30 @@ func (f *ControllerFactory) CreateCaptchaController() *controller.CaptchaControl
 	return &controller.CaptchaController{
 		CaptchaUsecase: usecase.NewCaptchaUsecase(f.captchaManager, f.timeout),
 	}
+}
+
+// CreateDeviceAuthController creates a device authorization controller
+func (f *ControllerFactory) CreateDeviceAuthController() *controller.DeviceAuthController {
+	if f.deviceAuthController != nil {
+		return f.deviceAuthController
+	}
+	deviceAuthRepository := repository.NewDeviceAuthRepository(f.db)
+	userRepository := repository.NewUserRepository(f.db, f.app.CasManager)
+	tokenService := tokenservice.NewTokenService()
+
+	f.deviceAuthController = controller.NewDeviceAuthController(
+		usecase.NewDeviceAuthUsecase(
+			deviceAuthRepository,
+			userRepository,
+			tokenService,
+			f.app.Env.AccessTokenSecret,
+			f.app.Env.RefreshTokenSecret,
+			f.app.Env.AccessTokenExpiryMinute,
+			f.app.Env.RefreshTokenExpiryMinute,
+			f.timeout,
+		),
+	)
+	return f.deviceAuthController
 }
 
 // CreateProfileController creates a profile controller

@@ -39,6 +39,32 @@ export interface RefreshTokenResponse {
   refreshToken: string
 }
 
+export interface DeviceCodeRequest {
+  client_id: string
+  client_name?: string
+}
+
+export interface DeviceCodeResponse {
+  device_code: string
+  user_code: string
+  verification_uri: string
+  expires_in: number
+  interval: number
+}
+
+export interface DeviceTokenRequest {
+  client_id: string
+  device_code: string
+}
+
+export interface DeviceActivateRequest {
+  user_code: string
+}
+
+export interface DeviceActivateResponse {
+  status: string
+}
+
 // 用户登录
 export async function login(
   credentials: LoginRequest
@@ -53,6 +79,27 @@ export async function getSlideCaptcha(
 ): Promise<ApiResponse<SlideCaptchaChallenge>> {
   const params = oldCaptchaId ? { old_captcha_id: oldCaptchaId } : undefined
   const resp = await apiClient.get('/api/v1/auth/captcha/slide', { params })
+  return resp.data
+}
+
+export async function requestDeviceCode(
+  request: DeviceCodeRequest
+): Promise<ApiResponse<DeviceCodeResponse>> {
+  const resp = await apiClient.post('/api/v1/auth/device/code', request)
+  return resp.data
+}
+
+export async function pollDeviceToken(
+  request: DeviceTokenRequest
+): Promise<ApiResponse<LoginResponse>> {
+  const resp = await apiClient.post('/api/v1/auth/device/token', request)
+  return resp.data
+}
+
+export async function activateDevice(
+  request: DeviceActivateRequest
+): Promise<ApiResponse<DeviceActivateResponse>> {
+  const resp = await apiClient.post('/api/v1/auth/device/activate', request)
   return resp.data
 }
 

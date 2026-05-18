@@ -6,8 +6,8 @@ consumed by external **AI agents**.
 - Independent Go module (`cli/`), produces a single binary `shadmin-cli`.
 - Default output is **JSON** (stable, agent-friendly). `--pretty` switches to
   a tabular format for humans.
-- Authentication: username + password → JWT cached at
-  `~/.shadmin/config.yaml` (file mode `0600`).
+- Authentication: OAuth device authorization flow → JWT cached in `cli/.env`
+  or the `SHADMIN_CONFIG` path (file mode `0600`).
 - Authorization: every call reuses the logged-in user's existing RBAC. The
   CLI **cannot bypass** server-side permission checks.
 - MVP is **read-only**. No `create / update / delete` commands are exposed.
@@ -16,7 +16,7 @@ consumed by external **AI agents**.
 
 ```bash
 cd cli
-make build           # → bin/shadmin-cli
+make build           # → shadmin-cli
 # or:
 make install         # installs into $GOBIN
 ```
@@ -26,21 +26,29 @@ Binary is built with version metadata injected via `-ldflags`:
 
 ## Configuration
 
+CLI configuration is scoped to `cli/`. Do not add CLI-only settings to the
+repository root `.env` / `.env.example`; those files are for the backend server.
+
+Repo-local example:
+
+- `cli/.env.example` — server URL setup (`SHADMIN_SERVER`)
+
+`cli/.env` is generated and maintained by `shadmin-cli login` as the local token
+cache. You can also copy `cli/.env.example` to `cli/.env` for repo-local server setup.
+
 | Source                      | Priority |
 |-----------------------------|----------|
 | `--server` flag             | highest  |
 | `SHADMIN_SERVER` env var    |          |
-| `SHADMIN_TOKEN` env var     |          |
-| `$XDG_CONFIG_HOME/shadmin/config.yaml` |          |
-| `~/.shadmin/config.yaml`    | lowest   |
+| `cli/.env`                  | lowest   |
 
-Override the config path entirely with `SHADMIN_CONFIG=/some/path.yaml`.
+Override the config path entirely with `SHADMIN_CONFIG=/some/path.env`.
 
 ## Commands (MVP)
 
 ```text
 shadmin-cli
-├── login            [--server URL] [-u USER] [--password-stdin]
+├── login            [--server URL]
 ├── logout
 ├── whoami
 ├── users
@@ -56,17 +64,14 @@ shadmin-cli
 └── api-resources list
 ```
 
-Global flags: `--json` (default) / `--pretty`, `--server URL`.
+Global flags: `--pretty`, `--server URL`. JSON is the default output format.
 
 ## Quick start
 
 ```bash
-# 1. Login (will prompt for password)
-shadmin-cli login --server http://localhost:55667 -u admin
-
-# Or non-interactive:
-echo -n "secret" | shadmin-cli login --server http://localhost:55667 \
-    -u admin --password-stdin
+# 1. Login with device authorization
+shadmin-cli login --server http://localhost:55667
+# Open the printed URL in a browser and enter the displayed user code.
 
 # 2. Verify
 shadmin-cli whoami
@@ -115,7 +120,7 @@ cli/
 ├── cmd/                # cobra commands (root, auth, resources)
 ├── internal/
 │   ├── client/         # HTTP client, envelope decode, 401 auto-refresh
-│   ├── config/         # config file (~/.shadmin/config.yaml) + env overrides
+│   ├── config/         # cli/.env config file + env overrides
 │   ├── output/         # JSON / pretty rendering
 │   └── clierr/         # exit codes + error wrapping
 ├── skill/shadmin-cli/  # Anthropic SKILL.md + examples for AI agents
@@ -134,8 +139,6 @@ make test   # unit tests for config + client (httptest-based)
 The following items are explicitly **out of scope** for the MVP and tracked for
 later iterations:
 
-- Device authorization flow (DCG): replace password login for headless / agent
-  installs.
 - Write commands (create / update / delete) gated by stricter audit.
 - Backend audit field distinguishing CLI vs Web origin.
 - Optional MCP server packaging on top of the same client layer.
