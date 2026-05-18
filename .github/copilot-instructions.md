@@ -1,6 +1,9 @@
 # Copilot Instructions — Shadmin
 
-Shadmin is a full-stack RBAC admin dashboard: Go backend (Gin + Ent ORM + Casbin) and React 19 frontend (Shadcn UI + TanStack Router/Query + Zustand).
+Shadmin is a full-stack RBAC admin dashboard with three main surfaces:
+- Go backend (`main.go`, `api/`, `domain/`, `repository/`, `usecase/`, `ent/`)
+- React 19 frontend (`web/`)
+- Thin Go CLI (`cli/`) for read-only agent workflows
 
 ## Build, Test, and Lint
 
@@ -27,6 +30,15 @@ pnpm build                      # Type-check + Vite build → web/dist/
 pnpm lint                       # ESLint
 pnpm format:check               # Prettier check
 pnpm format                     # Prettier auto-fix
+```
+
+### CLI (cli/)
+
+```bash
+cd cli
+make build                      # Build shadmin-cli
+make install                    # Install into $GOBIN
+make test                       # CLI unit tests
 ```
 
 ### Pre-commit hook
@@ -72,6 +84,14 @@ web/src/
 └── context/           # Providers (theme, font, layout, search)
 ```
 
+### CLI — Read-Only Agent Client
+
+- Separate Go module under `cli/`
+- JSON is the default output; `--pretty` switches to a tabular view
+- Auth uses OAuth device authorization and caches the JWT in `cli/.env` or `SHADMIN_CONFIG`
+- All requests reuse server-side RBAC; the CLI cannot bypass permissions
+- MVP commands are read-only (`login`, `whoami`, `users`, `roles`, `menus`, `api-resources`)
+
 ### Auth & Permissions
 
 - **Authentication**: JWT access + refresh tokens. Middleware extracts claims into Gin context (`x-user-*` keys).
@@ -108,6 +128,13 @@ web/src/
 
 All API responses use `domain.Response{Code, Msg, Data}`. Code `0` = success, `1` = error. Paginated results use `domain.PagedResult[T]` with `list`, `total`, `page`, `page_size`, `total_pages`.
 
+### CLI Configuration
+
+- CLI-only settings belong under `cli/` (`cli/.env.example`, `cli/.env`, or `SHADMIN_CONFIG`)
+- Do not add CLI settings to the repository root `.env` files; those are for the backend server
+- `cli/.env` is managed by `shadmin-cli login` and stores the local token cache
+- `shadmin-cli` is read-only in the MVP; new write commands should be designed with backend RBAC/Casbin first
+
 ### Naming
 
 - **Go files/packages**: `lower_snake` (e.g., `loginlog_repository.go`)
@@ -125,6 +152,7 @@ Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`). Subject ≤ 72 chars.
 Before committing:
 - Backend: `go fmt ./...` → `go vet ./...` → `go test ./...`
 - Frontend (if changed): `pnpm lint` → `pnpm format:check`
+- CLI (if changed): `cd cli && make test`
 - Schema changes: `go generate ./ent`
 - API changes: regenerate Swagger
 

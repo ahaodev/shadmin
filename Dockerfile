@@ -1,7 +1,7 @@
 #---------------------build web------------------------
 FROM docker.io/library/node:22-alpine AS build_web
 WORKDIR /app/web
-COPY web/package.json web/package-lock.json ./
+COPY web/package.json web/pnpm-lock.yaml ./
 RUN npm install -g pnpm && pnpm install
 COPY web/ ./
 RUN pnpm run build
@@ -40,4 +40,3 @@ RUN useradd -U -u 1000 appuser && chown -R 1000:1000 /app
 USER 1000
 EXPOSE 55667
 CMD ["./shadmin-runner"]
-
