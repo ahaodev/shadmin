@@ -2,7 +2,7 @@
 FROM docker.io/library/node:22-alpine AS build_web
 WORKDIR /app/web
 COPY web/package.json web/pnpm-lock.yaml ./
-RUN npm install -g pnpm && pnpm install
+RUN npm install -g pnpm@10.26.0 && pnpm install --frozen-lockfile
 COPY web/ ./
 RUN pnpm run build
 
