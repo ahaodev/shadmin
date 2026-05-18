@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"shadmin/pkg"
 	"strings"
@@ -41,10 +40,6 @@ type Env struct {
 	S3SecretKey string `mapstructure:"S3_SECRET_KEY"`
 	S3Bucket    string `mapstructure:"S3_BUCKET"`
 	S3Token     string `mapstructure:"S3_TOKEN"`
-
-	// 应用公网基础 URL，用于生成 Device Flow 授权链接，例如 https://admin.example.com
-	// 仅 development/testing 环境未配置时回退到从请求 Host 头推断
-	AppBaseURL string `mapstructure:"APP_BASE_URL"`
 }
 
 func setDefaults() {
@@ -213,17 +208,6 @@ func (e *Env) validate() error {
 		if e.S3Bucket == "" {
 			errs = append(errs, "使用MinIO时S3_BUCKET不能为空")
 		}
-	}
-
-	if e.AppBaseURL != "" {
-		parsed, err := url.Parse(e.AppBaseURL)
-		if err != nil || parsed.Host == "" {
-			errs = append(errs, "APP_BASE_URL必须是有效的URL（例如 https://admin.example.com）")
-		} else if e.AppEnv == "production" && parsed.Scheme != "https" {
-			errs = append(errs, "生产环境APP_BASE_URL必须使用HTTPS")
-		}
-	} else if e.AppEnv != "development" && e.AppEnv != "testing" {
-		errs = append(errs, "非开发环境必须配置APP_BASE_URL以防止Host头注入攻击（例如 APP_BASE_URL=https://admin.example.com）")
 	}
 
 	if len(errs) > 0 {

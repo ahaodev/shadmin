@@ -1,5 +1,4 @@
 BINARY := shadmin-cli
-PKG := shadmin-cli
 VERSION ?= dev
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -12,7 +11,7 @@ LDFLAGS := -s -w \
 .PHONY: build install test vet fmt lint clean
 
 build:
-	go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY) .
+	go build -ldflags "$(LDFLAGS)" -o $(BINARY) .
 
 install:
 	go install -ldflags "$(LDFLAGS)" .
@@ -29,4 +28,4 @@ fmt:
 lint: fmt vet
 
 clean:
-	rm -rf bin/
+	rm -f $(BINARY)

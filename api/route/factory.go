@@ -86,8 +86,6 @@ func (f *ControllerFactory) CreateDeviceAuthController() *controller.DeviceAuthC
 			f.app.Env.RefreshTokenExpiryMinute,
 			f.timeout,
 		),
-		f.app.Env.AppBaseURL,
-		f.app.Env.AppEnv,
 	)
 	return f.deviceAuthController
 }

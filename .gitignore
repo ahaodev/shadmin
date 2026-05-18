@@ -85,5 +85,4 @@ shadmin.exe
 .logs
 .database
 .examples
-.cli/bin/*
 /cli/shadmin-cli

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -20,12 +21,9 @@ var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Log in to Shadmin with device authorization flow",
 	RunE: runE(func(cmd *cobra.Command, args []string) error {
-		cfg, err := loadConfig()
+		cfg, err := loadConfigForLogin()
 		if err != nil {
 			return err
-		}
-		if flagServer != "" {
-			cfg.ServerURL = flagServer
 		}
 		if cfg.ServerURL == "" {
 			return clierr.New(clierr.ExitUsage, "server url required: pass --server URL or set SHADMIN_SERVER")
@@ -44,7 +42,8 @@ var loginCmd = &cobra.Command{
 		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(deviceCode.ExpiresIn)*sec()+15*sec())
 		defer cancel()
 
-		fmt.Fprintf(os.Stderr, "Open this URL in your browser:\n\n  %s\n\n", deviceCode.VerificationURI)
+		verificationURI := resolveVerificationURI(cfg.ServerURL, deviceCode.VerificationURI)
+		fmt.Fprintf(os.Stderr, "Open this URL in your browser:\n\n  %s\n\n", verificationURI)
 		fmt.Fprintf(os.Stderr, "Then enter this code:\n\n  %s\n\n", deviceCode.UserCode)
 		fmt.Fprintln(os.Stderr, "Waiting for authorization...")
 
@@ -59,13 +58,11 @@ var loginCmd = &cobra.Command{
 			return err
 		}
 
-		username := cfg.Username
+		username := ""
 		profileCtx, profileCancel := context.WithTimeout(context.Background(), 15*sec())
 		defer profileCancel()
 		if profile, err := fetchLoginProfile(profileCtx, cfg); err == nil {
 			username = profile
-			cfg.Username = profile
-			_ = config.Save(cfg)
 		}
 
 		out := output.New(outputFormat())
@@ -77,6 +74,21 @@ var loginCmd = &cobra.Command{
 			"logged_in": true,
 		})
 	}),
+}
+
+func resolveVerificationURI(serverURL, verificationURI string) string {
+	uri := strings.TrimSpace(verificationURI)
+	if uri == "" {
+		uri = "/device"
+	}
+	if parsed, err := url.Parse(uri); err == nil && parsed.IsAbs() {
+		return uri
+	}
+	baseURL := strings.TrimRight(serverURL, "/")
+	if strings.HasPrefix(uri, "/") {
+		return baseURL + uri
+	}
+	return baseURL + "/" + uri
 }
 
 func pollDeviceAuthorization(ctx context.Context, cli *client.Client, deviceCode *client.DeviceCodeResponse) (*client.LoginTokenResponse, error) {
@@ -189,7 +201,6 @@ var whoamiCmd = &cobra.Command{
 			var m map[string]any
 			_ = json.Unmarshal(raw, &m)
 			fmt.Printf("Server:   %s\n", cfg.ServerURL)
-			fmt.Printf("Username: %s\n", cfg.Username)
 			for _, k := range []string{"id", "name", "email", "phone", "status"} {
 				if v, ok := m[k]; ok {
 					fmt.Printf("%-9s %v\n", capitalize(k)+":", v)

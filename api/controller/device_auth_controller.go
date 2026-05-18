@@ -2,9 +2,7 @@ package controller
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -16,18 +14,14 @@ import (
 
 type DeviceAuthController struct {
 	DeviceAuthUsecase domain.DeviceAuthUsecase
-	appBaseURL        string
-	appEnv            string
 	requestLimiter    *deviceAuthRateLimiter
 	pollLimiter       *deviceAuthRateLimiter
 	activateLimiter   *deviceAuthRateLimiter
 }
 
-func NewDeviceAuthController(deviceAuthUsecase domain.DeviceAuthUsecase, appBaseURL string, appEnv string) *DeviceAuthController {
+func NewDeviceAuthController(deviceAuthUsecase domain.DeviceAuthUsecase) *DeviceAuthController {
 	return &DeviceAuthController{
 		DeviceAuthUsecase: deviceAuthUsecase,
-		appBaseURL:        strings.TrimRight(appBaseURL, "/"),
-		appEnv:            appEnv,
 		requestLimiter:    newDeviceAuthRateLimiter(10, time.Minute),
 		pollLimiter:       newDeviceAuthRateLimiter(60, time.Minute),
 		activateLimiter:   newDeviceAuthRateLimiter(20, time.Minute),
@@ -55,7 +49,7 @@ func (dc *DeviceAuthController) RequestCode(c *gin.Context) {
 		return
 	}
 
-	resp, err := dc.DeviceAuthUsecase.RequestCode(c, request, dc.buildDeviceVerificationURI(c))
+	resp, err := dc.DeviceAuthUsecase.RequestCode(c, request, "/device")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
@@ -149,53 +143,6 @@ func (dc *DeviceAuthController) Activate(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(resp))
-}
-
-// buildDeviceVerificationURI constructs the URL users visit to authorize a device code.
-// If APP_BASE_URL is configured it is used directly; otherwise the URI is derived from
-// the incoming request Host header only in development/test environments.
-func (dc *DeviceAuthController) buildDeviceVerificationURI(c *gin.Context) string {
-	if dc.appBaseURL != "" {
-		return dc.appBaseURL + "/device"
-	}
-	if dc.appEnv != "development" && dc.appEnv != "testing" {
-		return "/device"
-	}
-
-	scheme := "http"
-	if c.Request.TLS != nil {
-		scheme = "https"
-	}
-	if forwardedProto := firstForwardedValue(c.GetHeader("X-Forwarded-Proto")); forwardedProto == "http" || forwardedProto == "https" {
-		scheme = forwardedProto
-	}
-
-	host := sanitizeHost(c.Request.Host)
-	if host == "" {
-		host = "localhost"
-	}
-	return fmt.Sprintf("%s://%s/device", scheme, host)
-}
-
-func firstForwardedValue(value string) string {
-	if value == "" {
-		return ""
-	}
-	parts := strings.Split(value, ",")
-	return strings.TrimSpace(parts[0])
-}
-
-func sanitizeHost(host string) string {
-	host = strings.TrimSpace(host)
-	if strings.ContainsAny(host, "/\\ ") {
-		return ""
-	}
-	for _, r := range host {
-		if r <= 32 || r == 127 {
-			return ""
-		}
-	}
-	return host
 }
 
 func (dc *DeviceAuthController) allow(c *gin.Context, limiter *deviceAuthRateLimiter) bool {

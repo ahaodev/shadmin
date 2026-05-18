@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -18,7 +17,6 @@ var (
 		Date    string
 	}{"dev", "unknown", "unknown"}
 
-	flagJSON   bool
 	flagPretty bool
 	flagServer string
 )
@@ -44,7 +42,6 @@ func Execute(version, commit, date string) {
 }
 
 func init() {
-	rootCmd.PersistentFlags().BoolVar(&flagJSON, "json", false, "output JSON (default)")
 	rootCmd.PersistentFlags().BoolVar(&flagPretty, "pretty", false, "output human-readable table")
 	rootCmd.PersistentFlags().StringVar(&flagServer, "server", "", "Shadmin server URL (overrides config and SHADMIN_SERVER)")
 }
@@ -57,15 +54,22 @@ func outputFormat() output.Format {
 	return output.FormatJSON
 }
 
-// loadConfig 加载配置并应用 --server 覆盖
+// loadConfig 加载配置并应用本次命令的 --server 覆盖
 func loadConfig() (*config.Config, error) {
-	c, err := config.LoadWithEnv()
+	return loadConfigWithServerPersistence(false)
+}
+
+// loadConfigForLogin persists --server because login is the CLI setup command.
+func loadConfigForLogin() (*config.Config, error) {
+	return loadConfigWithServerPersistence(true)
+}
+
+func loadConfigWithServerPersistence(persistFlagServer bool) (*config.Config, error) {
+	c, err := config.Load()
 	if err != nil {
 		return nil, err
 	}
-	if flagServer != "" {
-		c.ServerURL = flagServer
-	}
+	config.ApplyServerOverride(c, flagServer, persistFlagServer)
 	return c, nil
 }
 
@@ -74,7 +78,7 @@ func requireAuth(c *config.Config) error {
 	if c.ServerURL == "" {
 		return clierr.New(clierr.ExitUnauth, "server url not set; run 'shadmin-cli login --server URL' first")
 	}
-	if c.AccessToken == "" && os.Getenv("SHADMIN_TOKEN") == "" {
+	if c.AccessToken == "" {
 		return clierr.New(clierr.ExitUnauth, "not logged in; run 'shadmin-cli login' first")
 	}
 	return nil
