@@ -22,7 +22,7 @@ export function DeviceActivate() {
         </CardContent>
       </Card>
       <p className='text-muted-foreground mt-6 max-w-[420px] text-center text-xs'>
-        确认前请检查授权码来自你正在使用的 Shadmin CLI。
+        确认前请检查授权码来自你正在使用的设备。
       </p>
     </main>
   )
