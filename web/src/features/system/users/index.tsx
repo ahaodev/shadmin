@@ -49,40 +49,38 @@ export function Users() {
         </div>
       </Header>
 
-      <Main>
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+      <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
+        <div className='flex flex-wrap items-end justify-between gap-2'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>用户列表</h2>
             <p className='text-muted-foreground'>在此管理您的用户及其角色。</p>
           </div>
           <UsersPrimaryButtons />
         </div>
-        <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-          {isLoading ? (
-            <div className='space-y-4'>
-              <div className='flex items-center justify-between'>
-                <Skeleton className='h-8 w-48' />
-                <Skeleton className='h-10 w-32' />
-              </div>
-              <div className='space-y-2'>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className='h-16 w-full' />
-                ))}
-              </div>
+        {isLoading ? (
+          <div className='space-y-4'>
+            <div className='flex items-center justify-between'>
+              <Skeleton className='h-8 w-48' />
+              <Skeleton className='h-10 w-32' />
             </div>
-          ) : error ? (
-            <div className='text-muted-foreground flex h-32 items-center justify-center'>
-              加载用户数据失败，请重试
+            <div className='space-y-2'>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className='h-16 w-full' />
+              ))}
             </div>
-          ) : (
-            <UsersTable
-              data={usersData?.list || []}
-              search={search}
-              navigate={navigateWrapper}
-              totalCount={usersData?.total || 0}
-            />
-          )}
-        </div>
+          </div>
+        ) : error ? (
+          <div className='text-muted-foreground flex h-32 items-center justify-center'>
+            加载用户数据失败，请重试
+          </div>
+        ) : (
+          <UsersTable
+            data={usersData?.list || []}
+            search={search}
+            navigate={navigateWrapper}
+            totalCount={usersData?.total || 0}
+          />
+        )}
       </Main>
 
       <UsersDialogs />

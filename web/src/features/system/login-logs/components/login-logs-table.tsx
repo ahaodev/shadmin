@@ -97,7 +97,12 @@ export function LoginLogsTable({
   }, [table, ensurePageInRange])
 
   return (
-    <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
+    <div
+      className={cn(
+        'max-sm:has-[div[role="toolbar"]]:mb-16',
+        'flex flex-1 flex-col gap-4'
+      )}
+    >
       <DataTableToolbar
         table={table}
         searchPlaceholder='筛选用户名...'
@@ -177,7 +182,7 @@ export function LoginLogsTable({
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      <DataTablePagination table={table} className='mt-auto' />
     </div>
   )
 }

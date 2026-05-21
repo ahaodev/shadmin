@@ -60,49 +60,47 @@ export function ApiResources() {
         </div>
       </Header>
 
-      <Main>
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+      <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
+        <div className='flex flex-wrap items-end justify-between gap-2'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>API资源管理</h2>
             <p className='text-muted-foreground'>管理API资源和权限绑定</p>
           </div>
         </div>
-        <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
-          {isLoading && !apiResourcesData ? (
-            <div className='space-y-4'>
-              <div className='flex items-center justify-between'>
-                <Skeleton className='h-8 w-48' />
-                <Skeleton className='h-10 w-32' />
-              </div>
-              <div className='space-y-2'>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className='h-16 w-full' />
-                ))}
-              </div>
+        {isLoading && !apiResourcesData ? (
+          <div className='space-y-4'>
+            <div className='flex items-center justify-between'>
+              <Skeleton className='h-8 w-48' />
+              <Skeleton className='h-10 w-32' />
             </div>
-          ) : error ? (
-            <div className='text-muted-foreground flex h-32 items-center justify-center'>
-              加载API资源数据失败，请重试
+            <div className='space-y-2'>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className='h-16 w-full' />
+              ))}
             </div>
-          ) : (
-            <div className='relative'>
-              {isFetching && (
-                <div className='absolute top-0 right-0 z-10'>
-                  <div className='bg-background/80 text-muted-foreground rounded-md border px-2 py-1 text-xs backdrop-blur-sm'>
-                    更新中...
-                  </div>
+          </div>
+        ) : error ? (
+          <div className='text-muted-foreground flex h-32 items-center justify-center'>
+            加载API资源数据失败，请重试
+          </div>
+        ) : (
+          <div className='relative flex flex-1 flex-col'>
+            {isFetching && (
+              <div className='absolute top-0 right-0 z-10'>
+                <div className='bg-background/80 text-muted-foreground rounded-md border px-2 py-1 text-xs backdrop-blur-sm'>
+                  更新中...
                 </div>
-              )}
-              <ApiResourcesTable
-                data={apiResourcesData?.data || []}
-                search={search}
-                navigate={navigateWrapper}
-                totalCount={apiResourcesData?.total || 0}
-                onReset={handleReset}
-              />
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+            <ApiResourcesTable
+              data={apiResourcesData?.data || []}
+              search={search}
+              navigate={navigateWrapper}
+              totalCount={apiResourcesData?.total || 0}
+              onReset={handleReset}
+            />
+          </div>
+        )}
       </Main>
     </ApiResourcesProvider>
   )

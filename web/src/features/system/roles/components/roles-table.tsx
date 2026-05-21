@@ -225,7 +225,12 @@ export function RolesTable(_props: RolesTableProps) {
   })
 
   return (
-    <div className='space-y-4'>
+    <div
+      className={cn(
+        'max-sm:has-[div[role="toolbar"]]:mb-16',
+        'flex flex-1 flex-col gap-4'
+      )}
+    >
       {/* Search Filter */}
       <div className='flex items-center justify-between'>
         <Input
@@ -315,7 +320,7 @@ export function RolesTable(_props: RolesTableProps) {
       </div>
 
       {/* Pagination */}
-      <DataTablePagination table={table} />
+      <DataTablePagination table={table} className='mt-auto' />
     </div>
   )
 }

@@ -21,18 +21,15 @@ export function Departments() {
         </div>
       </Header>
 
-      <Main>
-        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2'>
+      <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>
+        <div className='flex flex-wrap items-end justify-between gap-2'>
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>部门管理</h2>
             <p className='text-muted-foreground'>管理组织的部门结构</p>
           </div>
           <DepartmentsPrimaryButtons />
         </div>
-
-        <div className='-mx-4 flex-1 overflow-auto px-4 py-1'>
-          <DepartmentsTable />
-        </div>
+        <DepartmentsTable />
       </Main>
 
       <DepartmentsDialogs />

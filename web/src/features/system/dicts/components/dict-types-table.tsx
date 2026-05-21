@@ -107,7 +107,7 @@ export function DictTypesTable({
   )
 
   return (
-    <div className='space-y-4'>
+    <div className='flex flex-1 flex-col gap-4'>
       <DataTableToolbar
         table={table}
         searchPlaceholder='搜索字典类型...'
@@ -179,7 +179,7 @@ export function DictTypesTable({
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      <DataTablePagination table={table} className='mt-auto' />
     </div>
   )
 }

@@ -212,7 +212,12 @@ export function ApiResourcesTable({
   )
 
   return (
-    <div className='space-y-4 max-sm:has-[div[role="toolbar"]]:mb-16'>
+    <div
+      className={cn(
+        'max-sm:has-[div[role="toolbar"]]:mb-16',
+        'flex flex-1 flex-col gap-4'
+      )}
+    >
       <DataTableToolbar
         table={table}
         searchPlaceholder='筛选API路径...'
@@ -221,7 +226,7 @@ export function ApiResourcesTable({
         onReset={onReset}
       />
       <TableContent table={table} />
-      <DataTablePagination table={table} />
+      <DataTablePagination table={table} className='mt-auto' />
     </div>
   )
 }
