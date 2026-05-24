@@ -141,7 +141,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 	}
 
 	user, err := lc.LoginUsecase.GetUserByUserName(c, request.UserName)
-	if err != nil {
+	if err != nil || user == nil {
 		// 记录失败尝试（用户不存在也算失败尝试）
 		fmt.Printf("User %s not found, recording failed attempt\n", request.UserName)
 		lc.SecurityManager.RecordFailedAttempt(request.UserName)
