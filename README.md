@@ -95,8 +95,7 @@ shadmin/
 - [Quick Start (EN)](docs/getting-started/quickstart.en.md) · [快速开始 (中文)](docs/getting-started/quickstart.zh.md)
 - [Development (EN)](docs/getting-started/development.en.md) · [开发指南 (中文)](docs/getting-started/development.zh.md)
 - [Deployment (EN)](docs/getting-started/deployment.en.md) · [部署 (中文)](docs/getting-started/deployment.zh.md)
-- [CLI for AI agents](cli/README.md) — `shadmin-cli`, a thin Go CLI on top of the REST API, JSON-first, RBAC-bound. Includes an Anthropic [SKILL.md](cli/skill/shadmin-cli/SKILL.md).
-
+- [CLI for AI agents](cli/README.md) · [面向 AI Agent 的 CLI(中文)](cli/README.zh.md)
 ## 📄 License
 
 [MIT](LICENSE)
