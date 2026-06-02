@@ -72,7 +72,7 @@ export function DeviceActivateForm() {
 
       {authorized ? (
         <div className='rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-300'>
-          授权成功。请返回 CLI，等待登录完成。
+          授权成功。请返回设备，等待登录完成。
         </div>
       ) : null}
 
