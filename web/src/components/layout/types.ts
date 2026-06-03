@@ -20,6 +20,7 @@ type BaseNavItem = {
 
 type NavLink = BaseNavItem & {
   url: LinkProps['to'] | (string & {})
+  is_frame?: boolean
   items?: never
 }
 
@@ -36,6 +37,7 @@ type NavGroup = {
   items?: NavItem[]
   url?: LinkProps['to'] | (string & {})
   badge?: string
+  is_frame?: boolean
 }
 
 type SidebarData = {

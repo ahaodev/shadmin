@@ -1,6 +1,6 @@
 import React, { type ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
 import { getIconByName } from '@/lib/icons'
 import {
   Collapsible,
@@ -34,7 +34,14 @@ import {
   type NavLink,
 } from './types'
 
-export function NavGroup({ title, icon, items, url, badge }: NavGroupProps) {
+export function NavGroup({
+  title,
+  icon,
+  items,
+  url,
+  badge,
+  is_frame: isFrame,
+}: NavGroupProps) {
   const { state, isMobile } = useSidebar()
   const href = useLocation({ select: (location) => location.href })
   const { setOpenMobile } = useSidebar()
@@ -49,6 +56,7 @@ export function NavGroup({ title, icon, items, url, badge }: NavGroupProps) {
         href={href}
         url={url}
         badge={badge}
+        is_frame={isFrame}
       />
     )
   }
@@ -57,6 +65,7 @@ export function NavGroup({ title, icon, items, url, badge }: NavGroupProps) {
   //// 如果 NavGroup 直接提供了 URL（没有子项），则渲染为单个菜单项
   if (url && !items) {
     const groupAsItem = { title, url, icon, badge }
+    const linkUrl = String(url)
 
     return (
       <SidebarGroup className='p-0 px-2'>
@@ -69,14 +78,19 @@ export function NavGroup({ title, icon, items, url, badge }: NavGroupProps) {
               size='lg'
               className=''
             >
-              <Link to={url} onClick={() => setOpenMobile(false)}>
+              <NavLinkRenderer
+                url={linkUrl}
+                isFrame={isFrame}
+                onClick={() => setOpenMobile(false)}
+              >
                 {icon &&
                   React.createElement(getIconByName(icon) || 'div', {
                     className: 'h-4 w-4 shrink-0',
                   })}
                 <span>{title}</span>
                 {badge && <NavBadge>{badge}</NavBadge>}
-              </Link>
+                {isFrame && <ExternalLink className='ms-auto h-3 w-3' />}
+              </NavLinkRenderer>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -93,6 +107,7 @@ export function NavGroup({ title, icon, items, url, badge }: NavGroupProps) {
   //对于单项组，呈现为直接菜单项，无需可折叠
   if (items.length === 1 && !items[0].items) {
     const singleItem = items[0]
+    const isFrame = getIsFrame(singleItem)
 
     return (
       <SidebarGroup className='p-0 px-2'>
@@ -103,14 +118,19 @@ export function NavGroup({ title, icon, items, url, badge }: NavGroupProps) {
               isActive={checkIsActive(href, singleItem)}
               tooltip={singleItem.title}
             >
-              <Link to={singleItem.url} onClick={() => setOpenMobile(false)}>
+              <NavLinkRenderer
+                url={String(singleItem.url)}
+                isFrame={isFrame}
+                onClick={() => setOpenMobile(false)}
+              >
                 {singleItem.icon &&
                   React.createElement(getIconByName(singleItem.icon) || 'div', {
                     className: 'h-4 w-4 shrink-0',
                   })}
                 <span>{singleItem.title}</span>
                 {singleItem.badge && <NavBadge>{singleItem.badge}</NavBadge>}
-              </Link>
+                {isFrame && <ExternalLink className='ms-auto h-3 w-3' />}
+              </NavLinkRenderer>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -163,6 +183,7 @@ function NavGroupCollapsedDropdown({
   href,
   url,
   badge,
+  is_frame: isFrame,
 }: {
   title: string
   icon?: string
@@ -170,11 +191,13 @@ function NavGroupCollapsedDropdown({
   href: string
   url?: string
   badge?: string
+  is_frame?: boolean
 }) {
   const { setOpenMobile } = useSidebar()
   // If this is a direct URL NavGroup, render as a single menu button in collapsed state
   if (url && !items) {
     const groupAsItem = { title, url, icon, badge }
+    const linkUrl = String(url)
 
     return (
       <SidebarGroup className='p-0 px-2'>
@@ -185,7 +208,11 @@ function NavGroupCollapsedDropdown({
               isActive={checkIsActive(href, groupAsItem)}
               tooltip={title}
             >
-              <Link to={url} onClick={() => setOpenMobile(false)}>
+              <NavLinkRenderer
+                url={linkUrl}
+                isFrame={isFrame}
+                onClick={() => setOpenMobile(false)}
+              >
                 {icon ? (
                   React.createElement(getIconByName(icon) || 'div', {
                     className: 'h-4 w-4',
@@ -196,7 +223,8 @@ function NavGroupCollapsedDropdown({
                   </span>
                 )}
                 {badge && <NavBadge>{badge}</NavBadge>}
-              </Link>
+                {isFrame && <ExternalLink className='ms-auto h-3 w-3' />}
+              </NavLinkRenderer>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -207,6 +235,7 @@ function NavGroupCollapsedDropdown({
   // Handle single-item groups in collapsed state
   if (items && items.length === 1 && !items[0].items) {
     const singleItem = items[0]
+    const isFrame = getIsFrame(singleItem)
 
     return (
       <SidebarGroup className='p-0 px-2'>
@@ -217,7 +246,11 @@ function NavGroupCollapsedDropdown({
               isActive={checkIsActive(href, singleItem)}
               tooltip={singleItem.title}
             >
-              <Link to={singleItem.url} onClick={() => setOpenMobile(false)}>
+              <NavLinkRenderer
+                url={String(singleItem.url)}
+                isFrame={isFrame}
+                onClick={() => setOpenMobile(false)}
+              >
                 {singleItem.icon ? (
                   React.createElement(getIconByName(singleItem.icon) || 'div', {
                     className: 'h-4 w-4',
@@ -230,7 +263,8 @@ function NavGroupCollapsedDropdown({
                   </div>
                 )}
                 {singleItem.badge && <NavBadge>{singleItem.badge}</NavBadge>}
-              </Link>
+                {isFrame && <ExternalLink className='ms-auto h-3 w-3' />}
+              </NavLinkRenderer>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -276,8 +310,9 @@ function NavGroupCollapsedDropdown({
                   // Simple menu item
                   return (
                     <DropdownMenuItem key={`${item.title}-${item.url}`} asChild>
-                      <Link
-                        to={'url' in item ? item.url : '#'}
+                      <NavLinkRenderer
+                        url={'url' in item ? String(item.url) : '#'}
+                        isFrame={getIsFrame(item)}
                         onClick={() => setOpenMobile(false)}
                         className={`${checkIsActive(href, item) ? 'bg-secondary' : ''}`}
                       >
@@ -290,7 +325,10 @@ function NavGroupCollapsedDropdown({
                         {item.badge && (
                           <span className='ml-auto text-xs'>{item.badge}</span>
                         )}
-                      </Link>
+                        {getIsFrame(item) && (
+                          <ExternalLink className='ms-auto h-3 w-3' />
+                        )}
+                      </NavLinkRenderer>
                     </DropdownMenuItem>
                   )
                 } else {
@@ -300,8 +338,9 @@ function NavGroupCollapsedDropdown({
                       key={`${item.title}-${subItem.title}`}
                       asChild
                     >
-                      <Link
-                        to={'url' in subItem ? subItem.url : '#'}
+                      <NavLinkRenderer
+                        url={'url' in subItem ? String(subItem.url) : '#'}
+                        isFrame={getIsFrame(subItem)}
                         onClick={() => setOpenMobile(false)}
                         className={`${checkIsActive(href, subItem) ? 'bg-secondary' : ''} pl-6`}
                       >
@@ -316,7 +355,10 @@ function NavGroupCollapsedDropdown({
                             {subItem.badge}
                           </span>
                         )}
-                      </Link>
+                        {getIsFrame(subItem) && (
+                          <ExternalLink className='ms-auto h-3 w-3' />
+                        )}
+                      </NavLinkRenderer>
                     </DropdownMenuItem>
                   ))
                 }
@@ -333,8 +375,57 @@ function NavBadge({ children }: { children: ReactNode }) {
   return <Badge className='rounded-full px-1 py-0 text-xs'>{children}</Badge>
 }
 
+/**
+ * Safely reads the `is_frame` flag from any NavItem (or undefined),
+ * defaulting to `false` for NavCollapsible items that don't carry it.
+ */
+function getIsFrame(item: NavItem | undefined | null): boolean {
+  if (!item) return false
+  return 'is_frame' in item ? Boolean(item.is_frame) : false
+}
+
+type NavLinkRendererProps = {
+  url: string
+  isFrame?: boolean
+  onClick?: () => void
+  className?: string
+  children: ReactNode
+}
+
+/**
+ * Renders either a TanStack Link (internal route) or an <a> tag
+ * (external link) depending on the is_frame flag.
+ */
+function NavLinkRenderer({
+  url,
+  isFrame,
+  onClick,
+  className,
+  children,
+}: NavLinkRendererProps) {
+  if (isFrame) {
+    return (
+      <a
+        href={url}
+        target='_blank'
+        rel='noopener noreferrer'
+        onClick={onClick}
+        className={className}
+      >
+        {children}
+      </a>
+    )
+  }
+  return (
+    <Link to={url} onClick={onClick} className={className}>
+      {children}
+    </Link>
+  )
+}
+
 function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
   const { setOpenMobile } = useSidebar()
+  const isFrame = getIsFrame(item)
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
@@ -343,14 +434,19 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
         tooltip={item.title}
         size='lg'
       >
-        <Link to={item.url} onClick={() => setOpenMobile(false)}>
+        <NavLinkRenderer
+          url={String(item.url)}
+          isFrame={isFrame}
+          onClick={() => setOpenMobile(false)}
+        >
           {item.icon &&
             React.createElement(getIconByName(item.icon) || 'div', {
               className: 'h-4 w-4 shrink-0',
             })}
           <span>{item.title}</span>
           {item.badge && <NavBadge>{item.badge}</NavBadge>}
-        </Link>
+          {isFrame && <ExternalLink className='ms-auto h-3 w-3' />}
+        </NavLinkRenderer>
       </SidebarMenuButton>
     </SidebarMenuItem>
   )
@@ -422,10 +518,13 @@ function SidebarMenuCollapsible({
                                 asChild
                                 isActive={checkIsActive(href, nestedItem)}
                               >
-                                <Link
-                                  to={
-                                    'url' in nestedItem ? nestedItem.url : '#'
+                                <NavLinkRenderer
+                                  url={
+                                    'url' in nestedItem
+                                      ? String(nestedItem.url)
+                                      : '#'
                                   }
+                                  isFrame={getIsFrame(nestedItem)}
                                   onClick={() => setOpenMobile(false)}
                                 >
                                   {nestedItem.icon &&
@@ -437,7 +536,10 @@ function SidebarMenuCollapsible({
                                   {nestedItem.badge && (
                                     <NavBadge>{nestedItem.badge}</NavBadge>
                                   )}
-                                </Link>
+                                  {getIsFrame(nestedItem) && (
+                                    <ExternalLink className='ms-auto h-3 w-3' />
+                                  )}
+                                </NavLinkRenderer>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                           ))}
@@ -454,8 +556,9 @@ function SidebarMenuCollapsible({
                       asChild
                       isActive={checkIsActive(href, subItem)}
                     >
-                      <Link
-                        to={'url' in subItem ? subItem.url : '#'}
+                      <NavLinkRenderer
+                        url={'url' in subItem ? String(subItem.url) : '#'}
+                        isFrame={getIsFrame(subItem)}
                         onClick={() => setOpenMobile(false)}
                       >
                         {subItem.icon &&
@@ -465,7 +568,10 @@ function SidebarMenuCollapsible({
                           )}
                         <span>{subItem.title}</span>
                         {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
-                      </Link>
+                        {getIsFrame(subItem) && (
+                          <ExternalLink className='ms-auto h-3 w-3' />
+                        )}
+                      </NavLinkRenderer>
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
                 )

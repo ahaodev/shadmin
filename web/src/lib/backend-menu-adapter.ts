@@ -29,6 +29,7 @@ function convertMenuNodeToNavItem(menu: MenuTreeNode): NavItem | null {
         title: menu.name,
         icon: menu.icon,
         url: menu.path,
+        is_frame: menu.is_frame,
       }
     }
 
@@ -54,6 +55,7 @@ function convertMenuNodeToNavItem(menu: MenuTreeNode): NavItem | null {
     title: menu.name,
     icon: menu.icon,
     url: menu.path,
+    is_frame: menu.is_frame,
   }
 }
 
@@ -111,6 +113,7 @@ export class BackendMenuAdapter {
           title: menu.name,
           icon: menu.icon,
           url: menu.path,
+          is_frame: menu.is_frame,
         }
       }
 
@@ -135,6 +138,7 @@ export class BackendMenuAdapter {
       title: menu.name,
       icon: menu.icon,
       url: menu.path,
+      is_frame: menu.is_frame,
     }
   }
 }
