@@ -8,7 +8,8 @@ import type {
 // GET /system/department/tree - Get department tree
 export async function getDepartmentTree(): Promise<Department[]> {
   const response = await apiClient.get('/api/v1/system/department/tree')
-  return response.data.data
+  const payload = response.data?.data
+  return Array.isArray(payload) ? payload : []
 }
 
 // POST /system/department - Create department

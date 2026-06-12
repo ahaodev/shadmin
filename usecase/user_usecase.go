@@ -128,6 +128,11 @@ func (uu *userUsecase) UpdateUserProfile(c context.Context, userID string, updat
 		return err
 	}
 
+	// 管理员账户不可被普通接口编辑。
+	if user.IsAdmin {
+		return domain.ErrCannotEditAdmin
+	}
+
 	// Update the user with new data
 	if updates.Name != "" {
 		user.Username = updates.Name
@@ -145,6 +150,11 @@ func (uu *userUsecase) UpdateUserPassword(c context.Context, userID string, pass
 	user, err := uu.userRepository.GetByID(ctx, userID)
 	if err != nil {
 		return err
+	}
+
+	// 管理员账户不走"用户自助修改密码"路径；密码应通过 /auth 流程或 admin 重置处理。
+	if user.IsAdmin {
+		return domain.ErrCannotEditAdmin
 	}
 
 	// Verify current password
@@ -171,6 +181,11 @@ func (uu *userUsecase) UpdateUserPartial(c context.Context, userID string, updat
 	user, err := uu.userRepository.GetByID(ctx, userID)
 	if err != nil {
 		return err
+	}
+
+	// 管理员账户不可被普通编辑接口修改。
+	if user.IsAdmin {
+		return domain.ErrCannotEditAdmin
 	}
 
 	// Apply partial updates

@@ -213,9 +213,9 @@ func entDepartmentToDomain(d *ent.Department) *domain.Department {
 	}
 }
 
-// buildDepartmentTree constructs hierarchical tree from flat list
+// buildDepartmentTree constructs hierarchical tree from flat list.
 func buildDepartmentTree(nodes []domain.Department) []domain.Department {
-	var roots []domain.Department
+	roots := make([]domain.Department, 0)
 	for _, n := range nodes {
 		if n.ParentID == nil || *n.ParentID == "" {
 			roots = append(roots, n)
@@ -228,7 +228,7 @@ func buildDepartmentTree(nodes []domain.Department) []domain.Department {
 }
 
 func findDepartmentChildren(parentID string, all []domain.Department) []domain.Department {
-	var children []domain.Department
+	children := make([]domain.Department, 0)
 	for _, n := range all {
 		if n.ParentID != nil && *n.ParentID == parentID {
 			child := n

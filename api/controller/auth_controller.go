@@ -153,6 +153,14 @@ func (lc *AuthController) Login(c *gin.Context) {
 		return
 	}
 
+	// 账户状态检查：未启用 / 邀请中 / 已停用 的用户不能登录。
+	// 错误消息保持与“用户名或密码错误”一致，避免暴露账户是否存在。
+	if user.Status != domain.UserStatusActive {
+		recordLoginLog("failed", "账户未启用或已停用")
+		c.JSON(http.StatusForbidden, domain.RespError("账户未启用或已停用，请联系管理员"))
+		return
+	}
+
 	// 验证密码
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password))
 	if err != nil {
@@ -251,6 +259,13 @@ func (lc *AuthController) RefreshToken(c *gin.Context) {
 	user, err := lc.LoginUsecase.GetUserByID(c, userID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, domain.RespError("User not found"))
+		return
+	}
+
+	// 刷新令牌前再检查一次状态：admin 可能在 access token 签发后禁用该用户，
+	// 这里不能直接放行新令牌，否则被禁用的账户会一直续命。
+	if user.Status != domain.UserStatusActive {
+		c.JSON(http.StatusForbidden, domain.RespError("账户未启用或已停用，请联系管理员"))
 		return
 	}
 

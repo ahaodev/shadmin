@@ -10,6 +10,8 @@ var (
 	ErrInvalidPassword   = errors.New("invalid password")
 	ErrCannotDeleteSelf  = errors.New("不能删除自己")
 	ErrCannotDeleteAdmin = errors.New("不能删除管理员账户")
+	ErrCannotEditAdmin   = errors.New("不能编辑管理员账户")
+	ErrUserDisabled      = errors.New("账户已停用或未启用")
 )
 
 // User 结构体定义了用户的基本信息 (单租户架构)
@@ -85,6 +87,9 @@ type UserRepository interface {
 	Query(c context.Context, filter UserQueryFilter) (*PagedResult[*User], error)
 	Update(c context.Context, user *User) error
 	Delete(c context.Context, id string) error
+	// GetStatusByID returns only the status string for the user.
+	// Returns ErrUserNotFound-style not-found if the user does not exist.
+	GetStatusByID(c context.Context, id string) (string, error)
 }
 
 type UserUseCase interface {

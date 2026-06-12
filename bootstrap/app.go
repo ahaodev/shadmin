@@ -7,6 +7,8 @@ import (
 	"shadmin/ent"
 	"shadmin/internal/casbin"
 	"shadmin/internal/scheduler"
+	"shadmin/internal/userstatus"
+	"shadmin/repository"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +22,7 @@ type Application struct {
 	CasManager        casbin.Manager
 	CasbinInitializer *CasbinInitializer             // Casbin初始化器
 	CasbinScheduler   *scheduler.CasbinSyncScheduler // Casbin同步调度器
+	UserStatusCache   *userstatus.Cache              // 用户状态TTL缓存，用于登录/刷新/中间件检查
 	Version           string                         // 应用版本
 }
 
@@ -33,6 +36,12 @@ func App() *Application {
 		panic(err)
 	}
 	app.CasManager = casbin.GetManager()
+
+	// 初始化用户状态缓存
+	app.UserStatusCache = userstatus.New(
+		repository.NewUserRepository(app.DB, app.CasManager),
+		userstatus.DefaultTTL,
+	)
 
 	// 初始化Casbin初始化器并执行启动时同步
 	app.CasbinInitializer = NewCasbinInitializer(app.DB, app.CasManager)
@@ -53,6 +62,11 @@ func App() *Application {
 	storageConfig := InitStorage(app.Env)
 	app.FileStorage = storageConfig.FileStorage
 	app.ApiEngine = gin.Default()
+
+	// 注册 User ent hook：状态变更时让缓存失效，
+	// 保证 admin 禁用/启用/邀请/恢复用户后，下一次请求即可看到新状态。
+	app.registerUserStatusCacheHook()
+
 	return app
 }
 func (app *Application) CloseDBConnection() {
@@ -62,4 +76,50 @@ func (app *Application) CloseDBConnection() {
 	}
 
 	CloseEntConnection(app.DB)
+}
+
+// registerUserStatusCacheHook 在 User 表的 UpdateOne / Update / Delete 上注册
+// 一个 ent hook，变更提交后调用 UserStatusCache.Invalidate(id)。
+func (app *Application) registerUserStatusCacheHook() {
+	cache := app.UserStatusCache
+	app.DB.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			v, err := next.Mutate(ctx, m)
+			if err != nil {
+				return nil, err
+			}
+			if m.Type() != ent.TypeUser {
+				return v, nil
+			}
+
+			// ent.Mutation 接口没有 ID()，需要用具体类型拿到目标用户 ID。
+			um, ok := m.(*ent.UserMutation)
+			if !ok {
+				return v, nil
+			}
+			id, idExists := um.ID()
+
+			invalidate := func() {
+				if idExists && id != "" {
+					cache.Invalidate(id)
+				}
+			}
+
+			if tx := ent.TxFromContext(ctx); tx != nil {
+				tx.OnCommit(func(next ent.Committer) ent.Committer {
+					return ent.CommitFunc(func(ctx context.Context, tx *ent.Tx) error {
+						err := next.Commit(ctx, tx)
+						if err == nil {
+							invalidate()
+						}
+						return err
+					})
+				})
+			} else {
+				invalidate()
+			}
+
+			return v, nil
+		})
+	})
 }

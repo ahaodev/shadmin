@@ -14,6 +14,7 @@ const userSchema = z.object({
   email: z.string(),
   phone: z.string().optional(),
   avatar: z.string().optional(),
+  is_admin: z.boolean().optional(),
   status: userStatusSchema,
   department_id: z.string().optional(),
   department_name: z.string().optional(),

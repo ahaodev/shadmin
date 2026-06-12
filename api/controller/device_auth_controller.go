@@ -89,6 +89,8 @@ func (dc *DeviceAuthController) PollToken(c *gin.Context) {
 			errors.Is(err, domain.ErrDeviceAccessDenied),
 			errors.Is(err, domain.ErrDeviceInvalidCode):
 			status = http.StatusBadRequest
+		case errors.Is(err, domain.ErrUserDisabled):
+			status = http.StatusForbidden
 		default:
 			status = http.StatusInternalServerError
 		}

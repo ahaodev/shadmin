@@ -123,6 +123,10 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 
 	// 执行用户更新
 	if err := uc.UserUsecase.UpdateUserPartial(c, id, updateReq); err != nil {
+		if errors.Is(err, domain.ErrCannotEditAdmin) {
+			c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
 	}

@@ -31,11 +31,15 @@ interface UserFormFieldsProps {
 }
 
 function flattenDepartmentsForSelect(
-  departments: Department[],
+  departments: Department[] | null | undefined,
   level = 0
 ): { id: string; name: string; level: number }[] {
+  if (!Array.isArray(departments)) {
+    return []
+  }
   const result: { id: string; name: string; level: number }[] = []
   for (const dept of departments) {
+    if (!dept) continue
     result.push({ id: dept.id, name: dept.name, level })
     if (dept.children) {
       result.push(...flattenDepartmentsForSelect(dept.children, level + 1))

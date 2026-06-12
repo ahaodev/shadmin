@@ -304,3 +304,17 @@ func (ur *entUserRepository) Delete(c context.Context, id string) error {
 		DeleteOneID(id).
 		Exec(c)
 }
+
+// GetStatusByID 只查询用户状态字段，避免加载整条记录。
+// 用在登录/刷新/中间件等高频路径上。
+func (ur *entUserRepository) GetStatusByID(c context.Context, id string) (string, error) {
+	status, err := ur.client.User.
+		Query().
+		Where(user.ID(id)).
+		Select(user.FieldStatus).
+		String(c)
+	if err != nil {
+		return "", err
+	}
+	return status, nil
+}
