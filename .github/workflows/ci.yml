@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main , pnpm]
+    branches: [ main ]
     tags:
       - 'v*'
     paths:
@@ -14,7 +14,7 @@ on:
       - 'Dockerfile'
       - '.github/workflows/ci.yml'
   pull_request:
-    branches: [ main , pnpm]
+    branches: [ main ]
     paths:
       - '**.go'
       - 'go.mod'
