@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import type { UseFormReturn } from 'react-hook-form'
 import type { ApiResource } from '@/types/api-resource'
 import { X } from 'lucide-react'
@@ -20,36 +20,20 @@ export function MenuApiResources({
   isEditMode = false,
 }: MenuApiResourcesProps) {
   const { currentRow } = useMenus()
-  // 独立于"权限标识"的 API 资源选择状态，但会同步到表单字段 apiResources
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
 
-  // 同步表单字段和currentRow -> 本地选择（用于编辑模式初始化）
+  const selectedPermissions = form.watch('apiResources') ?? []
+
   useEffect(() => {
-    const formApiResources = form.getValues('apiResources')
-
-    // 只在编辑模式下才从currentRow获取API资源，创建模式下保持空数组
-    const currentRowApiResources = isEditMode ? currentRow?.apiResources : []
-
-    // 优先使用表单数据，如果没有则使用currentRow数据
-    const existingResources = formApiResources?.length
-      ? formApiResources
-      : currentRowApiResources
-
-    if (existingResources && existingResources.length > 0) {
-      setSelectedPermissions(existingResources)
-    } else if (!isEditMode) {
-      // 创建模式下确保清空选择
-      setSelectedPermissions([])
-    }
-  }, [form, currentRow, isEditMode])
-
-  // 同步本地选择 -> 表单字段（保证提交时带上）
-  useEffect(() => {
-    form.setValue('apiResources', selectedPermissions, {
+    if (!isEditMode) return
+    const current = form.getValues('apiResources') ?? []
+    if (current.length > 0) return
+    const seed = currentRow?.apiResources ?? []
+    if (seed.length === 0) return
+    form.setValue('apiResources', seed, {
       shouldDirty: false,
       shouldValidate: false,
     })
-  }, [selectedPermissions, form])
+  }, [currentRow, isEditMode, form])
 
   // Fetch API resources from backend
   const { data: apiResourcesResult, isLoading } = useApiResources({
@@ -58,13 +42,20 @@ export function MenuApiResources({
   })
   const apiResources = apiResourcesResult?.data || []
 
-  const handlePermissionToggle = (permissionId: string, checked: boolean) => {
-    setSelectedPermissions((prev) => {
-      if (checked) {
-        return prev.includes(permissionId) ? prev : [...prev, permissionId]
-      }
-      return prev.filter((id) => id !== permissionId)
+  const writeSelection = (next: string[]) => {
+    form.setValue('apiResources', next, {
+      shouldDirty: true,
+      shouldValidate: false,
     })
+  }
+
+  const handlePermissionToggle = (permissionId: string, checked: boolean) => {
+    if (checked) {
+      if (selectedPermissions.includes(permissionId)) return
+      writeSelection([...selectedPermissions, permissionId])
+    } else {
+      writeSelection(selectedPermissions.filter((id) => id !== permissionId))
+    }
   }
 
   const handleResourceSelect = (resource: ApiResource, checked: boolean) => {
@@ -82,7 +73,7 @@ export function MenuApiResources({
   }
 
   const handleRemovePermission = (permissionId: string) => {
-    setSelectedPermissions((prev) => prev.filter((id) => id !== permissionId))
+    writeSelection(selectedPermissions.filter((id) => id !== permissionId))
   }
 
   return (

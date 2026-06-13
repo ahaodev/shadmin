@@ -230,7 +230,7 @@ export function UserAuthForm({
     <>
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(onSubmit)}
+          onSubmit={(event) => void form.handleSubmit(onSubmit)(event)}
           className={cn('grid gap-3', className)}
           {...props}
         >

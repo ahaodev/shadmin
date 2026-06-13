@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { type Table } from '@tanstack/react-table'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -35,19 +35,11 @@ export function DataTableBulkActions<TData>({
   const selectedRows = table.getFilteredSelectedRowModel().rows
   const selectedCount = selectedRows.length
   const toolbarRef = useRef<HTMLDivElement>(null)
-  const [announcement, setAnnouncement] = useState('')
 
-  // Announce selection changes to screen readers
-  useEffect(() => {
-    if (selectedCount > 0) {
-      const message = `${selectedCount} ${entityName}${selectedCount > 1 ? 's' : ''} selected. Bulk actions toolbar is available.`
-      setAnnouncement(message)
-
-      // Clear announcement after a delay
-      const timer = setTimeout(() => setAnnouncement(''), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [selectedCount, entityName])
+  const announcement =
+    selectedCount > 0
+      ? `${selectedCount} ${entityName}${selectedCount > 1 ? 's' : ''} selected. Bulk actions toolbar is available.`
+      : ''
 
   const handleClearSelection = () => {
     table.resetRowSelection()
@@ -115,21 +107,24 @@ export function DataTableBulkActions<TData>({
     }
   }
 
+  const liveRegion = (
+    <div
+      aria-live='polite'
+      aria-atomic='true'
+      className='sr-only'
+      role='status'
+    >
+      {announcement}
+    </div>
+  )
+
   if (selectedCount === 0) {
-    return null
+    return liveRegion
   }
 
   return (
     <>
-      {/* Live region for screen reader announcements */}
-      <div
-        aria-live='polite'
-        aria-atomic='true'
-        className='sr-only'
-        role='status'
-      >
-        {announcement}
-      </div>
+      {liveRegion}
 
       <div
         ref={toolbarRef}
