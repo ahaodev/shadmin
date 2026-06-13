@@ -12,11 +12,11 @@ go test ./...
 
 # Frontend lint/format (if dependencies installed)
 if [ -f "web/package.json" ]; then
-  if command -v npm >/dev/null 2>&1 && [ -d "web/node_modules" ]; then
+  if command -v pnpm >/dev/null 2>&1 && [ -d "web/node_modules" ]; then
     echo "[pre-commit] Running web lint and format checks"
-    (cd web && npm run -s lint && npm run -s format:check)
+    (cd web && pnpm -s lint && pnpm -s format:check)
   else
-    echo "[pre-commit] Skipping web lint: npm not available or dependencies not installed"
+    echo "[pre-commit] Skipping web lint: pnpm not available or dependencies not installed"
   fi
 fi
 

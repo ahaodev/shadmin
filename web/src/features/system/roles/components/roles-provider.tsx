@@ -51,7 +51,7 @@ export function RolesProvider({ children }: RolesProviderProps) {
     [open, currentRow, showDeleteDialog, showCreateDialog, showEditDialog]
   )
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (import.meta.env.DEV) {
     // 简单渲染次数日志
     console.debug('🧪 RolesProvider render', {
       open,

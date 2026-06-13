@@ -114,7 +114,7 @@ export function DictsProvider({ children }: DictsProviderProps) {
     ]
   )
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (import.meta.env.DEV) {
     console.debug('🧪 DictsProvider render', {
       selectedType: selectedType?.name,
       showTypeCreateDialog,

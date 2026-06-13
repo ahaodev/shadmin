@@ -7,8 +7,8 @@
 | 工具 | 最低版本  | 说明 |
 |------|-------|------|
 | Go | 1.25+ | [下载](https://go.dev/dl/) |
-| Node.js | 18+   | [下载](https://nodejs.org/) |
-| pnpm | 9+    | `npm install -g pnpm`（也可用 npm） |
+| Node.js | 20+   | [下载](https://nodejs.org/) |
+| pnpm | 10+    | `corepack enable`（推荐，Node.js 自带）。本项目仅支持 pnpm，`preinstall` 会拒绝 npm/yarn。 |
 
 ## 克隆项目
 
@@ -139,7 +139,7 @@ go version  # 需要 1.25+
 
 **pnpm 未安装**
 ```bash
-npm install -g pnpm
+corepack enable     # Node.js 16.10+ 内置 corepack，会按 package.json 的 packageManager 字段激活 pnpm@10.34.3
 ```
 
 **前端依赖安装失败**

@@ -1,8 +1,9 @@
 #---------------------build web------------------------
 FROM docker.io/library/node:22-alpine AS build_web
 WORKDIR /app/web
+RUN corepack enable
 COPY web/package.json web/pnpm-lock.yaml ./
-RUN npm install -g pnpm@10.26.0 && pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 COPY web/ ./
 RUN pnpm run build
 

@@ -24,7 +24,7 @@ go generate ./...               # Ent + Swagger (needs swag CLI)
 
 ```bash
 cd web
-pnpm install                    # Install deps (npm also works)
+pnpm install                    # Install deps (pnpm only — npm/yarn rejected by preinstall hook)
 pnpm dev                        # Dev server on :5173, proxies /api to :55667
 pnpm build                      # Type-check + Vite build → web/dist/
 pnpm lint                       # ESLint

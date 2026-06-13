@@ -14,7 +14,7 @@ on:
       - 'Dockerfile'
       - '.github/workflows/ci.yml'
   pull_request:
-    branches: [ main ]
+    branches: [ main , pnpm]
     paths:
       - '**.go'
       - 'go.mod'
@@ -40,8 +40,8 @@ jobs:
           go-version: '1.25'
           cache-dependency-path: go.sum
 
-      - name: Install pnpm
-        run: npm install -g pnpm
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
