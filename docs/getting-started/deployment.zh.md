@@ -18,7 +18,7 @@
 
 ```bash
 # 1. 构建前端
-cd web && pnpm install && pnpm run build && cd ..
+cd frontend && pnpm install && pnpm run build && cd ..
 
 # 2. 构建后端（注入版本信息）
 VERSION=$(git describe --tags --always 2>/dev/null || echo "dev")
@@ -30,7 +30,7 @@ CGO_ENABLED=1 go build \
   -o shadmin .
 ```
 
-> **注意：** 前端必须先构建（`pnpm run build`），因为 `web/web.go` 使用 Go embed 嵌入 `web/dist/` 目录。
+> **注意：** 前端必须先构建（`pnpm run build`），因为 `frontend/frontend.go` 使用 Go embed 嵌入 `frontend/dist/` 目录。
 
 构建产物 `shadmin` 是一个自包含的单二进制文件，包含前端资源、后端逻辑和 Swagger 文档。
 
@@ -43,7 +43,7 @@ docker build -t shadmin:latest .
 ```
 
 构建过程：
-1. **Stage 1（Node）**：安装前端依赖并构建 `web/dist/`
+1. **Stage 1（Node）**：安装前端依赖并构建 `frontend/dist/`
 2. **Stage 2（Go）**：编译 Go 后端，嵌入前端资源
 3. **Stage 3（UPX）**：压缩二进制文件，减小镜像体积
 4. **Stage 4（Debian slim）**：最终运行镜像

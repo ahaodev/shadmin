@@ -19,12 +19,12 @@ cd shadmin
 
 ## 构建前端
 
-后端通过 `web/web.go` 将前端产物嵌入二进制文件，因此**必须先安装依赖并构建前端**，否则 Go 编译会失败：
+后端通过 `frontend/frontend.go` 将前端产物嵌入二进制文件，因此**必须先安装依赖并构建前端**，否则 Go 编译会失败：
 
 ```bash
-cd web
+cd frontend
 pnpm install      # 安装前端依赖
-pnpm run build    # 构建前端，输出到 web/dist/
+pnpm run build    # 构建前端，输出到 frontend/dist/
 cd ..
 ```
 
@@ -48,7 +48,7 @@ go run .
 如果你需要开发前端，可以单独启动前端开发服务器：
 
 ```bash
-cd web
+cd frontend
 pnpm dev
 ```
 
@@ -144,7 +144,7 @@ corepack enable     # Node.js 16.10+ 内置 corepack，会按 package.json 的 p
 
 **前端依赖安装失败**
 ```bash
-cd web
+cd frontend
 rm -rf node_modules pnpm-lock.yaml
 pnpm install
 ```

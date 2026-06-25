@@ -58,7 +58,7 @@ shadmin/
 ├── internal/            # Internal utilities: Casbin manager, token service, login security
 ├── pkg/                 # Shared utilities: logging, etc.
 ├── docs/                # Swagger generated files + architecture docs
-├── web/                 # React frontend
+├── frontend/                 # React frontend
 │   ├── src/
 │   │   ├── routes/      # File-based routing (TanStack Router)
 │   │   ├── features/    # Feature modules (pages + components + hooks + schema)
@@ -69,7 +69,7 @@ shadmin/
 │   │   ├── types/       # TypeScript type definitions
 │   │   ├── lib/         # Utility functions
 │   │   └── context/     # React Context Providers
-│   └── web.go           # Go embed, embeds dist/ into the binary
+│   └── frontend.go           # Go embed, embeds dist/ into the binary
 └── .env.example         # Environment variable template
 ```
 
@@ -180,7 +180,7 @@ sequenceDiagram
 The frontend uses TanStack Router's **file-based routing**, where file paths map to URL paths:
 
 ```
-web/src/routes/
+frontend/src/routes/
 ├── __root.tsx              # Root layout (DevTools, progress bar)
 ├── (auth)/                 # Public route group (login, register)
 │   └── sign-in.tsx
@@ -303,7 +303,7 @@ main.go
 
 ## Frontend-Backend Collaboration
 
-- **Production Mode**: Frontend build output (`web/dist/`) is embedded into the binary via `web/web.go` using Go embed. The backend serves both the SPA and API.
+- **Production Mode**: Frontend build output (`frontend/dist/`) is embedded into the binary via `frontend/frontend.go` using Go embed. The backend serves both the SPA and API.
 - **Development Mode**: Vite dev server runs on `:5173` and proxies `/api` requests to the backend at `:55667` via `vite.config.ts`.
 
 ## Next Steps

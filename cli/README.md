@@ -140,5 +140,5 @@ The following items are explicitly **out of scope** for the MVP and tracked for
 later iterations:
 
 - Write commands (create / update / delete) gated by stricter audit.
-- Backend audit field distinguishing CLI vs Web origin.
+- Backend audit field distinguishing CLI vs frontend origin.
 - Optional MCP server packaging on top of the same client layer.

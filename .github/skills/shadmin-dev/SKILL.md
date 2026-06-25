@@ -1,6 +1,6 @@
 ---
 name: shadmin-dev
-description: Apply Shadmin feature-development standards (backend Go/Gin/Ent + frontend React/TS). Use when adding/modifying features, CRUD modules, API routes/controllers/usecases/repositories, Ent schemas, web pages/routes, React components, TanStack hooks, or any full-stack work in this project. Trigger whenever the user mentions new features, backend changes, frontend changes, database schema changes, permissions, UI pages, tables, forms, or API endpoints — even if they don't explicitly say "feature development."
+description: Apply Shadmin feature-development standards (backend Go/Gin/Ent + frontend React/TS). Use when adding/modifying features, CRUD modules, API routes/controllers/usecases/repositories, Ent schemas, frontend pages/routes, React components, TanStack hooks, or any full-stack work in this project. Trigger whenever the user mentions new features, backend changes, frontend changes, database schema changes, permissions, UI pages, tables, forms, or API endpoints — even if they don't explicitly say "feature development."
 ---
 
 # Shadmin Feature Development

@@ -1,8 +1,8 @@
-#---------------------build web------------------------
-FROM docker.io/library/node:22-alpine AS build_web
-WORKDIR /app/web
+#---------------------build frontend------------------------
+FROM docker.io/library/node:22-alpine AS build_frontend
+WORKDIR /app/frontend
 RUN corepack enable
-COPY frontend/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
 RUN pnpm run build
@@ -13,7 +13,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-COPY --from=build_web /app/web/dist /app/web/dist
+COPY --from=build_frontend /app/frontend/dist /app/frontend/dist
 
 # 安装 ent 与 swagger（swag）
 RUN go install entgo.io/ent/cmd/ent@latest

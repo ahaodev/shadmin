@@ -774,7 +774,7 @@ curl -X POST http://localhost:55667/api/v1/system/projects \
 
 #### Define Types
 
-Create `web/src/types/project.ts`:
+Create `frontend/src/types/project.ts`:
 
 ```typescript
 // Status type
@@ -831,7 +831,7 @@ export interface ProjectPagedResult {
 
 #### Define API Service
 
-Create `web/src/services/projectApi.ts`:
+Create `frontend/src/services/projectApi.ts`:
 
 ```typescript
 import { apiClient } from './config'
@@ -900,10 +900,10 @@ export const deleteProject = async (id: string): Promise<void> => {
 
 ### Step 2: Create the Feature Module
 
-Create the project module directory structure under `web/src/features/system/`:
+Create the project module directory structure under `frontend/src/features/system/`:
 
 ```
-web/src/features/system/projects/
+frontend/src/features/system/projects/
 ├── components/
 │   ├── projects-provider.tsx     # Context Provider (state management)
 │   ├── projects-columns.tsx      # Table column definitions
@@ -920,7 +920,7 @@ web/src/features/system/projects/
 
 #### Context Provider
 
-Create `web/src/features/system/projects/components/projects-provider.tsx`:
+Create `frontend/src/features/system/projects/components/projects-provider.tsx`:
 
 ```tsx
 import { createContext, useContext, useMemo, useState, type ReactNode, type Dispatch, type SetStateAction } from 'react'
@@ -973,7 +973,7 @@ export const useProjects = () => {
 
 ### Step 3: Write Hooks
 
-Create `web/src/features/system/projects/hooks/use-projects.ts`:
+Create `frontend/src/features/system/projects/hooks/use-projects.ts`:
 
 ```typescript
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -1017,7 +1017,7 @@ export function useDeleteProject() {
 
 ### Step 4: Implement the List Page
 
-Create `web/src/features/system/projects/index.tsx`:
+Create `frontend/src/features/system/projects/index.tsx`:
 
 ```tsx
 import { getRouteApi } from '@tanstack/react-router'
@@ -1097,7 +1097,7 @@ export function Projects() {
 
 #### Supplementary Component: Table Column Definitions
 
-Create `web/src/features/system/projects/components/projects-columns.tsx`:
+Create `frontend/src/features/system/projects/components/projects-columns.tsx`:
 
 ```tsx
 import { ColumnDef } from '@tanstack/react-table'
@@ -1169,7 +1169,7 @@ export function useProjectColumns(): ColumnDef<Project>[] {
 
 #### Supplementary Component: Data Table
 
-Create `web/src/features/system/projects/components/projects-table.tsx`:
+Create `frontend/src/features/system/projects/components/projects-table.tsx`:
 
 ```tsx
 import { getRouteApi } from '@tanstack/react-router'
@@ -1219,7 +1219,7 @@ export function ProjectsTable({ data, search, navigate, totalCount }: ProjectsTa
 
 #### Supplementary Component: Dialog Aggregation
 
-Create `web/src/features/system/projects/components/projects-dialogs.tsx`:
+Create `frontend/src/features/system/projects/components/projects-dialogs.tsx`:
 
 ```tsx
 import { useProjects } from './projects-provider'
@@ -1253,7 +1253,7 @@ export function ProjectsDialogs() {
 
 #### Supplementary Component: Header Action Buttons
 
-Create `web/src/features/system/projects/components/projects-primary-buttons.tsx`:
+Create `frontend/src/features/system/projects/components/projects-primary-buttons.tsx`:
 
 ```tsx
 import { Plus } from 'lucide-react'
@@ -1278,11 +1278,11 @@ export function ProjectsPrimaryButtons() {
 }
 ```
 
-> **Key Point:** These four components follow a fixed pattern — refer to the corresponding files under `web/src/features/system/users/components/` and replace entity names with your own.
+> **Key Point:** These four components follow a fixed pattern — refer to the corresponding files under `frontend/src/features/system/users/components/` and replace entity names with your own.
 
 ### Step 5: Implement Form Components
 
-Create `web/src/features/system/projects/data/schema.ts`:
+Create `frontend/src/features/system/projects/data/schema.ts`:
 
 ```typescript
 import { z } from 'zod'
@@ -1300,7 +1300,7 @@ export const projectSchema = z.object({
 export type ProjectSchema = z.infer<typeof projectSchema>
 ```
 
-Create `web/src/features/system/projects/components/project-form-dialog.tsx`:
+Create `frontend/src/features/system/projects/components/project-form-dialog.tsx`:
 
 ```tsx
 import { z } from 'zod'
@@ -1457,7 +1457,7 @@ export function ProjectFormDialog({ mode }: { mode: 'create' | 'edit' }) {
 
 ### Step 6: Register the Route
 
-Create `web/src/routes/_authenticated/system/projects.tsx`:
+Create `frontend/src/routes/_authenticated/system/projects.tsx`:
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
@@ -1485,7 +1485,7 @@ export const Route = createFileRoute('/_authenticated/system/projects')({
 After creating the route file, regenerate the route tree:
 
 ```bash
-cd web && pnpm run dev
+cd frontend && pnpm run dev
 # TanStack Router will automatically regenerate routeTree.gen.ts
 ```
 
@@ -1493,7 +1493,7 @@ cd web && pnpm run dev
 
 #### Register Permission Constants
 
-Add to `web/src/constants/permissions.ts`:
+Add to `frontend/src/constants/permissions.ts`:
 
 ```typescript
 export const PERMISSIONS = {
@@ -1607,7 +1607,7 @@ go test ./... -cover
 ### Frontend
 
 ```bash
-cd web
+cd frontend
 
 # TypeScript type checking
 tsc -b
@@ -1659,7 +1659,7 @@ curl -v -H "Authorization: Bearer YOUR_TOKEN" http://localhost:55667/api/v1/syst
 
 ### Frontend Route 404
 
-1. Confirm the route file is under `web/src/routes/_authenticated/`
+1. Confirm the route file is under `frontend/src/routes/_authenticated/`
 2. Check that `routeTree.gen.ts` has been auto-updated (restart `pnpm dev`)
 3. Confirm the `createFileRoute` path string matches the file location
 

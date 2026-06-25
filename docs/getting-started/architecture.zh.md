@@ -58,7 +58,7 @@ shadmin/
 ├── internal/            # 内部工具：Casbin 管理器、Token 服务、登录安全
 ├── pkg/                 # 公共工具：日志等
 ├── docs/                # Swagger 生成文件 + 架构文档
-├── web/                 # React 前端
+├── frontend/                 # React 前端
 │   ├── src/
 │   │   ├── routes/      # 文件路由（TanStack Router）
 │   │   ├── features/    # 功能模块（页面 + 组件 + hooks + schema）
@@ -69,7 +69,7 @@ shadmin/
 │   │   ├── types/       # TypeScript 类型定义
 │   │   ├── lib/         # 工具函数
 │   │   └── context/     # React Context Providers
-│   └── web.go           # Go embed，将 dist/ 嵌入二进制
+│   └── frontend.go           # Go embed，将 dist/ 嵌入二进制
 └── .env.example         # 环境变量模板
 ```
 
@@ -180,7 +180,7 @@ sequenceDiagram
 前端使用 TanStack Router 的 **文件路由**，路由定义即文件路径：
 
 ```
-web/src/routes/
+frontend/src/routes/
 ├── __root.tsx              # 根布局（DevTools、进度条）
 ├── (auth)/                 # 公开路由组（登录、注册）
 │   └── sign-in.tsx
@@ -303,7 +303,7 @@ main.go
 
 ## 前后端协作
 
-- **生产模式**：前端构建产物 (`web/dist/`) 通过 `web/web.go` 以 Go embed 方式嵌入二进制，由后端统一提供 SPA + API 服务
+- **生产模式**：前端构建产物 (`frontend/dist/`) 通过 `frontend/frontend.go` 以 Go embed 方式嵌入二进制，由后端统一提供 SPA + API 服务
 - **开发模式**：前端 Vite 开发服务器运行在 `:5173`，通过 `vite.config.ts` 中的 proxy 将 `/api` 请求代理到后端 `:55667`
 
 ## 下一步

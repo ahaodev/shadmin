@@ -774,7 +774,7 @@ curl -X POST http://localhost:55667/api/v1/system/projects \
 
 #### 定义类型
 
-创建 `web/src/types/project.ts`：
+创建 `frontend/src/types/project.ts`：
 
 ```typescript
 // 状态类型
@@ -831,7 +831,7 @@ export interface ProjectPagedResult {
 
 #### 定义 API 服务
 
-创建 `web/src/services/projectApi.ts`：
+创建 `frontend/src/services/projectApi.ts`：
 
 ```typescript
 import { apiClient } from './config'
@@ -900,10 +900,10 @@ export const deleteProject = async (id: string): Promise<void> => {
 
 ### 第 2 步：创建功能模块
 
-在 `web/src/features/system/` 下创建项目模块目录结构：
+在 `frontend/src/features/system/` 下创建项目模块目录结构：
 
 ```
-web/src/features/system/projects/
+frontend/src/features/system/projects/
 ├── components/
 │   ├── projects-provider.tsx     # Context Provider（状态管理）
 │   ├── projects-columns.tsx      # 表格列定义
@@ -920,7 +920,7 @@ web/src/features/system/projects/
 
 #### Context Provider
 
-创建 `web/src/features/system/projects/components/projects-provider.tsx`：
+创建 `frontend/src/features/system/projects/components/projects-provider.tsx`：
 
 ```tsx
 import { createContext, useContext, useMemo, useState, type ReactNode, type Dispatch, type SetStateAction } from 'react'
@@ -973,7 +973,7 @@ export const useProjects = () => {
 
 ### 第 3 步：编写 Hooks
 
-创建 `web/src/features/system/projects/hooks/use-projects.ts`：
+创建 `frontend/src/features/system/projects/hooks/use-projects.ts`：
 
 ```typescript
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -1017,7 +1017,7 @@ export function useDeleteProject() {
 
 ### 第 4 步：实现列表页
 
-创建 `web/src/features/system/projects/index.tsx`：
+创建 `frontend/src/features/system/projects/index.tsx`：
 
 ```tsx
 import { getRouteApi } from '@tanstack/react-router'
@@ -1097,7 +1097,7 @@ export function Projects() {
 
 #### 补充组件：表格列定义
 
-创建 `web/src/features/system/projects/components/projects-columns.tsx`：
+创建 `frontend/src/features/system/projects/components/projects-columns.tsx`：
 
 ```tsx
 import { ColumnDef } from '@tanstack/react-table'
@@ -1169,7 +1169,7 @@ export function useProjectColumns(): ColumnDef<Project>[] {
 
 #### 补充组件：数据表格
 
-创建 `web/src/features/system/projects/components/projects-table.tsx`：
+创建 `frontend/src/features/system/projects/components/projects-table.tsx`：
 
 ```tsx
 import { getRouteApi } from '@tanstack/react-router'
@@ -1219,7 +1219,7 @@ export function ProjectsTable({ data, search, navigate, totalCount }: ProjectsTa
 
 #### 补充组件：弹窗汇总
 
-创建 `web/src/features/system/projects/components/projects-dialogs.tsx`：
+创建 `frontend/src/features/system/projects/components/projects-dialogs.tsx`：
 
 ```tsx
 import { useProjects } from './projects-provider'
@@ -1253,7 +1253,7 @@ export function ProjectsDialogs() {
 
 #### 补充组件：头部操作按钮
 
-创建 `web/src/features/system/projects/components/projects-primary-buttons.tsx`：
+创建 `frontend/src/features/system/projects/components/projects-primary-buttons.tsx`：
 
 ```tsx
 import { Plus } from 'lucide-react'
@@ -1278,11 +1278,11 @@ export function ProjectsPrimaryButtons() {
 }
 ```
 
-> **要点：** 这四个组件遵循固定模式——可直接参考 `web/src/features/system/users/components/` 目录下的对应文件，按相同结构替换实体名称即可。
+> **要点：** 这四个组件遵循固定模式——可直接参考 `frontend/src/features/system/users/components/` 目录下的对应文件，按相同结构替换实体名称即可。
 
 ### 第 5 步：实现表单组件
 
-创建 `web/src/features/system/projects/data/schema.ts`：
+创建 `frontend/src/features/system/projects/data/schema.ts`：
 
 ```typescript
 import { z } from 'zod'
@@ -1300,7 +1300,7 @@ export const projectSchema = z.object({
 export type ProjectSchema = z.infer<typeof projectSchema>
 ```
 
-创建 `web/src/features/system/projects/components/project-form-dialog.tsx`：
+创建 `frontend/src/features/system/projects/components/project-form-dialog.tsx`：
 
 ```tsx
 import { z } from 'zod'
@@ -1457,7 +1457,7 @@ export function ProjectFormDialog({ mode }: { mode: 'create' | 'edit' }) {
 
 ### 第 6 步：注册路由
 
-创建 `web/src/routes/_authenticated/system/projects.tsx`：
+创建 `frontend/src/routes/_authenticated/system/projects.tsx`：
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
@@ -1485,7 +1485,7 @@ export const Route = createFileRoute('/_authenticated/system/projects')({
 创建路由文件后，执行以下命令重新生成路由树：
 
 ```bash
-cd web && pnpm run dev
+cd frontend && pnpm run dev
 # TanStack Router 会自动重新生成 routeTree.gen.ts
 ```
 
@@ -1493,7 +1493,7 @@ cd web && pnpm run dev
 
 #### 注册权限常量
 
-在 `web/src/constants/permissions.ts` 中添加：
+在 `frontend/src/constants/permissions.ts` 中添加：
 
 ```typescript
 export const PERMISSIONS = {
@@ -1607,7 +1607,7 @@ go test ./... -cover
 ### 前端
 
 ```bash
-cd web
+cd frontend
 
 # TypeScript 类型检查
 tsc -b
@@ -1659,7 +1659,7 @@ curl -v -H "Authorization: Bearer YOUR_TOKEN" http://localhost:55667/api/v1/syst
 
 ### 前端路由 404
 
-1. 确认路由文件在 `web/src/routes/_authenticated/` 下
+1. 确认路由文件在 `frontend/src/routes/_authenticated/` 下
 2. 检查 `routeTree.gen.ts` 是否已自动更新（需重启 `pnpm dev`）
 3. 确认 `createFileRoute` 的路径字符串与文件位置一致
 

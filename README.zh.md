@@ -45,10 +45,10 @@ git clone https://github.com/ahaodev/shadmin.git
 cd shadmin
 
 # 安装依赖并构建前端
-cd web && pnpm install && pnpm build
+cd frontend && pnpm install && pnpm build
 
 # 启动后端（从项目根目录执行）
-# 生成 Ent 代码，内嵌 web/dist/，监听 :55667
+# 生成 Ent 代码，内嵌 frontend/dist/，监听 :55667
 # 首次运行时自动生成 .env
 cd ..
 go generate ./ent
@@ -77,7 +77,7 @@ shadmin/
 ├── usecase/        # 业务逻辑层
 ├── internal/       # 内部工具
 ├── pkg/            # 公共包
-├── web/            # React 前端（Vite + shadcn/ui）
+├── frontend/            # React 前端（Vite + shadcn/ui）
 │   └── src/
 │       ├── routes/       # TanStack 文件路由
 │       ├── features/     # 功能模块

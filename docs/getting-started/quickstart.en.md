@@ -19,12 +19,12 @@ cd shadmin
 
 ## Build the Frontend
 
-The backend embeds the frontend build output via `web/web.go`, so **you must install dependencies and build the frontend first**, otherwise Go compilation will fail:
+The backend embeds the frontend build output via `frontend/frontend.go`, so **you must install dependencies and build the frontend first**, otherwise Go compilation will fail:
 
 ```bash
-cd web
+cd frontend
 pnpm install      # Install frontend dependencies
-pnpm run build    # Build frontend, outputs to web/dist/
+pnpm run build    # Build frontend, outputs to frontend/dist/
 cd ..
 ```
 
@@ -48,7 +48,7 @@ Once started, the server listens at `http://localhost:55667`, serving both the A
 If you need to develop the frontend, start the frontend dev server separately:
 
 ```bash
-cd web
+cd frontend
 pnpm dev
 ```
 
@@ -144,7 +144,7 @@ corepack enable     # Node.js 16.10+ ships corepack; this activates pnpm@10.34.3
 
 **Frontend dependency installation fails**
 ```bash
-cd web
+cd frontend
 rm -rf node_modules pnpm-lock.yaml
 pnpm install
 ```

@@ -58,9 +58,9 @@ bootstrap/admin_init.go                      # 种子菜单数据（修改）
 ent/schema/user.go                           # 添加 department edge（修改）
 
 # Frontend
-web/src/types/department.ts                  # 类型定义
-web/src/services/departmentApi.ts            # API 服务
-web/src/features/system/departments/         # 功能模块目录
+frontend/src/types/department.ts                  # 类型定义
+frontend/src/services/departmentApi.ts            # API 服务
+frontend/src/features/system/departments/         # 功能模块目录
   ├── index.tsx                              # 页面入口
   ├── components/
   │   ├── departments-table.tsx              # 树形表格组件
@@ -72,7 +72,7 @@ web/src/features/system/departments/         # 功能模块目录
   │   └── use-departments.ts                 # TanStack Query hooks
   └── data/
       └── schema.ts                          # Zod 验证 schema
-web/src/routes/_authenticated/system/departments.tsx  # 路由文件
+frontend/src/routes/_authenticated/system/departments.tsx  # 路由文件
 ```
 
 ### 2.2 Backend 详细设计
@@ -230,7 +230,7 @@ app.DB.Menu.Create().SetParentID(deptMgmt.ID).SetName("删除部门").SetSequenc
 
 ### 2.3 Frontend 详细设计
 
-#### 2.3.1 类型定义 — `web/src/types/department.ts`
+#### 2.3.1 类型定义 — `frontend/src/types/department.ts`
 
 ```typescript
 export interface Department {
@@ -278,7 +278,7 @@ export interface UpdateDepartmentRequest {
 #### 2.3.3 权限常量
 
 ```typescript
-// web/src/constants/permissions.ts 中新增
+// frontend/src/constants/permissions.ts 中新增
 DEPARTMENT: {
   READ: 'system:dept:read',
   CREATE: 'system:dept:add',
@@ -328,11 +328,11 @@ DEPARTMENT: {
 | Backend Repository | `repository/department_repository.go` | 中（树形查询） |
 | Backend Usecase | `usecase/department_usecase.go` | 中（循环引用检测） |
 | Backend Controller | `api/controller/department_controller.go` | 低 |
-| Frontend Types | `web/src/types/department.ts` | 低 |
-| Frontend Service | `web/src/services/departmentApi.ts` | 低 |
-| Frontend Page | `web/src/features/system/departments/index.tsx` | 中 |
+| Frontend Types | `frontend/src/types/department.ts` | 低 |
+| Frontend Service | `frontend/src/services/departmentApi.ts` | 低 |
+| Frontend Page | `frontend/src/features/system/departments/index.tsx` | 中 |
 | Frontend Components | `departments-table.tsx`, dialogs, provider | 中（树形表格） |
-| Frontend Route | `web/src/routes/.../departments.tsx` | 低 |
+| Frontend Route | `frontend/src/routes/.../departments.tsx` | 低 |
 
 ### 4.2 修改文件（约 8 个）
 
@@ -411,9 +411,9 @@ DEPARTMENT: {
 
 ### Phase 4：Frontend 部门模块
 
-15. 创建 `web/src/types/department.ts`
-16. 创建 `web/src/services/departmentApi.ts`
-17. 创建 `web/src/features/system/departments/` 整个模块
+15. 创建 `frontend/src/types/department.ts`
+16. 创建 `frontend/src/services/departmentApi.ts`
+17. 创建 `frontend/src/features/system/departments/` 整个模块
 18. 创建路由文件
 
 ### Phase 5：Frontend 用户集成

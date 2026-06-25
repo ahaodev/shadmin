@@ -18,7 +18,7 @@ This document covers deploying Shadmin to production, including single Docker co
 
 ```bash
 # 1. Build the frontend
-cd web && pnpm install && pnpm run build && cd ..
+cd frontend && pnpm install && pnpm run build && cd ..
 
 # 2. Build the backend (with version injection)
 VERSION=$(git describe --tags --always 2>/dev/null || echo "dev")
@@ -30,7 +30,7 @@ CGO_ENABLED=1 go build \
   -o shadmin .
 ```
 
-> **Note:** The frontend must be built first (`pnpm run build`), because `web/web.go` uses Go embed to include `web/dist/`.
+> **Note:** The frontend must be built first (`pnpm run build`), because `frontend/frontend.go` uses Go embed to include `frontend/dist/`.
 
 The build output `shadmin` is a self-contained single binary that includes frontend assets, backend logic, and Swagger documentation.
 
@@ -43,7 +43,7 @@ docker build -t shadmin:latest .
 ```
 
 Build stages:
-1. **Stage 1 (Node)**: Install frontend dependencies and build `web/dist/`
+1. **Stage 1 (Node)**: Install frontend dependencies and build `frontend/dist/`
 2. **Stage 2 (Go)**: Compile Go backend with embedded frontend assets
 3. **Stage 3 (UPX)**: Compress the binary to reduce image size
 4. **Stage 4 (Debian slim)**: Final runtime image

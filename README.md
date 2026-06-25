@@ -45,10 +45,10 @@ git clone https://github.com/ahaodev/shadmin.git
 cd shadmin
 
 # Install & build frontend
-cd web && pnpm install && pnpm build
+cd frontend && pnpm install && pnpm build
 
 # Start backend (from project root)
-# Generates Ent code, embeds web/dist/, listens on :55667
+# Generates Ent code, embeds frontend/dist/, listens on :55667
 # .env auto‑generated on first run
 cd ..
 go generate ./ent
@@ -77,7 +77,7 @@ shadmin/
 ├── usecase/        # Business logic
 ├── internal/       # Internal utilities
 ├── pkg/            # Shared packages
-├── web/            # React frontend (Vite + shadcn/ui)
+├── frontend/            # React frontend (Vite + shadcn/ui)
 │   └── src/
 │       ├── routes/       # TanStack file‑based routing
 │       ├── features/     # Feature modules
