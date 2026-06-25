@@ -169,7 +169,7 @@ const docTemplate = `{
         },
         "/auth/device/activate": {
             "post": {
-                "description": "Authorize a CLI device code using the current web user session",
+                "description": "Authorize a CLI device code using the current frontend user session",
                 "consumes": [
                     "application/json"
                 ],

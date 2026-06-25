@@ -11,7 +11,7 @@ go vet ./...
 go test ./...
 
 # Frontend lint/format (if dependencies installed)
-if [ -f "web/package.json" ]; then
+if [ -f "frontend/package.json" ]; then
   if command -v pnpm >/dev/null 2>&1 && [ -d "web/node_modules" ]; then
     echo "[pre-commit] Running web lint and format checks"
     (cd web && pnpm -s lint && pnpm -s format:check)

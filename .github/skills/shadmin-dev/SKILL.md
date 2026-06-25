@@ -40,12 +40,12 @@ Guide full-stack feature development through Shadmin's clean architecture, produ
 
 | Layer | Directory | Responsibility |
 |-------|-----------|---------------|
-| Types | `web/src/types/` | TypeScript interfaces matching backend DTOs |
-| Services | `web/src/services/` | Axios API wrappers, date parsing |
-| Features | `web/src/features/` | Page components, tables, dialogs, forms, hooks |
-| Routes | `web/src/routes/` | TanStack Router file-based routing |
-| Stores | `web/src/stores/` | Zustand state (auth, permissions) |
-| Constants | `web/src/constants/` | Permission strings, enums |
+| Types | `frontend/src/types/` | TypeScript interfaces matching backend DTOs |
+| Services | `frontend/src/services/` | Axios API wrappers, date parsing |
+| Features | `frontend/src/features/` | Page components, tables, dialogs, forms, hooks |
+| Routes | `frontend/src/routes/` | TanStack Router file-based routing |
+| Stores | `frontend/src/stores/` | Zustand state (auth, permissions) |
+| Constants | `frontend/src/constants/` | Permission strings, enums |
 
 ## Full-Stack Development Workflow
 
@@ -73,19 +73,19 @@ api/route/<resource>_routes.go (or modify system_routes.go)
 api/route/factory.go
 
 # Frontend (implement in this order)
-web/src/types/<resource>.ts
-web/src/services/<resource>Api.ts
-web/src/features/<module>/<resource>/components/*-provider.tsx
-web/src/features/<module>/<resource>/hooks/use-<resource>.ts
-web/src/features/<module>/<resource>/components/*-columns.tsx
-web/src/features/<module>/<resource>/components/*-table.tsx
-web/src/features/<module>/<resource>/components/*-form-dialog.tsx
-web/src/features/<module>/<resource>/components/*-dialogs.tsx
-web/src/features/<module>/<resource>/components/*-primary-buttons.tsx
-web/src/features/<module>/<resource>/data/schema.ts
-web/src/features/<module>/<resource>/index.tsx
-web/src/routes/_authenticated/<module>/<resource>.tsx
-web/src/constants/permissions.ts (add new permission keys)
+frontend/src/types/<resource>.ts
+frontend/src/services/<resource>Api.ts
+frontend/src/features/<module>/<resource>/components/*-provider.tsx
+frontend/src/features/<module>/<resource>/hooks/use-<resource>.ts
+frontend/src/features/<module>/<resource>/components/*-columns.tsx
+frontend/src/features/<module>/<resource>/components/*-table.tsx
+frontend/src/features/<module>/<resource>/components/*-form-dialog.tsx
+frontend/src/features/<module>/<resource>/components/*-dialogs.tsx
+frontend/src/features/<module>/<resource>/components/*-primary-buttons.tsx
+frontend/src/features/<module>/<resource>/data/schema.ts
+frontend/src/features/<module>/<resource>/index.tsx
+frontend/src/routes/_authenticated/<module>/<resource>.tsx
+frontend/src/constants/permissions.ts (add new permission keys)
 ```
 
 ### Step 3: Implement Backend
@@ -138,7 +138,7 @@ These are linked through the **Role → Menu → API Resources** binding:
 
 **To add permissions for a new feature:**
 1. Backend: routes auto-register as API resources on restart
-2. Frontend: add permission constants in `web/src/constants/permissions.ts`
+2. Frontend: add permission constants in `frontend/src/constants/permissions.ts`
 3. Admin panel: create menu entries, bind API resources, assign to roles
 
 ### Step 6: Generate & Verify
@@ -150,7 +150,7 @@ go fmt ./... && go vet ./... # Format + static analysis
 go test ./...                # Run tests
 swag init -g main.go --output ./docs  # If Swagger annotations changed
 
-# Frontend (from web/)
+# Frontend (from frontend/)
 pnpm lint                   # ESLint
 pnpm format:check           # Prettier
 pnpm build                  # Recommended if routes/build config changed

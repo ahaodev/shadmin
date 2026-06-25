@@ -9,7 +9,7 @@ on:
       - '**.go'
       - 'go.mod'
       - 'go.sum'
-      - 'web/**'
+      - '../../frontend/**'
       - 'ent/**'
       - 'Dockerfile'
       - '.github/workflows/ci.yml'
@@ -19,7 +19,7 @@ on:
       - '**.go'
       - 'go.mod'
       - 'go.sum'
-      - 'web/**'
+      - 'frontend/**'
       - 'ent/**'
       - '.github/workflows/ci.yml'
 
@@ -48,22 +48,22 @@ jobs:
         with:
           node-version: '22'
           cache: 'pnpm'
-          cache-dependency-path: web/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Frontend install
-        working-directory: web
+        working-directory: frontend
         run: pnpm install --frozen-lockfile
 
       - name: Frontend lint
-        working-directory: web
+        working-directory: frontend
         run: pnpm lint
 
       - name: Frontend format check
-        working-directory: web
+        working-directory: frontend
         run: pnpm format:check
 
       - name: Frontend build
-        working-directory: web
+        working-directory: frontend
         run: pnpm build
 
       - name: Download Go dependencies

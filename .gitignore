@@ -67,11 +67,11 @@ yarn-debug.log*
 yarn-error.log*
 
 # Frontend build
-web/dist/
-web/build/
+frontend/dist/
+frontend/build/
 
 # Auto-generated route files
-web/src/routeTree.gen.ts
+frontend/src/routeTree.gen.ts
 
 ent/*
 # 但保留 schema 和 gen 目录

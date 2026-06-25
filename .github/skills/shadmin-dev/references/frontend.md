@@ -6,7 +6,7 @@ Detailed React/TypeScript code templates for Shadmin frontend features. Read thi
 
 - **React 19** + TypeScript (strict mode)
 - **Vite** with SWC compiler + TanStack Router plugin
-- **TanStack Router** — file-based routing under `web/src/routes/`
+- **TanStack Router** — file-based routing under `frontend/src/routes/`
 - **TanStack Query** — data fetching, caching, mutations
 - **TanStack Table** — headless table with server-side pagination
 - **Zustand** — lightweight global state (auth, permissions)
@@ -16,7 +16,7 @@ Detailed React/TypeScript code templates for Shadmin frontend features. Read thi
 - **Sonner** — toast notifications
 - **Lucide React** — icons
 
-## Types (`web/src/types/<resource>.ts`)
+## Types (`frontend/src/types/<resource>.ts`)
 
 Align field names with backend `domain/` structs. Use `snake_case` for JSON fields:
 
@@ -67,7 +67,7 @@ export interface PagedResult<T> {
 }
 ```
 
-## API Service (`web/src/services/<resource>Api.ts`)
+## API Service (`frontend/src/services/<resource>Api.ts`)
 
 ```typescript
 import { apiClient } from '@/services/config'
@@ -128,7 +128,7 @@ export const deleteProject = async (id: string): Promise<void> => {
 ## Feature Module Structure
 
 ```
-web/src/features/system/projects/
+frontend/src/features/system/projects/
 ├── components/
 │   ├── projects-provider.tsx        # Context Provider (dialog state)
 │   ├── projects-columns.tsx         # Table column definitions
@@ -725,7 +725,7 @@ export function Projects() {
 - Header → Main → Dialogs structure
 - Loading skeleton, error state, data state
 
-## Route File (`web/src/routes/_authenticated/<path>.tsx`)
+## Route File (`frontend/src/routes/_authenticated/<path>.tsx`)
 
 ```typescript
 import { createFileRoute } from '@tanstack/react-router'
@@ -751,7 +751,7 @@ export const Route = createFileRoute('/_authenticated/system/projects')({
 - Route path matches backend API structure
 - After creating, restart `pnpm dev` to regenerate `routeTree.gen.ts`
 
-## Permission Constants (`web/src/constants/permissions.ts`)
+## Permission Constants (`frontend/src/constants/permissions.ts`)
 
 Add new permissions following the existing hierarchical pattern:
 

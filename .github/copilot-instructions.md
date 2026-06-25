@@ -2,7 +2,7 @@
 
 Shadmin is a full-stack RBAC admin dashboard with three main surfaces:
 - Go backend (`main.go`, `api/`, `domain/`, `repository/`, `usecase/`, `ent/`)
-- React 19 frontend (`web/`)
+- React 19 frontend (`frontend/`)
 - Thin Go CLI (`cli/`) for read-only agent workflows
 
 ## Build, Test, and Lint
@@ -20,13 +20,13 @@ go generate ./ent               # Regenerate Ent after schema changes
 go generate ./...               # Ent + Swagger (needs swag CLI)
 ```
 
-### Frontend (web/)
+### Frontend (frontend/)
 
 ```bash
-cd web
+cd frontend
 pnpm install                    # Install deps (pnpm only — npm/yarn rejected by preinstall hook)
 pnpm dev                        # Dev server on :5173, proxies /api to :55667
-pnpm build                      # Type-check + Vite build → web/dist/
+pnpm build                      # Type-check + Vite build → frontend/dist/
 pnpm lint                       # ESLint
 pnpm format:check               # Prettier check
 pnpm format                     # Prettier auto-fix
@@ -69,7 +69,7 @@ Request flow: **Route → Middleware (JWT + Casbin) → Controller → Usecase �
 ### Frontend — Feature-Based Structure
 
 ```
-web/src/
+frontend/src/
 ├── routes/            # TanStack file-based routing (auto code-split)
 │   ├── (auth)/        # Public auth routes
 │   ├── (errors)/      # Error pages
@@ -119,10 +119,10 @@ web/src/
 
 ### Adding a Frontend Feature
 
-1. `web/src/types/` — Request/response types aligned with backend domain
-2. `web/src/services/<resource>Api.ts` — Axios CRUD wrappers using `apiClient`
-3. `web/src/features/<feature>/` — Page index, `components/` (table, dialog, form), `hooks/` (React Query), `data/schema.ts` (Zod)
-4. `web/src/routes/_authenticated/` — Route file referencing feature component
+1. `frontend/src/types/` — Request/response types aligned with backend domain
+2. `frontend/src/services/<resource>Api.ts` — Axios CRUD wrappers using `apiClient`
+3. `frontend/src/features/<feature>/` — Page index, `components/` (table, dialog, form), `hooks/` (React Query), `data/schema.ts` (Zod)
+4. `frontend/src/routes/_authenticated/` — Route file referencing feature component
 
 ### Response Format (backend)
 

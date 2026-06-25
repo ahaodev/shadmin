@@ -2,9 +2,9 @@
 FROM docker.io/library/node:22-alpine AS build_web
 WORKDIR /app/web
 RUN corepack enable
-COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
+COPY frontend/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
-COPY web/ ./
+COPY frontend/ ./
 RUN pnpm run build
 
 # ---------------------build go--------------------

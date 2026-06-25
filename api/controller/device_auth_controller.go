@@ -102,7 +102,7 @@ func (dc *DeviceAuthController) PollToken(c *gin.Context) {
 
 // Activate godoc
 // @Summary      Activate device authorization code
-// @Description  Authorize a CLI device code using the current web user session
+// @Description  Authorize a CLI device code using the current frontend user session
 // @Tags         Authentication
 // @Accept       json
 // @Produce      json
