@@ -11,13 +11,11 @@ go vet ./...
 go test ./...
 
 # Frontend lint/format (if dependencies installed)
-if [ -f "frontend/package.json" ]; then
-  if command -v pnpm >/dev/null 2>&1 && [ -d "frontend/node_modules" ]; then
-    echo "[pre-commit] Running frontend lint and format checks"
-    (cd frontend && pnpm -s lint && pnpm -s format:check)
-  else
-    echo "[pre-commit] Skipping frontend lint: pnpm not available or dependencies not installed"
-  fi
+if command -v pnpm >/dev/null 2>&1 && [ -d "frontend/node_modules" ]; then
+  echo "[pre-commit] Running frontend lint and format checks"
+  (cd frontend && pnpm -s lint && pnpm -s format:check)
+else
+  echo "[pre-commit] Skipping frontend lint: pnpm not available or dependencies not installed"
 fi
 
 echo "[pre-commit] All checks passed."

@@ -5,23 +5,17 @@ on:
     branches: [ main ]
     tags:
       - 'v*'
-    paths:
-      - '**.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '../../frontend/**'
-      - 'ent/**'
-      - 'Dockerfile'
-      - '.github/workflows/ci.yml'
-  pull_request:
-    branches: [ main ]
-    paths:
+    paths: &trigger_paths
       - '**.go'
       - 'go.mod'
       - 'go.sum'
       - 'frontend/**'
       - 'ent/**'
+      - 'Dockerfile'
       - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths: *trigger_paths
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

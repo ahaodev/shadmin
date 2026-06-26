@@ -924,7 +924,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Authorize a CLI device code using the current web user session
+      description: Authorize a CLI device code using the current frontend user session
       parameters:
       - description: Device activation request
         in: body
