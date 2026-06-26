@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-26 v0.4.4
+
+- Synced remaining `frontend/` rename leftovers (`.githooks/pre-commit`, `.github/workflows/ci.yml`, `.gitignore`, `docs/swagger.{json,yaml}`, `frontend/.env.example`) for the v0.4.3 directory change.
+- Refactored frontend structure: collapsed `components/layout/data/dynamic-sidebar-data.ts` and `services/sidebarService.ts` into `hooks/use-sidebar-data.ts`; deleted `services/resourceApi.ts` and unused `features/system/{users,dicts}/data/{data,schema}.ts`; introduced `lib/permissions.ts` and slimmed `usePermission`; trimmed `services/menu-service.ts` and aligned `types/{user,dict}.ts`.
+- Fixed sidebar not refreshing on permission-only changes: `use-sidebar-data` now memoizes `auth.permissions` into its user-key so `setPermissions` triggers a re-fetch.
+
 ## 2026-06-25 v0.4.3
 
 - Renamed `web/` directory to `frontend/` across the repo (Dockerfile, CI workflow, pre-commit hook, all docs, Go embed module name updated from `package web` to `package frontend`)
