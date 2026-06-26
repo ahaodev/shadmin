@@ -12,11 +12,7 @@ import { apiClient } from './config'
 
 // GET /system/role - Get all roles
 export const getRoles = async (): Promise<RoleInfo[]> => {
-  console.log(`[DEBUG] getRoles called, URL: /api/v1/system/role`)
-
   const response = await apiClient.get(`/api/v1/system/role`)
-  console.log(`[DEBUG] getRoles response:`, response.data.data)
-
   return response.data.data
 }
 

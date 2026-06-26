@@ -11,6 +11,7 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table'
+import { type DictType } from '@/types/dict'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
@@ -22,7 +23,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
-import { type DictType } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { dictTypesColumns as columns } from './dict-types-columns'
 

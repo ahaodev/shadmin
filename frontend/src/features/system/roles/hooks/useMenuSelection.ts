@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react'
-import type { MenuItem } from '@/lib/menu-utils'
+import type { RoleMenuOption } from '@/lib/menu-utils'
 
 interface MenuSelectionState {
   expandedNodes: Set<string>
   selectedMenus: Set<string>
-  menusData: MenuItem[]
+  menusData: RoleMenuOption[]
 }
 
 export function useMenuSelection() {
@@ -14,7 +14,7 @@ export function useMenuSelection() {
     menusData: [],
   })
 
-  const setMenusData = useCallback((data: MenuItem[]) => {
+  const setMenusData = useCallback((data: RoleMenuOption[]) => {
     setState((prev) => ({ ...prev, menusData: data }))
   }, [])
 
@@ -23,8 +23,11 @@ export function useMenuSelection() {
   }, [])
 
   const getAllDescendantIds = useCallback(
-    (menuId: string, items: MenuItem[]): string[] => {
-      const findMenu = (id: string, menuList: MenuItem[]): MenuItem | null => {
+    (menuId: string, items: RoleMenuOption[]): string[] => {
+      const findMenu = (
+        id: string,
+        menuList: RoleMenuOption[]
+      ): RoleMenuOption | null => {
         for (const menu of menuList) {
           if (menu.id === id) return menu
           if (menu.children) {
@@ -35,7 +38,7 @@ export function useMenuSelection() {
         return null
       }
 
-      const collectDescendants = (menu: MenuItem): string[] => {
+      const collectDescendants = (menu: RoleMenuOption): string[] => {
         const ids: string[] = []
         if (menu.children) {
           menu.children.forEach((child) => {
@@ -91,7 +94,7 @@ export function useMenuSelection() {
         return { ...prev, selectedMenus: new Set() }
       }
       const all = new Set<string>()
-      const walk = (items: MenuItem[]) =>
+      const walk = (items: RoleMenuOption[]) =>
         items.forEach((i) => {
           all.add(i.id)
           if (i.children) walk(i.children)

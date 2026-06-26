@@ -89,13 +89,13 @@ export function flattenMenus(
 }
 
 /**
- * 菜单项接口（用于角色权限选择）
+ * 菜单选项接口（用于角色权限选择树）
  */
-export interface MenuItem {
+export interface RoleMenuOption {
   id: string
   label: string
   disabled: boolean
-  children?: MenuItem[]
+  children?: RoleMenuOption[]
 }
 
 /**
@@ -103,8 +103,8 @@ export interface MenuItem {
  */
 export function transformMenusForRoleSelection(
   menus: MenuWithChildren[]
-): MenuItem[] {
-  const transform = (menuList: MenuWithChildren[]): MenuItem[] => {
+): RoleMenuOption[] {
+  const transform = (menuList: MenuWithChildren[]): RoleMenuOption[] => {
     return menuList.map((menu) => ({
       id: menu.id,
       label: menu.name,

@@ -12,8 +12,6 @@ export function MenusDialogs() {
     setShowDeleteDialog,
     currentRow,
   } = useMenus()
-  console.log('currentRow')
-  console.log(currentRow)
   return (
     <>
       <MenusCreateDialog

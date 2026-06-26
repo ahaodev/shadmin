@@ -1,10 +1,66 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { menuService } from '@/services/menu-service'
+import { Command } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
-import {
-  getDynamicSidebarData,
-  getSidebarData,
-} from '@/components/layout/data/dynamic-sidebar-data'
 import { type SidebarData } from '@/components/layout/types'
+
+const defaultSidebarData = {
+  user: {
+    name: 'User',
+    email: 'user@example.com',
+    avatar: '/avatars/shadcn.jpg',
+  },
+  teams: [
+    {
+      name: 'shadmin',
+      logo: Command,
+      plan: 'Vite + ShadcnUI',
+    },
+  ],
+}
+
+/**
+ * Build sidebar user info from auth-store, falling back to defaults when no
+ * user is signed in.
+ */
+function resolveUserInfo() {
+  const auth = useAuthStore.getState().auth
+
+  if (auth.profile) {
+    return {
+      name: auth.profile.username || auth.profile.email || 'User',
+      email: auth.profile.email || '',
+      avatar: auth.profile.avatar || '/avatars/shadcn.jpg',
+    }
+  }
+
+  if (auth.user) {
+    return {
+      name: auth.user.email || auth.user.accountNo || 'User',
+      email: auth.user.email || '',
+      avatar: '/avatars/shadcn.jpg',
+    }
+  }
+
+  console.warn('No authenticated user found, using default user data')
+  return defaultSidebarData.user
+}
+
+/**
+ * Get sidebar data synchronously from cached state.
+ * Used by command-menu and as initial hook state.
+ */
+export function getSidebarData(): SidebarData {
+  return {
+    user: resolveUserInfo(),
+    teams: defaultSidebarData.teams,
+    navGroups: menuService.getCachedMenuData() || [],
+  }
+}
+
+// ---------------------------------------------------------------------------
+// React hook
+// ---------------------------------------------------------------------------
 
 export function useSidebarData() {
   const [sidebarData, setSidebarData] = useState<SidebarData>(getSidebarData())
@@ -13,14 +69,24 @@ export function useSidebarData() {
 
   // 监听用户状态变化
   const { auth } = useAuthStore()
-  // 创建更稳定的用户标识符
-  const userKey = JSON.stringify({
-    accountNo: auth.user?.accountNo,
-    email: auth.user?.email,
-    profileId: auth.profile?.id,
-    profileEmail: auth.profile?.email,
-    accessToken: auth.accessToken ? auth.accessToken.substring(0, 20) : null, // 只用token前20字符作为标识
-  })
+  // 创建更稳定的用户标识符，避免每次渲染重复 JSON.stringify
+  const userKey = useMemo(
+    () =>
+      JSON.stringify({
+        accountNo: auth.user?.accountNo,
+        email: auth.user?.email,
+        profileId: auth.profile?.id,
+        profileEmail: auth.profile?.email,
+        accessToken: auth.accessToken?.substring(0, 20) ?? null,
+      }),
+    [
+      auth.user?.accountNo,
+      auth.user?.email,
+      auth.profile?.id,
+      auth.profile?.email,
+      auth.accessToken,
+    ]
+  )
 
   useEffect(() => {
     let mounted = true
@@ -35,10 +101,15 @@ export function useSidebarData() {
         setIsLoading(true)
         setError(null)
 
-        const dynamicData = await getDynamicSidebarData()
+        const user = resolveUserInfo()
+        const navGroups = await menuService.loadMenuData()
 
         if (mounted) {
-          setSidebarData(dynamicData)
+          setSidebarData({
+            user,
+            teams: defaultSidebarData.teams,
+            navGroups: navGroups || [],
+          })
         }
       } catch (err) {
         if (mounted) {
@@ -67,17 +138,16 @@ export function useSidebarData() {
       setIsLoading(true)
       setError(null)
 
-      // Clear cache first to force fresh data load
-      const { menuService } = await import('@/services/menu-service')
       menuService.clearCache()
-      console.log('Manual reload: cache cleared, loading fresh data...')
 
-      const dynamicData = await getDynamicSidebarData()
-      setSidebarData(dynamicData)
-      console.log(
-        'Manual reload completed, nav groups:',
-        dynamicData.navGroups?.length || 0
-      )
+      const user = resolveUserInfo()
+      const navGroups = await menuService.loadMenuData()
+
+      setSidebarData({
+        user,
+        teams: defaultSidebarData.teams,
+        navGroups: navGroups || [],
+      })
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to reload menu data'

@@ -18,7 +18,7 @@ export interface AuthUser {
   exp: number
 }
 
-interface UserPermissions {
+export interface UserPermissions {
   permissions: string[][]
   roles: string[]
   menus: string[]
@@ -42,9 +42,6 @@ interface AuthState {
     setPermissions: (permissions: UserPermissions | null) => void
     reset: () => void
     clearSidebarCache: () => void
-    hasPermission: (permission: string) => boolean
-    hasRole: (role: string) => boolean
-    canAccessMenu: (menuId: string) => boolean
   }
 }
 
@@ -203,33 +200,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
         } catch (error) {
           console.warn('Failed to clear menu cache:', error)
         }
-      },
-      hasPermission: (permission: string) => {
-        const { permissions } = get().auth
-        if (!permissions) return false
-
-        // Check if user is admin
-        if (permissions.is_admin) return true
-
-        // Check specific permissions
-        return permissions.permissions.some(
-          (p) => p.includes(permission) || p.includes('*')
-        )
-      },
-      hasRole: (role: string) => {
-        const { permissions } = get().auth
-        if (!permissions) return false
-        return permissions.roles.includes(role)
-      },
-      canAccessMenu: (menuId: string) => {
-        const { permissions } = get().auth
-        if (!permissions) return false
-
-        // Admin can access all menus
-        if (permissions.is_admin) return true
-
-        // Check if menu is in allowed menus
-        return permissions.menus.includes(menuId)
       },
     },
   }

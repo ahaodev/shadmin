@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
+import { type User } from '@/types/user'
 import { Mail, Trash2, UserCheck, UserX } from 'lucide-react'
 import { PERMISSIONS } from '@/constants/permissions'
 import { usePermission } from '@/hooks/usePermission'
@@ -10,7 +11,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
-import { type User } from '../data/schema'
 import { useBulkUpdateUsers } from '../hooks/use-users'
 import { UsersMultiDeleteDialog } from './users-multi-delete-dialog'
 

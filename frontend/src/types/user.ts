@@ -1,23 +1,33 @@
-export type UserRole = 'admin' | 'user' | 'viewer'
+import { z } from 'zod'
 
-export type UserStatus = 'active' | 'inactive' | 'invited' | 'suspended'
+const userStatusSchema = z.union([
+  z.literal('active'),
+  z.literal('inactive'),
+  z.literal('invited'),
+  z.literal('suspended'),
+])
+export type UserStatus = z.infer<typeof userStatusSchema>
 
-export interface User {
-  id: string
-  username: string
-  email: string
-  phone?: string
-  bio?: string
-  avatar?: string
-  status: UserStatus
-  department_id?: string
-  department_name?: string
-  created_at: Date
-  updated_at: Date
-  invited_at?: Date
-  invited_by?: string
-  roles?: string[]
-}
+const userSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  email: z.string(),
+  phone: z.string().optional(),
+  avatar: z.string().optional(),
+  bio: z.string().optional(),
+  is_admin: z.boolean().optional(),
+  status: userStatusSchema,
+  department_id: z.string().optional(),
+  department_name: z.string().optional(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  invited_at: z.coerce.date().optional(),
+  invited_by: z.string().optional(),
+  roles: z.array(z.string()).optional(),
+})
+export type User = z.infer<typeof userSchema>
+
+export const userListSchema = z.array(userSchema)
 
 export interface CreateUserRequest {
   username: string
@@ -44,24 +54,4 @@ export interface UserUpdateRequest {
   avatar?: string
   role_ids?: string[]
   department_id?: string
-}
-
-export interface MenuItem {
-  id: string
-  name: string
-  path: string
-  icon: string
-  component: string
-  sort: number
-  visible: boolean
-  requiresAuth: boolean
-  requiresAdmin: boolean
-}
-
-export interface UserPermissions {
-  user_id: string
-  permissions: string[][]
-  roles: string[]
-  menus: MenuItem[] // 用户可访问的菜单列表
-  is_admin: boolean // 是否管理员
 }

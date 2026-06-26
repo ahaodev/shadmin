@@ -1,5 +1,6 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { type Row } from '@tanstack/react-table'
+import { type User } from '@/types/user'
 import { Trash2, UserPen } from 'lucide-react'
 import { PERMISSIONS } from '@/constants/permissions'
 import { usePermission } from '@/hooks/usePermission'
@@ -12,7 +13,6 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { type User } from '../data/schema'
 import { useUsers } from './users-provider'
 
 type DataTableRowActionsProps = {

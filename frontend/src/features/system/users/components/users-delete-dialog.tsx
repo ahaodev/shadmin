@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { type User } from '@/types/user'
 import { AlertTriangle } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { type User } from '../data/schema'
 import { useDeleteUser } from '../hooks/use-users'
 
 type UserDeleteDialogProps = {

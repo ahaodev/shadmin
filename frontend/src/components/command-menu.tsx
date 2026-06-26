@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { ArrowRight, ChevronRight, Laptop, Moon, Sun } from 'lucide-react'
 import { useSearch } from '@/context/search-provider'
 import { useTheme } from '@/context/theme-provider'
+import { getSidebarData } from '@/hooks/use-sidebar-data'
 import {
   CommandDialog,
   CommandEmpty,
@@ -12,7 +13,6 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
-import { getSidebarData } from './layout/data/dynamic-sidebar-data.ts'
 import { ScrollArea } from './ui/scroll-area'
 
 export function CommandMenu() {

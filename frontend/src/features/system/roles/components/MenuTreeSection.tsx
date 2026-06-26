@@ -1,6 +1,6 @@
 import React from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import type { MenuItem } from '@/lib/menu-utils'
+import type { RoleMenuOption } from '@/lib/menu-utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -8,7 +8,7 @@ import { FormLabel } from '@/components/ui/form'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 interface MenuTreeItemProps {
-  item: MenuItem
+  item: RoleMenuOption
   level?: number
   expanded: Set<string>
   selected: Set<string>
@@ -101,7 +101,7 @@ const MenuTreeItem = React.memo(
 MenuTreeItem.displayName = 'MenuTreeItem'
 
 interface MenuTreeProps {
-  items: MenuItem[]
+  items: RoleMenuOption[]
   expanded: Set<string>
   selected: Set<string>
   onToggle: (id: string) => void
@@ -130,7 +130,7 @@ const MenuTree = React.memo(
 MenuTree.displayName = 'MenuTree'
 
 interface MenuTreeSectionProps {
-  menusData: MenuItem[]
+  menusData: RoleMenuOption[]
   expandedNodes: Set<string>
   selectedMenus: Set<string>
   onToggle: (id: string) => void

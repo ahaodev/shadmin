@@ -1,33 +1,33 @@
-// 字典状态类型
-export type DictStatus = 'active' | 'inactive'
+import { z } from 'zod'
 
-// 字典类型接口
-export interface DictType {
-  id: string
-  code: string
-  name: string
-  status: DictStatus
-  remark?: string
-  created_at: Date
-  updated_at: Date
-}
+export const dictTypeSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  name: z.string(),
+  status: z.enum(['active', 'inactive']),
+  remark: z.string().optional(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+})
+export type DictType = z.infer<typeof dictTypeSchema>
 
-// 字典项接口
-export interface DictItem {
-  id: string
-  type_id: string
-  label: string
-  value: string
-  sort: number
-  is_default: boolean
-  status: DictStatus
-  color?: string
-  remark?: string
-  created_at: Date
-  updated_at: Date
-}
+export const dictItemSchema = z.object({
+  id: z.string(),
+  type_id: z.string(),
+  label: z.string(),
+  value: z.string(),
+  sort: z.number(),
+  is_default: z.boolean(),
+  status: z.enum(['active', 'inactive']),
+  color: z.string().optional(),
+  remark: z.string().optional(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+})
+export type DictItem = z.infer<typeof dictItemSchema>
 
-// 创建字典类型请求
+export type DictStatus = DictType['status']
+
 export interface CreateDictTypeRequest {
   code: string
   name: string
@@ -35,7 +35,6 @@ export interface CreateDictTypeRequest {
   remark?: string
 }
 
-// 更新字典类型请求
 export interface UpdateDictTypeRequest {
   code?: string
   name?: string
@@ -43,7 +42,6 @@ export interface UpdateDictTypeRequest {
   remark?: string
 }
 
-// 字典类型查询参数
 export interface DictTypeQueryParams {
   page?: number
   page_size?: number
@@ -55,7 +53,6 @@ export interface DictTypeQueryParams {
   order?: 'asc' | 'desc'
 }
 
-// 创建字典项请求
 export interface CreateDictItemRequest {
   type_id: string
   label: string
@@ -67,7 +64,6 @@ export interface CreateDictItemRequest {
   remark?: string
 }
 
-// 更新字典项请求
 export interface UpdateDictItemRequest {
   label?: string
   value?: string
@@ -78,7 +74,6 @@ export interface UpdateDictItemRequest {
   remark?: string
 }
 
-// 字典项查询参数
 export interface DictItemQueryParams {
   page?: number
   page_size?: number
@@ -92,7 +87,6 @@ export interface DictItemQueryParams {
   order?: 'asc' | 'desc'
 }
 
-// 字典类型分页结果
 export interface DictTypePagedResult {
   list: DictType[]
   total: number
@@ -101,7 +95,6 @@ export interface DictTypePagedResult {
   total_pages: number
 }
 
-// 字典项分页结果
 export interface DictItemPagedResult {
   list: DictItem[]
   total: number
@@ -110,7 +103,7 @@ export interface DictItemPagedResult {
   total_pages: number
 }
 
-// 表单状态
+// Form state
 export interface DictTypeFormData {
   code: string
   name: string
@@ -129,17 +122,13 @@ export interface DictItemFormData {
   remark: string
 }
 
-// 字典操作类型
+// Dialog state
 export type DictAction = 'create' | 'edit' | 'view'
-
-// 字典对话框状态
 export interface DictDialogState {
   open: boolean
   action: DictAction
   data?: DictType | DictItem
 }
-
-// 字典表格选择状态
 export interface DictTableSelection {
   selectedTypeId?: string
   selectedType?: DictType

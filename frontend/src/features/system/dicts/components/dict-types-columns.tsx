@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from 'date-fns'
 import type { ColumnDef } from '@tanstack/react-table'
+import { type DictType } from '@/types/dict'
 import { zhCN } from 'date-fns/locale'
 import { Edit, List, MoreHorizontal, Trash2 } from 'lucide-react'
 import { PERMISSIONS } from '@/constants/permissions'
@@ -14,7 +15,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { DataTableColumnHeader } from '@/components/data-table'
-import { type DictType } from '../data/schema'
 import { useDicts } from './dicts-provider'
 
 // Extract actions cell to a proper React component to follow Hooks rules

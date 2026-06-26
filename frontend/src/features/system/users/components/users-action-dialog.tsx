@@ -1,5 +1,6 @@
 'use client'
 
+import { type User } from '@/types/user'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,7 +11,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Form } from '@/components/ui/form'
-import { type User } from '../data/schema'
 import { useUserForm } from '../hooks/use-user-form'
 import { UserFormFields } from './user-form-fields'
 

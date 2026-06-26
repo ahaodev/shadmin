@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
+import { type User } from '@/types/user'
 import { AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { type User } from '../data/schema'
 import { useDeleteUsers } from '../hooks/use-users'
 
 type UserMultiDeleteDialogProps<TData> = {

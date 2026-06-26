@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { type DictType } from '@/types/dict'
 import { CheckCircle, MoreHorizontal, Trash2, XCircle } from 'lucide-react'
 import { PERMISSIONS } from '@/constants/permissions'
 import { usePermission } from '@/hooks/usePermission'
@@ -19,7 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { type DictType } from '../data/schema'
 import {
   useBulkUpdateDictTypes,
   useDeleteDictTypes,

@@ -1,8 +1,9 @@
-import type { MenuTreeNode } from '@/types/menu'
+import type { MenuTreeNode, ResourcesResponse } from '@/types/menu'
 import { useAuthStore } from '@/stores/auth-store'
 import { BackendMenuAdapter } from '@/lib/backend-menu-adapter'
+import { isAdmin } from '@/lib/permissions'
 import type { NavGroup } from '@/components/layout/types'
-import { getResourcesWithPermissions } from './resourceApi'
+import { apiClient } from './config'
 
 /**
  * Recursively extract all route paths from a menu tree.
@@ -30,6 +31,23 @@ function collectMenuPaths(menus: MenuTreeNode[]): string[] {
 function isPathMatch(pathname: string, allowedPath: string): boolean {
   if (pathname === allowedPath) return true
   return pathname.startsWith(allowedPath + '/')
+}
+
+/**
+ * Fetch complete resources data (menus + permissions + roles) from backend.
+ * Internal to menu-service — not exported.
+ */
+async function fetchResourcesWithPermissions(): Promise<ResourcesResponse> {
+  try {
+    const response = await apiClient.get(`/api/v1/resources`)
+    if (response.data && response.data.data) {
+      return response.data.data
+    }
+    return { menus: [], permissions: null, roles: [], is_admin: false }
+  } catch (error) {
+    console.error('Failed to fetch resources:', error)
+    throw error
+  }
 }
 
 /**
@@ -77,7 +95,7 @@ export class MenuService {
   private async _doLoadMenuData(): Promise<NavGroup[]> {
     try {
       // Fetch complete resources data including permissions
-      const resourcesData = await getResourcesWithPermissions()
+      const resourcesData = await fetchResourcesWithPermissions()
 
       // Set permissions to auth store
       if (resourcesData.permissions) {
@@ -124,8 +142,7 @@ export class MenuService {
     if (!this.cachedRawMenus) return true
 
     // Admin bypasses all checks
-    const { permissions } = useAuthStore.getState().auth
-    if (permissions?.is_admin) return true
+    if (isAdmin(useAuthStore.getState().auth.permissions)) return true
 
     // Collect all allowed paths from raw menu tree
     const allowedPaths = collectMenuPaths(this.cachedRawMenus)

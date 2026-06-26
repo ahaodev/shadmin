@@ -1,7 +1,7 @@
 import { apiClient } from '@/services/config.ts'
 import { type ApiResponse } from '@/types/api.ts'
 import { type Profile } from '@/types/profile.ts'
-import { type User } from '@/features/system/users/data/schema.ts'
+import { type User } from '@/types/user'
 
 // 登录请求类型
 export interface LoginRequest {
