@@ -69,7 +69,8 @@ export function useSidebarData() {
 
   // 监听用户状态变化
   const { auth } = useAuthStore()
-  // 创建更稳定的用户标识符，避免每次渲染重复 JSON.stringify
+  // 创建更稳定的用户标识符，避免每次渲染重复 JSON.stringify。
+  // 包含 permissions 以便仅权限变更（setPermissions）时也能刷新侧边栏。
   const userKey = useMemo(
     () =>
       JSON.stringify({
@@ -77,7 +78,8 @@ export function useSidebarData() {
         email: auth.user?.email,
         profileId: auth.profile?.id,
         profileEmail: auth.profile?.email,
-        accessToken: auth.accessToken?.substring(0, 20) ?? null,
+        accessToken: auth.accessToken ?? null,
+        permissions: auth.permissions,
       }),
     [
       auth.user?.accountNo,
@@ -85,6 +87,7 @@ export function useSidebarData() {
       auth.profile?.id,
       auth.profile?.email,
       auth.accessToken,
+      auth.permissions,
     ]
   )
 
@@ -134,6 +137,11 @@ export function useSidebarData() {
   }, [userKey]) // 当用户关键信息改变时重新加载数据
 
   const reloadData = async () => {
+    // Skip reloading if user is not authenticated (e.g. after logout)
+    if (!useAuthStore.getState().auth.accessToken) {
+      return
+    }
+
     try {
       setIsLoading(true)
       setError(null)
