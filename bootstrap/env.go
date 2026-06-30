@@ -66,7 +66,7 @@ func setDefaults() {
 
 		// 存储配置
 		"STORAGE_TYPE":      "disk",
-		"STORAGE_BASE_PATH": "./uploads",
+		"STORAGE_BASE_PATH": ".uploads",
 
 		// S3/MinIO 配置
 		"S3_ADDRESS":    "192.168.8.6:9000",
