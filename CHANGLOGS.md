@@ -15,7 +15,7 @@
 - Synced `README.md`, `README.zh.md`, `cli/README.md`, and `docs/getting-started/*.md` (en + zh) for the new directory
 - Synced `.github/skills/shadmin-dev/SKILL.md` and `.github/copilot-instructions.md` for the new directory
 
-## 2026-05-18 v2.0.0
+## 2026-05-18 v0.4.2
 
 - Added CLI device auth
 - Added login slider CAPTCHA
