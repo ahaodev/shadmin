@@ -6,7 +6,7 @@ This document helps you understand Shadmin's overall design so you can quickly n
 
 | Layer | Technology                                                     |
 |-------|----------------------------------------------------------------|
-| Backend Framework | Go 1.25 + Gin                                                  |
+| Backend Framework | Go 1.26 + Gin                                                  |
 | Database ORM | Ent (supports SQLite / PostgreSQL / MySQL)                     |
 | Authentication | JWT (access + refresh tokens)                                  |
 | Authorization | Casbin RBAC (path + method based policies)                     |

@@ -6,7 +6,7 @@
 
 | 层 | 技术                                    |
 |----|---------------------------------------|
-| 后端框架 | Go 1.25 + Gin                         |
+| 后端框架 | Go 1.26 + Gin                         |
 | 数据库 ORM | Ent（支持 SQLite / PostgreSQL / MySQL）   |
 | 认证 | JWT（access + refresh token）           |
 | 授权 | Casbin RBAC（基于路径 + 方法的策略）             |

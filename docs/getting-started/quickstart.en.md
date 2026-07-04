@@ -6,7 +6,7 @@ This guide helps you get Shadmin running locally in 5 minutes.
 
 | Tool | Minimum Version | Notes |
 |------|-----------------|-------|
-| Go | 1.25+           | [Download](https://go.dev/dl/) |
+| Go | 1.26+           | [Download](https://go.dev/dl/) |
 | Node.js | 20+             | [Download](https://nodejs.org/) |
 | pnpm | 10+             | `corepack enable` (recommended — ships with Node.js). This project is pnpm-only; npm/yarn will be rejected by `preinstall`. |
 
@@ -134,7 +134,7 @@ PORT=:8080
 
 **Go version too old**
 ```bash
-go version  # Requires 1.25+
+go version  # Requires 1.26+
 ```
 
 **pnpm not installed**

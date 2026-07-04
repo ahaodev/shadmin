@@ -8,7 +8,7 @@
 
 ![Shadmin 展示](docs/images/showcase-dark.jpg)
 
-[![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -34,7 +34,7 @@
 
 ### 环境要求
 
-- Go 1.25+
+- Go 1.26+
 - Node.js 18+ & pnpm（或 npm）
 
 ### 运行

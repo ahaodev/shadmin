@@ -1,6 +1,6 @@
 module shadmin-cli
 
-go 1.25.8
+go 1.26.4
 
 require github.com/spf13/cobra v1.10.2
 

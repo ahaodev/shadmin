@@ -8,7 +8,7 @@ COPY frontend/ ./
 RUN pnpm run build
 
 # ---------------------build go--------------------
-FROM golang:1.25-trixie AS builder_go
+FROM golang:1.26.4-trixie AS builder_go
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download

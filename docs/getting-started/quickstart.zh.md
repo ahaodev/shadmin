@@ -6,7 +6,7 @@
 
 | 工具 | 最低版本  | 说明 |
 |------|-------|------|
-| Go | 1.25+ | [下载](https://go.dev/dl/) |
+| Go | 1.26+ | [下载](https://go.dev/dl/) |
 | Node.js | 20+   | [下载](https://nodejs.org/) |
 | pnpm | 10+    | `corepack enable`（推荐，Node.js 自带）。本项目仅支持 pnpm，`preinstall` 会拒绝 npm/yarn。 |
 
@@ -134,7 +134,7 @@ PORT=:8080
 
 **Go 版本过低**
 ```bash
-go version  # 需要 1.25+
+go version  # 需要 1.26+
 ```
 
 **pnpm 未安装**

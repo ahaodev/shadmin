@@ -61,8 +61,7 @@ func TimeStamp() time.Time {
 
 // TimePointer returns a pointer to the current timestamp.
 func TimePointer() *time.Time {
-	t := TimeStamp()
-	return &t
+	return new(TimeStamp())
 }
 
 // Seconds converts an int to a duration in seconds.
