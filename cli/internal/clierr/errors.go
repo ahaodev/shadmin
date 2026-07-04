@@ -45,8 +45,7 @@ func ExitCode(err error) int {
 	if err == nil {
 		return ExitOK
 	}
-	var ce *CLIError
-	if errors.As(err, &ce) {
+	if ce, ok := errors.AsType[*CLIError](err); ok {
 		return ce.Code
 	}
 	return ExitGeneric
