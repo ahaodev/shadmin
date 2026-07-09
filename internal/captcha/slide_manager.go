@@ -21,8 +21,6 @@ const (
 	DefaultPadding = 5
 	// DefaultMaxAttempts 单个 challenge 最多校验尝试次数
 	DefaultMaxAttempts = 3
-	// cleanupInterval 后台清理过期 challenge 的间隔（仅 memory store 使用）
-	cleanupInterval = 30 * time.Second
 )
 
 // SlideManager 进程内 Slide 验证码生成与挑战存储，封装 go-captcha v2 与 challenge 生命周期。
@@ -36,7 +34,7 @@ type SlideManager struct {
 }
 
 // NewSlideManager 创建 SlideManager；不可用时返回错误，调用方应将其作为致命错误处理。
-// store 决定 challenge 落地：进程内存（newMemoryStore）或 Redis（newRedisStore）。
+// store 决定 challenge 落地：进程内存或 Redis，由调用方注入的 cachex.Cacher 后端决定。
 func NewSlideManager(store ChallengeStore) (*SlideManager, error) {
 	backgrounds, err := assetImages.GetImages()
 	if err != nil {

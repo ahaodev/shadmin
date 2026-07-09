@@ -6,8 +6,10 @@ import (
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/internal/auth/tokenblacklist"
+	captchapkg "shadmin/internal/captcha"
 	"shadmin/internal/cache"
 	"shadmin/internal/casbin"
+	"shadmin/internal/cachex"
 	"shadmin/internal/scheduler"
 	"shadmin/internal/userstatus"
 	"shadmin/repository"
@@ -21,11 +23,13 @@ type Application struct {
 	Env               *Env
 	DB                *ent.Client
 	Redis             *redis.Client // 启用 Redis 时非 nil（captcha/jwt/userstatus 用）；casbin 适配器自行管理连接
+	Cacher            cachex.Cacher // 统一缓存后端：REDIS_ADDR 非空用 Redis，否则进程内 go-cache。供 tokenblacklist/captcha/userstatus 共用
 	ApiEngine         *gin.Engine
 	FileStorage       domain.FileRepository // 新的通用文件存储接口
 	CasManager        casbin.Manager
 	CasbinInitializer *CasbinInitializer             // Casbin初始化器
 	CasbinScheduler   *scheduler.CasbinSyncScheduler // Casbin同步调度器
+	CaptchaManager    *captchapkg.SlideManager       // 滑块验证码管理器（内部使用共享 Cacher）
 	UserStatusCache   *userstatus.Cache              // 用户状态TTL缓存，用于登录/刷新/中间件检查
 	TokenBlacklist    tokenblacklist.Blacklist       // JWT 登出黑名单（内存或 Redis）
 	Version           string                         // 应用版本
@@ -50,30 +54,39 @@ func App() *Application {
 	if err := casbin.Initialize(app.DB, casbin.Config{
 		RedisAddr:     app.Env.RedisAddr,
 		RedisPassword: app.Env.RedisPassword,
+		RedisDB:       app.Env.RedisDB,
 	}); err != nil {
 		panic(err)
 	}
 	app.CasManager = casbin.GetManager()
 
-	// 初始化用户状态缓存：启用 Redis 时用 Redis store 跨实例共享，否则进程内 go-cache。
-	var statusStore userstatus.Store
+	// 初始化统一缓存后端：REDIS_ADDR 非空 → Redis cacher（共用上方 app.Redis 客户端），
+	// 否则进程内 go-cache。tokenblacklist / captcha / userstatus 三个模块共用同一实例，
+	// 通过各自的 namespace 隔离。
 	if app.Redis != nil {
-		statusStore = userstatus.NewRedisStore(app.Redis)
+		app.Cacher = cachex.NewRedisCacheWithClient(app.Redis)
+		log.Printf("Cacher: Redis mode")
 	} else {
-		statusStore = userstatus.NewMemoryStore(userstatus.DefaultTTL)
+		app.Cacher = cachex.NewMemoryCache(cachex.MemoryConfig{CleanupInterval: 2 * time.Minute})
+		log.Printf("Cacher: memory mode")
 	}
+
+	// 用户状态缓存：直接复用共享 Cacher，Cache 层做 DB 回源与 TTL 协调。
 	app.UserStatusCache = userstatus.New(
 		repository.NewUserRepository(app.DB, app.CasManager),
-		statusStore,
+		userstatus.NewStore(app.Cacher),
 		userstatus.DefaultTTL,
 	)
 
-	// 初始化 JWT 登出黑名单：启用 Redis 时跨实例共享，否则进程内 map。
-	if app.Redis != nil {
-		app.TokenBlacklist = tokenblacklist.NewRedisBlacklist(app.Redis)
-	} else {
-		app.TokenBlacklist = tokenblacklist.NewMemoryBlacklist()
+	// JWT 登出黑名单：复用共享 Cacher，ns="jwt:blacklist"。
+	app.TokenBlacklist = tokenblacklist.New(app.Cacher)
+
+	// 滑块验证码：复用共享 Cacher，ns="captcha"。
+	cm, err := captchapkg.NewSlideManager(captchapkg.NewStore(app.Cacher))
+	if err != nil {
+		panic(err)
 	}
+	app.CaptchaManager = cm
 
 	// 初始化Casbin初始化器并执行启动时同步
 	app.CasbinInitializer = NewCasbinInitializer(app.DB, app.CasManager)
@@ -107,8 +120,10 @@ func (app *Application) CloseDBConnection() {
 		app.CasbinScheduler.Stop()
 	}
 
-	if app.TokenBlacklist != nil {
-		_ = app.TokenBlacklist.Close()
+	// Cacher 由 bootstrap 自建 Redis 客户端时负责关闭；此处复用 app.Redis，
+	// Close 是 no-op，真正的 Redis 连接在下方统一关闭。
+	if app.Cacher != nil {
+		_ = app.Cacher.Close(context.Background())
 	}
 
 	if app.Redis != nil {

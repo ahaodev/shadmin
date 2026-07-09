@@ -38,7 +38,12 @@ func JwtAuthMiddleware(secret string, userStatusCache *userstatus.Cache, tokenBl
 		if tokenBlacklist != nil {
 			if jti, jErr := tokenutil.ExtractJTI(authToken, secret); jErr == nil && jti != "" {
 				revoked, rErr := tokenBlacklist.Exists(c.Request.Context(), jti)
-				if rErr == nil && revoked {
+				if rErr != nil {
+					c.JSON(http.StatusUnauthorized, domain.RespError("令牌无法验证"))
+					c.Abort()
+					return
+				}
+				if revoked {
 					c.JSON(http.StatusUnauthorized, domain.RespError("令牌已登出"))
 					c.Abort()
 					return

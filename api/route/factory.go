@@ -28,21 +28,14 @@ type ControllerFactory struct {
 
 // NewControllerFactory creates a new controller factory
 func NewControllerFactory(app *bootstrap.Application, timeout time.Duration, db *ent.Client) *ControllerFactory {
-	var store captchapkg.ChallengeStore
-	if app.Redis != nil {
-		store = captchapkg.NewRedisStore(app.Redis)
-	} else {
-		store = captchapkg.NewMemoryStore()
-	}
-	cm, err := captchapkg.NewSlideManager(store)
-	if err != nil {
-		log.Fatalf("failed to initialize slide captcha manager: %v", err)
+	if app.CaptchaManager == nil {
+		log.Fatalf("bootstrap: captcha manager not initialized")
 	}
 	return &ControllerFactory{
 		app:            app,
 		timeout:        timeout,
 		db:             db,
-		captchaManager: cm,
+		captchaManager: app.CaptchaManager,
 	}
 }
 

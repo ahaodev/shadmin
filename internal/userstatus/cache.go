@@ -2,8 +2,8 @@
 // so the JWT middleware and login/refresh flows can check whether a user
 // is still active without hitting the DB on every request.
 //
-// 后端由 Store 决定：进程内存（newMemoryStore，go-cache）或 Redis（newRedisStore，
-// 依靠 key TTL）。Cache 自身只负责回源与协调。
+// 后端由 Store 决定：进程内存（cachex 内存 cacher，go-cache）或 Redis
+// （cachex Redis cacher，依靠 key TTL）。Cache 自身只负责回源与协调。
 package userstatus
 
 import (
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"shadmin/domain"
+	"shadmin/internal/cachex"
 )
 
 // DefaultTTL 是默认缓存有效期。短 TTL 保证即使 ent hook 失效通知遗漏，
@@ -29,14 +30,15 @@ type Cache struct {
 	ttl    time.Duration
 }
 
-// New 返回一个 Cache。store 决定缓存落地，ttl 控制 Redis 写入 TTL 与内存默认 TTL。
-// 传入 store 为 nil 时使用内存 store（便于调用方传 nil 退化）。
+// New 返回一个 Cache。store 决定缓存落地，ttl 控制 Store 写入有效期。
+// store 为 nil 时使用内存 cachex 后端（便于调用方退化）。
 func New(loader Loader, store Store, ttl time.Duration) *Cache {
 	if ttl <= 0 {
 		ttl = DefaultTTL
 	}
 	if store == nil {
-		store = newMemoryStore(ttl)
+		// 退化路径：自建内存 cacher 后端，保证离线场景无需注入即可工作。
+		store = NewStore(cachex.NewMemoryCache(cachex.MemoryConfig{CleanupInterval: 2 * DefaultTTL}))
 	}
 	return &Cache{loader: loader, store: store, ttl: ttl}
 }
@@ -69,12 +71,4 @@ func (c *Cache) Invalidate(userID string) {
 		return
 	}
 	_ = c.store.Invalidate(context.Background(), userID)
-}
-
-// InvalidateAll is retained for tests; only meaningful for memory store.
-func (c *Cache) InvalidateAll() {
-	// 仅内存 store 支持批量清理；Redis 模式依赖 TTL，无需显式刷洗。
-	if ms, ok := c.store.(*memoryStore); ok {
-		ms.cache.Flush()
-	}
 }

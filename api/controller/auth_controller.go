@@ -256,7 +256,12 @@ func (lc *AuthController) RefreshToken(c *gin.Context) {
 	// 黑名单校验：refresh token 的 jti 已登出则拒绝续发。
 	if lc.TokenBlacklist != nil {
 		if jti, jErr := tokenutil.ExtractJTI(request.RefreshToken, lc.Env.RefreshTokenSecret); jErr == nil && jti != "" {
-			if revoked, _ := lc.TokenBlacklist.Exists(c.Request.Context(), jti); revoked {
+			revoked, rErr := lc.TokenBlacklist.Exists(c.Request.Context(), jti)
+			if rErr != nil {
+				c.JSON(http.StatusUnauthorized, domain.RespError("令牌无法验证"))
+				return
+			}
+			if revoked {
 				c.JSON(http.StatusUnauthorized, domain.RespError("令牌已登出"))
 				return
 			}
@@ -361,10 +366,16 @@ func (lc *AuthController) Logout(c *gin.Context) {
 	// 老令牌无 jti 时跳过；黑名单未配置时整体跳过（向后兼容）。
 	if lc.TokenBlacklist != nil {
 		if accessToken != "" {
-			lc.revokeTokenJTI(accessToken, lc.Env.AccessTokenSecret)
+			if err := lc.revokeTokenJTI(accessToken, lc.Env.AccessTokenSecret); err != nil {
+				c.JSON(http.StatusInternalServerError, domain.RespError("注销失败"))
+				return
+			}
 		}
 		if request.RefreshToken != "" {
-			lc.revokeTokenJTI(request.RefreshToken, lc.Env.RefreshTokenSecret)
+			if err := lc.revokeTokenJTI(request.RefreshToken, lc.Env.RefreshTokenSecret); err != nil {
+				c.JSON(http.StatusInternalServerError, domain.RespError("注销失败"))
+				return
+			}
 		}
 	}
 
@@ -372,13 +383,13 @@ func (lc *AuthController) Logout(c *gin.Context) {
 }
 
 // revokeTokenJTI 提取 token 的 jti 与过期时间，将其加入黑名单。
-func (lc *AuthController) revokeTokenJTI(token, secret string) {
+func (lc *AuthController) revokeTokenJTI(token, secret string) error {
 	jti, exp, ok := tokenutil.ExtractJTIAndExpiry(token, secret)
 	if !ok || jti == "" {
-		return
+		return nil
 	}
 	if time.Now().After(exp) {
-		return // 已过期的 token 无需加入黑名单
+		return nil // 已过期的 token 无需加入黑名单
 	}
-	_ = lc.TokenBlacklist.Add(context.Background(), jti, exp)
+	return lc.TokenBlacklist.Add(context.Background(), jti, exp)
 }

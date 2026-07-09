@@ -17,6 +17,7 @@ import (
 type Config struct {
 	RedisAddr     string
 	RedisPassword string
+	RedisDB       int
 }
 
 var (
@@ -124,11 +125,17 @@ func initializeCasbin(entClient *ent.Client, cfg Config) error {
 
 	var adapter persist.Adapter
 	if cfg.RedisAddr != "" {
-		if cfg.RedisPassword != "" {
-			adapter = redisadapter.NewAdapterWithPassword("tcp", cfg.RedisAddr, cfg.RedisPassword)
-		} else {
-			adapter = redisadapter.NewAdapter("tcp", cfg.RedisAddr)
+		adapterKey := "casbin_rules"
+		if cfg.RedisDB != 0 {
+			adapterKey = fmt.Sprintf("casbin_rules:%d", cfg.RedisDB)
 		}
+		options := []redisadapter.Option{
+			redisadapter.WithNetwork("tcp"),
+			redisadapter.WithAddress(cfg.RedisAddr),
+			redisadapter.WithPassword(cfg.RedisPassword),
+			redisadapter.WithKey(adapterKey),
+		}
+		adapter = redisadapter.NewAdpaterWithOption(options...)
 		enforcer, err = casbin.NewEnforcer(m, adapter)
 	} else {
 		// 纯内存模式：无适配器；AddPolicy 仅作用于内存，SavePolicy 需短路。
