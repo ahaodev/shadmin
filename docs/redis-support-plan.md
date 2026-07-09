@@ -10,6 +10,11 @@
 >   - JWT 黑名单接口 `Add(ctx, jti, expiry time.Time)`（而非 `ttl Duration`），过期由底层 TTL 处理。
 >   - userstatus `Store` 接口仅 `Get/Set/Invalidate`；`InvalidateAll` 保留在 `Cache` 上，仅内存实现生效，Redis 依赖 key TTL。
 > - 阶段 4：`docs/getting-started/deployment.{zh,en}.md` 已补 Redis 配置段；`.env.example` 在阶段 0 已补。
+> - **重构（cachex 统一缓存）**：引入 `internal/cachex.Cacher` 接口（`Set/Get/GetAndDelete/Exists/Delete/Iterator/Close`）
+>   并提供 go-cache、go-redis 两套实现；`tokenblacklist` / `captcha` / `userstatus` 三个模块改为复用同一 `Cacher`，通过
+>   namespace（`jwt:blacklist` / `captcha` / `userstatus`）隔离。`bootstrap` 按 `REDIS_ADDR` 一次性选择后端并注入；
+>   三套各自的双实现文件已删除。`userstatus.Cache` 移除 `InvalidateAll`（依赖 key TTL）。Casbin 适配器仍独立。
+>   `go fmt / vet / build / test` 全绿；已提交。
 
 ## 总体
 
