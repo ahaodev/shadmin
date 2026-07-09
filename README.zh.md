@@ -35,7 +35,7 @@
 ### 环境要求
 
 - Go 1.26+
-- Node.js 18+ & pnpm（或 npm）
+- Node.js 18+ & pnpm
 
 ### 运行
 
