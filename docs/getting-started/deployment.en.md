@@ -281,6 +281,24 @@ For AWS S3, set `STORAGE_TYPE` to `s3` and `S3_ADDRESS` to the S3 endpoint.
 
 ---
 
+## Redis Cache Configuration
+
+Shadmin optionally uses Redis as a shared cache backend covering Casbin policy storage, captcha challenges, and JWT logout blacklist. Leave `REDIS_ADDR` empty (default) to use in-process memory implementations for all three — no Redis required for single-instance deployments. Set it to switch all three to Redis, enabling shared state across instances.
+
+```bash
+REDIS_ADDR=127.0.0.1:6379        # empty = all in-memory; set to use Redis
+REDIS_PASSWORD=                   # leave empty if none
+REDIS_DB=0                        # 0-15
+```
+
+- **Casbin**: with Redis, uses `casbin-redis-adapter` (policies persisted to Redis); otherwise an in-memory Enforcer (kept fresh via Ent hooks + scheduled sync).
+- **Captcha**: challenges stored in Redis with key TTL, verifiable across instances.
+- **JWT blacklist**: on logout the token `jti` is written to Redis until expiry, so logout takes effect across instances immediately.
+
+> Multi-instance production deployments should set `REDIS_ADDR`; single-instance deployments can leave it empty for zero external dependencies.
+
+---
+
 ## Nginx Reverse Proxy
 
 For production, using Nginx as a reverse proxy is recommended to provide HTTPS, domain names, and static asset caching.

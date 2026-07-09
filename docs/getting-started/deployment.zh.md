@@ -97,6 +97,7 @@ docker run -d \
 | `DB_DSN` | 空（SQLite 默认 `.database/data.db`） | 数据库连接串 |
 | `STORAGE_TYPE` | `disk` | 存储类型：`disk` / `s3` / `minio` |
 | `STORAGE_BASE_PATH` | `./uploads` | 本地存储路径 |
+| `REDIS_ADDR` | 空（禁用） | Redis 地址；留空则 Casbin/Captcha/JWT 黑名单全部走内存，填写则一并切到 Redis |
 
 ---
 
@@ -278,6 +279,24 @@ S3_TOKEN=                          # 通常留空
 ```
 
 如果使用 AWS S3，将 `STORAGE_TYPE` 设为 `s3`，`S3_ADDRESS` 设为 S3 端点。
+
+---
+
+## Redis 缓存配置
+
+Shadmin 支持可选的 Redis 作为缓存后端，统一覆盖 Casbin 策略存储、Captcha 验证码与 JWT 登出黑名单。`REDIS_ADDR` 留空（默认）时全部走进程内存实现，单实例部署无需 Redis；填写后三者一并切换到 Redis，多实例部署可共享状态。
+
+```bash
+REDIS_ADDR=127.0.0.1:6379        # 留空 = 全部走内存；填写即切到 Redis
+REDIS_PASSWORD=                   # 无密码留空
+REDIS_DB=0                        # 0-15
+```
+
+- **Casbin**：启用 Redis 时走 `casbin-redis-adapter`（策略持久化到 Redis），否则纯内存 Enforcer（由应用层 Ent Hook + 定时同步维持策略）。
+- **Captcha**：验证码存到 Redis（key TTL 自动过期），多实例可跨进程校验。
+- **JWT 黑名单**：登出时将 token 的 `jti` 写入 Redis 直到过期，多实例登出即时生效。
+
+> 生产多实例部署建议填写 `REDIS_ADDR`；单实例可留空，零外部依赖。
 
 ---
 
