@@ -1,6 +1,7 @@
 package tokenutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -80,6 +81,41 @@ func ExtractJTI(requestToken string, secret string) (string, error) {
 	}
 	jti, _ := claims["jti"].(string)
 	return jti, nil
+}
+
+// ExtractJTIAndExpiry 一次解析取出 jti 与过期时间，专供登出黑名单使用。
+// jti 为空串表示老令牌无 jti；ok=false 表示令牌不可解析或无 exp。
+func ExtractJTIAndExpiry(requestToken string, secret string) (jti string, expiresAt time.Time, ok bool) {
+	token, err := jwt.Parse(requestToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secret), nil
+	})
+	if err != nil || !token.Valid {
+		return "", time.Time{}, false
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", time.Time{}, false
+	}
+	jti, _ = claims["jti"].(string)
+	if expClaim, exists := claims["exp"]; exists {
+		switch v := expClaim.(type) {
+		case float64:
+			expiresAt = time.Unix(int64(v), 0)
+		case int64:
+			expiresAt = time.Unix(v, 0)
+		case json.Number:
+			if n, err := v.Int64(); err == nil {
+				expiresAt = time.Unix(n, 0)
+			}
+		}
+	}
+	if expiresAt.IsZero() {
+		return jti, time.Time{}, false
+	}
+	return jti, expiresAt, true
 }
 
 func ExtractIDFromToken(requestToken string, secret string) (string, error) {

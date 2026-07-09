@@ -253,6 +253,16 @@ func (lc *AuthController) RefreshToken(c *gin.Context) {
 		return
 	}
 
+	// 黑名单校验：refresh token 的 jti 已登出则拒绝续发。
+	if lc.TokenBlacklist != nil {
+		if jti, jErr := tokenutil.ExtractJTI(request.RefreshToken, lc.Env.RefreshTokenSecret); jErr == nil && jti != "" {
+			if revoked, _ := lc.TokenBlacklist.Exists(c.Request.Context(), jti); revoked {
+				c.JSON(http.StatusUnauthorized, domain.RespError("令牌已登出"))
+				return
+			}
+		}
+	}
+
 	// 从刷新令牌中提取用户ID
 	userID, err := lc.TokenService.ExtractIDFromToken(request.RefreshToken, lc.Env.RefreshTokenSecret)
 	if err != nil {
@@ -363,16 +373,12 @@ func (lc *AuthController) Logout(c *gin.Context) {
 
 // revokeTokenJTI 提取 token 的 jti 与过期时间，将其加入黑名单。
 func (lc *AuthController) revokeTokenJTI(token, secret string) {
-	jti, err := tokenutil.ExtractJTI(token, secret)
-	if err != nil || jti == "" {
+	jti, exp, ok := tokenutil.ExtractJTIAndExpiry(token, secret)
+	if !ok || jti == "" {
 		return
 	}
-	claims, err := tokenutil.ExtractAllClaimsFromToken(token, secret)
-	if err != nil || claims.ExpiresAt == nil {
-		return
-	}
-	if time.Now().After(claims.ExpiresAt.Time) {
+	if time.Now().After(exp) {
 		return // 已过期的 token 无需加入黑名单
 	}
-	_ = lc.TokenBlacklist.Add(context.Background(), jti, claims.ExpiresAt.Time)
+	_ = lc.TokenBlacklist.Add(context.Background(), jti, exp)
 }
