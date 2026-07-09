@@ -8,8 +8,16 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
+	"github.com/casbin/casbin/v2/persist"
+	redisadapter "github.com/casbin/redis-adapter/v2"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+// Config 控制 Casbin 后端选择。RedisAddr 非空 → 走 Redis 适配器；否则为纯内存模式。
+type Config struct {
+	RedisAddr     string
+	RedisPassword string
+}
 
 var (
 	enforcer *casbin.Enforcer
@@ -81,16 +89,16 @@ m = g(r.sub, p.sub) && (r.obj == p.obj || p.obj == "*" || keyMatch2(r.obj, p.obj
 )
 
 // NewCasManager 创建权限管理器实例
-func NewCasManager(entClient *ent.Client) Manager {
-	return NewCasManagerWithLogger(entClient, &defaultLogger{})
+func NewCasManager(entClient *ent.Client, cfg Config) Manager {
+	return NewCasManagerWithLogger(entClient, cfg, &defaultLogger{})
 }
 
 // NewCasManagerWithLogger 创建带自定义日志的权限管理器实例
-func NewCasManagerWithLogger(entClient *ent.Client, logger Logger) Manager {
+func NewCasManagerWithLogger(entClient *ent.Client, cfg Config, logger Logger) Manager {
 	var err error
 
 	once.Do(func() {
-		err = initializeCasbin(entClient)
+		err = initializeCasbin(entClient, cfg)
 	})
 
 	if err != nil {
@@ -105,21 +113,27 @@ func NewCasManagerWithLogger(entClient *ent.Client, logger Logger) Manager {
 }
 
 // initializeCasbin 初始化Casbin组件
-func initializeCasbin(entClient *ent.Client) error {
-	// 初始化 ent 适配器
-	adapter, err := NewAdapterWithClient(entClient)
-	if err != nil {
-		return fmt.Errorf("failed to initialize casbin ent adapter: %w", err)
-	}
-
+// 启用 Redis 时使用 casbin-redis-adapter（自行管理 redigo 连接）；
+// 否则使用无适配器的纯内存 enforcer，策略由 SyncService 从 PG 同步入内存。
+func initializeCasbin(entClient *ent.Client, cfg Config) error {
 	// 创建模型
 	m, err := model.NewModelFromString(ModelConf)
 	if err != nil {
 		return fmt.Errorf("failed to create casbin model: %w", err)
 	}
 
-	// 创建 enforcer
-	enforcer, err = casbin.NewEnforcer(m, adapter)
+	var adapter persist.Adapter
+	if cfg.RedisAddr != "" {
+		if cfg.RedisPassword != "" {
+			adapter = redisadapter.NewAdapterWithPassword("tcp", cfg.RedisAddr, cfg.RedisPassword)
+		} else {
+			adapter = redisadapter.NewAdapter("tcp", cfg.RedisAddr)
+		}
+		enforcer, err = casbin.NewEnforcer(m, adapter)
+	} else {
+		// 纯内存模式：无适配器；AddPolicy 仅作用于内存，SavePolicy 需短路。
+		enforcer, err = casbin.NewEnforcer(m)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
@@ -127,9 +141,11 @@ func initializeCasbin(entClient *ent.Client) error {
 	enforcer.EnableLog(true)
 	enforcer.EnableAutoSave(true)
 
-	// 加载策略
-	if err = enforcer.LoadPolicy(); err != nil {
-		return fmt.Errorf("failed to load casbin policy: %w", err)
+	// 仅在有适配器时从后端加载策略；内存模式由 SyncService 填充。
+	if adapter != nil {
+		if err = enforcer.LoadPolicy(); err != nil {
+			return fmt.Errorf("failed to load casbin policy: %w", err)
+		}
 	}
 
 	return nil
@@ -215,8 +231,13 @@ func (m *CasManager) GetAllRoles() [][]string {
 	return roles
 }
 
-// SavePolicy 保存策略到数据库
+// SavePolicy 保存策略到后端。
+// 纯内存模式下 enforcer 无适配器，SavePolicy 会触发 nil 解引用 panic；
+// 因此内存模式直接返回 nil（策略已由 AutoSave/AddPolicy 作用于内存）。
 func (m *CasManager) SavePolicy() error {
+	if m.enforcer == nil || m.enforcer.GetAdapter() == nil {
+		return nil
+	}
 	return m.enforcer.SavePolicy()
 }
 

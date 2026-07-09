@@ -13,20 +13,20 @@ var (
 
 // Initialize 初始化全局Casbin管理器
 // 必须在应用启动时调用一次
-func Initialize(entClient *ent.Client) error {
+func Initialize(entClient *ent.Client, cfg Config) error {
 	var err error
 	globalOnce.Do(func() {
-		globalManager = NewCasManager(entClient)
+		globalManager = NewCasManager(entClient, cfg)
 		isInitialized = true
 	})
 	return err
 }
 
 // InitializeWithLogger 使用自定义日志器初始化全局Casbin管理器
-func InitializeWithLogger(entClient *ent.Client, logger Logger) error {
+func InitializeWithLogger(entClient *ent.Client, cfg Config, logger Logger) error {
 	var err error
 	globalOnce.Do(func() {
-		globalManager = NewCasManagerWithLogger(entClient, logger)
+		globalManager = NewCasManagerWithLogger(entClient, cfg, logger)
 		isInitialized = true
 	})
 	return err
