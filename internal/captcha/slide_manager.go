@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"sync"
 	"time"
 
 	"github.com/rs/xid"
@@ -22,33 +21,23 @@ const (
 	DefaultPadding = 5
 	// DefaultMaxAttempts 单个 challenge 最多校验尝试次数
 	DefaultMaxAttempts = 3
-	// cleanupInterval 后台清理过期 challenge 的间隔
+	// cleanupInterval 后台清理过期 challenge 的间隔（仅 memory store 使用）
 	cleanupInterval = 30 * time.Second
 )
-
-type challengeRecord struct {
-	x         int
-	y         int
-	expiresAt time.Time
-	used      bool
-	attempts  int
-}
 
 // SlideManager 进程内 Slide 验证码生成与挑战存储，封装 go-captcha v2 与 challenge 生命周期。
 // 它是基础设施组件，与 internal/login_security.go 同级，由 usecase 层包装后供 controller 使用。
 type SlideManager struct {
 	captcha    slide.Captcha
-	mu         sync.Mutex
-	challenges map[string]*challengeRecord
+	store      ChallengeStore
 	ttl        time.Duration
 	padding    int
 	maxAttempt int
-	stopCh     chan struct{}
-	stopOnce   sync.Once
 }
 
-// NewSlideManager 创建 SlideManager；不可用时返回错误，调用方应将其作为致命错误处理
-func NewSlideManager() (*SlideManager, error) {
+// NewSlideManager 创建 SlideManager；不可用时返回错误，调用方应将其作为致命错误处理。
+// store 决定 challenge 落地：进程内存（newMemoryStore）或 Redis（newRedisStore）。
+func NewSlideManager(store ChallengeStore) (*SlideManager, error) {
 	backgrounds, err := assetImages.GetImages()
 	if err != nil {
 		return nil, fmt.Errorf("load captcha backgrounds: %w", err)
@@ -73,31 +62,24 @@ func NewSlideManager() (*SlideManager, error) {
 		slide.WithGraphImages(graphs),
 	)
 
-	m := &SlideManager{
+	return &SlideManager{
 		captcha:    builder.Make(),
-		challenges: make(map[string]*challengeRecord),
+		store:      store,
 		ttl:        DefaultTTL,
 		padding:    DefaultPadding,
 		maxAttempt: DefaultMaxAttempts,
-		stopCh:     make(chan struct{}),
-	}
-
-	go m.startCleanup()
-
-	return m, nil
+	}, nil
 }
 
-// Close 停止后台清理 goroutine，多次调用安全
+// Close 释放底层存储资源（如内存 store 的清理 goroutine）。
 func (m *SlideManager) Close() {
-	m.stopOnce.Do(func() {
-		close(m.stopCh)
-	})
+	_ = m.store.Close()
 }
 
 // Generate 生成新的 Slide 验证码挑战；oldID 非空时会主动失效旧 challenge
 func (m *SlideManager) Generate(oldID string) (*domain.SlideCaptchaChallenge, error) {
 	if oldID != "" {
-		m.deleteChallenge(oldID)
+		_ = m.store.Delete(oldID)
 	}
 
 	captData, err := m.captcha.Generate()
@@ -121,14 +103,14 @@ func (m *SlideManager) Generate(oldID string) (*domain.SlideCaptchaChallenge, er
 	}
 
 	id := xid.New().String()
-
-	m.mu.Lock()
-	m.challenges[id] = &challengeRecord{
-		x:         block.X,
-		y:         block.Y,
-		expiresAt: time.Now().Add(m.ttl),
+	rec := challengeRecord{
+		X:         block.X,
+		Y:         block.Y,
+		ExpiresAt: time.Now().Add(m.ttl),
 	}
-	m.mu.Unlock()
+	if err := m.store.Save(id, rec, m.ttl); err != nil {
+		return nil, fmt.Errorf("save challenge: %w", err)
+	}
 
 	imageSize := m.captcha.GetOptions().GetImageSize()
 
@@ -152,33 +134,34 @@ func (m *SlideManager) Verify(id string, x, y int) error {
 		return domain.ErrCaptchaRequired
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	rec, ok := m.challenges[id]
+	rec, ok, err := m.store.Load(id)
+	if err != nil {
+		return fmt.Errorf("load challenge: %w", err)
+	}
 	if !ok {
 		return domain.ErrCaptchaInvalid
 	}
-	if rec.used {
-		delete(m.challenges, id)
+	if rec.Used {
+		_ = m.store.Delete(id)
 		return domain.ErrCaptchaInvalid
 	}
-	if time.Now().After(rec.expiresAt) {
-		delete(m.challenges, id)
+	if time.Now().After(rec.ExpiresAt) {
+		_ = m.store.Delete(id)
 		return domain.ErrCaptchaExpired
 	}
 
-	rec.attempts++
-	if !slide.Validate(x, y, rec.x, rec.y, m.padding) {
-		if rec.attempts >= m.maxAttempt {
-			delete(m.challenges, id)
+	rec.Attempts++
+	if !slide.Validate(x, y, rec.X, rec.Y, m.padding) {
+		if rec.Attempts >= m.maxAttempt {
+			_ = m.store.Delete(id)
+		} else {
+			_ = m.store.Save(id, rec, time.Until(rec.ExpiresAt))
 		}
 		return domain.ErrCaptchaInvalid
 	}
 
 	// 一次性消费：验证成功后立即失效
-	rec.used = true
-	delete(m.challenges, id)
+	_ = m.store.Delete(id)
 	return nil
 }
 
@@ -187,36 +170,5 @@ func (m *SlideManager) Invalidate(id string) {
 	if id == "" {
 		return
 	}
-	m.deleteChallenge(id)
-}
-
-func (m *SlideManager) deleteChallenge(id string) {
-	m.mu.Lock()
-	delete(m.challenges, id)
-	m.mu.Unlock()
-}
-
-func (m *SlideManager) startCleanup() {
-	ticker := time.NewTicker(cleanupInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			m.cleanupExpired()
-		case <-m.stopCh:
-			return
-		}
-	}
-}
-
-func (m *SlideManager) cleanupExpired() {
-	now := time.Now()
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for id, rec := range m.challenges {
-		if rec.used || now.After(rec.expiresAt) {
-			delete(m.challenges, id)
-		}
-	}
+	_ = m.store.Delete(id)
 }
