@@ -6,7 +6,8 @@ import (
 
 	"shadmin/domain"
 
-	jwt "github.com/golang-jwt/jwt/v5"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/rs/xid"
 )
 
 func CreateAccessToken(user *domain.User, secret string, expiry int) (accessToken string, err error) {
@@ -20,6 +21,7 @@ func CreateAccessToken(user *domain.User, secret string, expiry int) (accessToke
 		Roles:   user.Roles,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: exp,
+			ID:        xid.New().String(), // JTI，用于服务端登出黑名单
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -36,6 +38,7 @@ func CreateRefreshToken(user *domain.User, secret string, expiry int) (refreshTo
 		ID: user.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: exp,
+			ID:        xid.New().String(), // JTI
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsRefresh)
@@ -57,6 +60,26 @@ func IsAuthorized(requestToken string, secret string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// ExtractJTI 从 token 的 jti 声明中提取唯一标识，用于服务端登出黑名单。
+// 老 token 无 jti 时返回空串（中间件视为不在黑名单，向后兼容）。
+func ExtractJTI(requestToken string, secret string) (string, error) {
+	token, err := jwt.Parse(requestToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secret), nil
+	})
+	if err != nil {
+		return "", err
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return "", fmt.Errorf("invalid token")
+	}
+	jti, _ := claims["jti"].(string)
+	return jti, nil
 }
 
 func ExtractIDFromToken(requestToken string, secret string) (string, error) {

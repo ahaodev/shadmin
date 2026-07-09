@@ -24,7 +24,7 @@ func (pr *ProtectedRoutes) Setup(router *gin.RouterGroup, app *bootstrap.Applica
 	// Apply JWT authentication middleware (with user-status cache so that
 	// disabling a user revokes their already-issued access tokens immediately).
 	protectedRouter := router.Group("")
-	protectedRouter.Use(middleware.JwtAuthMiddleware(app.Env.AccessTokenSecret, app.UserStatusCache))
+	protectedRouter.Use(middleware.JwtAuthMiddleware(app.Env.AccessTokenSecret, app.UserStatusCache, app.TokenBlacklist))
 
 	// Setup different route groups
 	pr.setupUserRoutes(protectedRouter, app)

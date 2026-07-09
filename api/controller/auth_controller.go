@@ -1,18 +1,22 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"shadmin/bootstrap"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"shadmin/domain"
 	"shadmin/internal"
+	"shadmin/internal/auth/tokenblacklist"
 	"shadmin/internal/tokenservice"
+	"shadmin/internal/tokenutil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,6 +28,7 @@ type AuthController struct {
 	SecurityManager *internal.LoginSecurityManager
 	TokenService    *tokenservice.TokenService
 	CaptchaUsecase  domain.CaptchaUsecase
+	TokenBlacklist  tokenblacklist.Blacklist
 }
 
 // getClientIP 获取客户端真实IP地址
@@ -342,18 +347,32 @@ func (lc *AuthController) Logout(c *gin.Context) {
 			return accessToken
 		}())
 
-	// 在更完整的实现中，可以：
-	// 1. 将访问令牌和刷新令牌加入黑名单（Redis/内存缓存）
-	// 2. 清除服务器端的会话信息
-	// 3. 通知其他服务用户已登出
-	//
-	// 示例实现（需要添加相应的基础设施）：
-	// if accessToken != "" {
-	//     lc.TokenBlacklist.Add(accessToken, time.Until(tokenExpiry))
-	// }
-	// if request.RefreshToken != "" {
-	//     lc.TokenBlacklist.Add(request.RefreshToken, time.Until(refreshTokenExpiry))
-	// }
+	// 将 access/refresh token 的 jti 加入黑名单，TTL 设为 token 剩余有效期。
+	// 老令牌无 jti 时跳过；黑名单未配置时整体跳过（向后兼容）。
+	if lc.TokenBlacklist != nil {
+		if accessToken != "" {
+			lc.revokeTokenJTI(accessToken, lc.Env.AccessTokenSecret)
+		}
+		if request.RefreshToken != "" {
+			lc.revokeTokenJTI(request.RefreshToken, lc.Env.RefreshTokenSecret)
+		}
+	}
 
 	c.JSON(http.StatusOK, domain.RespSuccess("Logout successful"))
+}
+
+// revokeTokenJTI 提取 token 的 jti 与过期时间，将其加入黑名单。
+func (lc *AuthController) revokeTokenJTI(token, secret string) {
+	jti, err := tokenutil.ExtractJTI(token, secret)
+	if err != nil || jti == "" {
+		return
+	}
+	claims, err := tokenutil.ExtractAllClaimsFromToken(token, secret)
+	if err != nil || claims.ExpiresAt == nil {
+		return
+	}
+	if time.Now().After(claims.ExpiresAt.Time) {
+		return // 已过期的 token 无需加入黑名单
+	}
+	_ = lc.TokenBlacklist.Add(context.Background(), jti, claims.ExpiresAt.Time)
 }

@@ -28,7 +28,13 @@ type ControllerFactory struct {
 
 // NewControllerFactory creates a new controller factory
 func NewControllerFactory(app *bootstrap.Application, timeout time.Duration, db *ent.Client) *ControllerFactory {
-	cm, err := captchapkg.NewSlideManager()
+	var store captchapkg.ChallengeStore
+	if app.Redis != nil {
+		store = captchapkg.NewRedisStore(app.Redis)
+	} else {
+		store = captchapkg.NewMemoryStore()
+	}
+	cm, err := captchapkg.NewSlideManager(store)
 	if err != nil {
 		log.Fatalf("failed to initialize slide captcha manager: %v", err)
 	}
@@ -56,6 +62,7 @@ func (f *ControllerFactory) CreateAuthController(casManager casbin.Manager) *con
 		SecurityManager: internal.NewLoginSecurityManager(),
 		TokenService:    ts,
 		CaptchaUsecase:  usecase.NewCaptchaUsecase(f.captchaManager, f.timeout),
+		TokenBlacklist:  f.app.TokenBlacklist,
 	}
 }
 
