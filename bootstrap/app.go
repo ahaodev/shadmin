@@ -5,6 +5,8 @@ import (
 	"log"
 	"shadmin/domain"
 	"shadmin/ent"
+	"shadmin/internal/auth/tokenblacklist"
+	"shadmin/internal/cache"
 	"shadmin/internal/casbin"
 	"shadmin/internal/scheduler"
 	"shadmin/internal/userstatus"
@@ -12,17 +14,20 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 type Application struct {
 	Env               *Env
 	DB                *ent.Client
+	Redis             *redis.Client // 启用 Redis 时非 nil（captcha/jwt/userstatus 用）；casbin 适配器自行管理连接
 	ApiEngine         *gin.Engine
 	FileStorage       domain.FileRepository // 新的通用文件存储接口
 	CasManager        casbin.Manager
 	CasbinInitializer *CasbinInitializer             // Casbin初始化器
 	CasbinScheduler   *scheduler.CasbinSyncScheduler // Casbin同步调度器
 	UserStatusCache   *userstatus.Cache              // 用户状态TTL缓存，用于登录/刷新/中间件检查
+	TokenBlacklist    tokenblacklist.Blacklist       // JWT 登出黑名单（内存或 Redis）
 	Version           string                         // 应用版本
 }
 
@@ -31,17 +36,44 @@ func App() *Application {
 	app.Env = NewEnv()
 	app.DB = NewEntDatabase(app.Env)
 
-	// 初始化全局Casbin管理器
-	if err := casbin.Initialize(app.DB); err != nil {
+	// 可选：初始化 Redis 客户端（REDIS_ADDR 非空时启用）
+	if app.Env.RedisEnabled() {
+		cli, err := cache.NewClient(app.Env.RedisAddr, app.Env.RedisPassword, app.Env.RedisDB)
+		if err != nil {
+			panic(err)
+		}
+		app.Redis = cli
+		log.Printf("Redis 已启用: %s db=%d", app.Env.RedisAddr, app.Env.RedisDB)
+	}
+
+	// 初始化全局Casbin管理器（启用 Redis 时走 redis-adapter，否则内存模式）
+	if err := casbin.Initialize(app.DB, casbin.Config{
+		RedisAddr:     app.Env.RedisAddr,
+		RedisPassword: app.Env.RedisPassword,
+	}); err != nil {
 		panic(err)
 	}
 	app.CasManager = casbin.GetManager()
 
-	// 初始化用户状态缓存
+	// 初始化用户状态缓存：启用 Redis 时用 Redis store 跨实例共享，否则进程内 go-cache。
+	var statusStore userstatus.Store
+	if app.Redis != nil {
+		statusStore = userstatus.NewRedisStore(app.Redis)
+	} else {
+		statusStore = userstatus.NewMemoryStore(userstatus.DefaultTTL)
+	}
 	app.UserStatusCache = userstatus.New(
 		repository.NewUserRepository(app.DB, app.CasManager),
+		statusStore,
 		userstatus.DefaultTTL,
 	)
+
+	// 初始化 JWT 登出黑名单：启用 Redis 时跨实例共享，否则进程内 map。
+	if app.Redis != nil {
+		app.TokenBlacklist = tokenblacklist.NewRedisBlacklist(app.Redis)
+	} else {
+		app.TokenBlacklist = tokenblacklist.NewMemoryBlacklist()
+	}
 
 	// 初始化Casbin初始化器并执行启动时同步
 	app.CasbinInitializer = NewCasbinInitializer(app.DB, app.CasManager)
@@ -73,6 +105,14 @@ func (app *Application) CloseDBConnection() {
 	// 停止Casbin同步调度器
 	if app.CasbinScheduler != nil {
 		app.CasbinScheduler.Stop()
+	}
+
+	if app.TokenBlacklist != nil {
+		_ = app.TokenBlacklist.Close()
+	}
+
+	if app.Redis != nil {
+		_ = app.Redis.Close()
 	}
 
 	CloseEntConnection(app.DB)

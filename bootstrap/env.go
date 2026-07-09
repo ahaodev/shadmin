@@ -40,6 +40,16 @@ type Env struct {
 	S3SecretKey string `mapstructure:"S3_SECRET_KEY"`
 	S3Bucket    string `mapstructure:"S3_BUCKET"`
 	S3Token     string `mapstructure:"S3_TOKEN"`
+
+	// Redis 配置（留空 = 全部走内存默认；填写即 casbin/jwt/captcha 切 Redis）
+	RedisAddr     string `mapstructure:"REDIS_ADDR"`
+	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
+	RedisDB       int    `mapstructure:"REDIS_DB"`
+}
+
+// RedisEnabled 返回是否启用 Redis 后端（REDIS_ADDR 非空即启用）。
+func (e *Env) RedisEnabled() bool {
+	return strings.TrimSpace(e.RedisAddr) != ""
 }
 
 func setDefaults() {
@@ -74,6 +84,11 @@ func setDefaults() {
 		"S3_SECRET_KEY": "eIuV0i4ChbLqx54g9rhsZDRTC2LE1xEcnIAnAw1C",
 		"S3_BUCKET":     "shadmin",
 		"S3_TOKEN":      "",
+
+		// Redis 配置
+		"REDIS_ADDR":     "",
+		"REDIS_PASSWORD": "",
+		"REDIS_DB":       0,
 	}
 	// 绑定环境变量
 	viper.AutomaticEnv()
@@ -111,6 +126,10 @@ func generateEnvFile() error {
 		{
 			title: "# S3/MinIO 配置",
 			keys:  []string{"S3_ADDRESS", "S3_ACCESS_KEY", "S3_SECRET_KEY", "S3_BUCKET", "S3_TOKEN"},
+		},
+		{
+			title: "# Redis 配置（留空则全部走内存默认）",
+			keys:  []string{"REDIS_ADDR", "REDIS_PASSWORD", "REDIS_DB"},
 		},
 	}
 
@@ -207,6 +226,13 @@ func (e *Env) validate() error {
 		}
 		if e.S3Bucket == "" {
 			errs = append(errs, "使用MinIO时S3_BUCKET不能为空")
+		}
+	}
+
+	// Redis 配置校验（可选，留空即走内存默认）
+	if e.RedisAddr != "" {
+		if e.RedisDB < 0 || e.RedisDB > 15 {
+			errs = append(errs, "REDIS_DB必须在0到15之间")
 		}
 	}
 
