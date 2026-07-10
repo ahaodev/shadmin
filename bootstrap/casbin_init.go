@@ -38,8 +38,8 @@ func (ci *CasbinInitializer) InitializeCasbin(ctx context.Context) error {
 	startTime := time.Now()
 
 	// 1. 验证casbin管理器是否已初始化
-	if !casbin.IsInitialized() {
-		return fmt.Errorf("casbin管理器未初始化，请先调用casbin.Initialize()")
+	if ci.casManager == nil {
+		return fmt.Errorf("casbin管理器未初始化")
 	}
 
 	// 2. 从数据库同步权限数据到casbin

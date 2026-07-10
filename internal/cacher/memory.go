@@ -1,8 +1,9 @@
-package cachex
+package cacher
 
 import (
 	"context"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -26,6 +27,9 @@ func NewMemoryCache(cfg MemoryConfig, opts ...Option) Cacher {
 type memoryCache struct {
 	o *options
 	c *cache.Cache
+	// gadMu 仅用于 GetAndDelete，保证进程内"取+删"整体原子，
+	// 防止并发 goroutine 同时取到同一 key（一次性语义所依赖）。
+	gadMu sync.Mutex
 }
 
 func (m *memoryCache) tl(exp []time.Duration) time.Duration {
@@ -61,7 +65,10 @@ func (m *memoryCache) Delete(_ context.Context, ns, key string) error {
 
 func (m *memoryCache) GetAndDelete(_ context.Context, ns, key string) (string, bool, error) {
 	full := m.o.joinKey(ns, key)
-	// go-cache 无原生原子取删；Get+Delete 已足够——进程内单机场景没有跨进程竞态。
+	// go-cache 无原生原子取删；用 gadMu 串行化"取+删"，
+	// 确保并发 GetAndDelete 只有一个能取到值（一次性/限次语义依赖此原子性）。
+	m.gadMu.Lock()
+	defer m.gadMu.Unlock()
 	v, ok := m.c.Get(full)
 	if !ok {
 		return "", false, nil

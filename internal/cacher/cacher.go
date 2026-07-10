@@ -1,17 +1,11 @@
-// Package cachex 提供带命名空间的通用 key-value 缓存抽象，
-// 目前包含进程内存（go-cache）与 Redis（go-redis，兼容单机与集群）两种实现。
-//
-// 设计要点：
-//   - 接口仅消费 string 值，调用方自行序列化结构化数据（见 captcha 的 JSON 编码）；
-//   - 实例不持有默认 TTL，过期时间由每次 Set 显式传入，未传则永不过期；
-//   - 命名空间 ns 通过分隔符拼成实际键 "ns[key]"，分隔符默认 ":"，可用 WithDelimiter 调整；
-//   - Iterator 遍历返回的回调 key 已剥离 ns 前缀，仅保留业务键。
-package cachex
+package cacher
 
 import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // Cacher 抽象带命名空间的通用 key-value 缓存。
@@ -30,6 +24,31 @@ type Cacher interface {
 	Iterator(ctx context.Context, ns string, fn func(ctx context.Context, key, value string) bool) error
 	// Close 释放底层资源。
 	Close(ctx context.Context) error
+}
+
+// RuntimeConfig 用于运行时初始化统一缓存实现。
+// 仅会根据 UseRedis 选择并初始化其中一个实现：Redis 或 Memory。
+type RuntimeConfig struct {
+	UseRedis bool
+	Redis    RedisConfig
+	Memory   MemoryConfig
+	Client   *redis.Client
+}
+
+// NewForRuntime 根据运行时配置创建统一缓存实现。
+// 业务层只需传入配置即可获取 Cacher 实例，而无需关心底层是 Redis 还是内存实现。
+func NewForRuntime(cfg RuntimeConfig) (Cacher, error) {
+	if cfg.UseRedis {
+		if cfg.Client != nil {
+			return NewRedisCacheWithClient(cfg.Client), nil
+		}
+		cli, err := NewRedisClient(cfg.Redis)
+		if err != nil {
+			return nil, err
+		}
+		return NewRedisCacheWithClient(cli), nil
+	}
+	return NewMemoryCache(cfg.Memory), nil
 }
 
 const defaultDelimiter = ":"

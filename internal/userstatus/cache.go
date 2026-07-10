@@ -8,50 +8,53 @@ package userstatus
 
 import (
 	"context"
+	"log"
+	"shadmin/internal/cacher"
 	"time"
 
 	"shadmin/domain"
-	"shadmin/internal/cachex"
 )
 
 // DefaultTTL 是默认缓存有效期。短 TTL 保证即使 ent hook 失效通知遗漏，
 // 被禁用用户的 token 也会在 DefaultTTL 内失效。
 const DefaultTTL = 30 * time.Second
 
+const userStatusNS = "userstatus"
+
 // Loader fetches the user's status from the source of truth.
 type Loader interface {
 	GetStatusByID(ctx context.Context, id string) (string, error)
 }
 
-// Cache 是用户状态缓存，结合 Loader（DB 回源）与 Store（缓存后端）。
+// Cache 是用户状态缓存，结合 Loader（DB 回源）与 Cacher（缓存后端）。
 type Cache struct {
 	loader Loader
-	store  Store
+	cacher cacher.Cacher
 	ttl    time.Duration
 }
 
-// New 返回一个 Cache。store 决定缓存落地，ttl 控制 Store 写入有效期。
-// store 为 nil 时使用内存 cachex 后端（便于调用方退化）。
-func New(loader Loader, store Store, ttl time.Duration) *Cache {
+// New 返回一个 Cache。cacher 决定缓存落地，ttl 控制写入有效期。
+func New(loader Loader, cacher cacher.Cacher, ttl time.Duration) *Cache {
 	if ttl <= 0 {
 		ttl = DefaultTTL
 	}
-	if store == nil {
-		// 退化路径：自建内存 cacher 后端，保证离线场景无需注入即可工作。
-		store = NewStore(cachex.NewMemoryCache(cachex.MemoryConfig{CleanupInterval: 2 * DefaultTTL}))
+	if loader == nil {
+		panic("userstatus: loader is required")
 	}
-	return &Cache{loader: loader, store: store, ttl: ttl}
+	if cacher == nil {
+		panic("userstatus: cacher is required")
+	}
+	return &Cache{loader: loader, cacher: cacher, ttl: ttl}
 }
 
-// Get returns the user's status. On a cache miss it falls back to the
-// loader, caches the result, and returns it. If the user does not exist
-// in the source of truth, returns domain.ErrUserDisabled.
 func (c *Cache) Get(ctx context.Context, userID string) (string, error) {
 	if userID == "" {
 		return "", domain.ErrUserDisabled
 	}
 
-	if status, ok, _ := c.store.Get(ctx, userID); ok {
+	if status, ok, err := c.cacher.Get(ctx, userStatusNS, userID); err != nil {
+		log.Printf("userstatus: cache get failed for user %s: %v", userID, err)
+	} else if ok {
 		return status, nil
 	}
 
@@ -61,7 +64,9 @@ func (c *Cache) Get(ctx context.Context, userID string) (string, error) {
 		return "", domain.ErrUserDisabled
 	}
 
-	_ = c.store.Set(ctx, userID, status, c.ttl)
+	if err := c.cacher.Set(ctx, userStatusNS, userID, status, c.ttl); err != nil {
+		log.Printf("userstatus: cache set failed for user %s: %v", userID, err)
+	}
 	return status, nil
 }
 
@@ -70,5 +75,7 @@ func (c *Cache) Invalidate(userID string) {
 	if userID == "" {
 		return
 	}
-	_ = c.store.Invalidate(context.Background(), userID)
+	if err := c.cacher.Delete(context.Background(), userStatusNS, userID); err != nil {
+		log.Printf("userstatus: cache delete failed for user %s: %v", userID, err)
+	}
 }

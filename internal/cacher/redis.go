@@ -1,8 +1,9 @@
-package cachex
+package cacher
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -17,15 +18,46 @@ type RedisConfig struct {
 	DB       int
 }
 
+// NewRedisClient 根据配置构造一个共享的 *redis.Client，并执行一次 Ping 校验。
+func NewRedisClient(cfg RedisConfig) (*redis.Client, error) {
+	cli := redis.NewClient(&redis.Options{
+		Addr:         cfg.Addr,
+		Username:     cfg.Username,
+		Password:     cfg.Password,
+		DB:           cfg.DB,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+		PoolSize:     20,
+		MinIdleConns: 2,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := cli.Ping(ctx).Err(); err != nil {
+		_ = cli.Close()
+		return nil, fmt.Errorf("redis ping: %w", err)
+	}
+	return cli, nil
+}
+
+// NewClient 依据已校验的环境配置构造 Redis 客户端。
+// 调用方负责在关闭时执行 Close()。
+func NewClient(addr, password string, db int) (*redis.Client, error) {
+	return NewRedisClient(RedisConfig{
+		Addr:     addr,
+		Password: password,
+		DB:       db,
+	})
+}
+
 // NewRedisCache 自行创建 Redis 客户端并返回 Cacher；
 // 该客户端归本实例所有，Close 时会被关闭。
 func NewRedisCache(cfg RedisConfig, opts ...Option) Cacher {
-	cli := redis.NewClient(&redis.Options{
-		Addr:     cfg.Addr,
-		Username: cfg.Username,
-		Password: cfg.Password,
-		DB:       cfg.DB,
-	})
+	cli, err := NewRedisClient(cfg)
+	if err != nil {
+		panic(err)
+	}
 	return newRedisCache(cli, true, opts...)
 }
 

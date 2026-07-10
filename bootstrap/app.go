@@ -6,10 +6,9 @@ import (
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/internal/auth/tokenblacklist"
+	"shadmin/internal/cacher"
 	captchapkg "shadmin/internal/captcha"
-	"shadmin/internal/cache"
 	"shadmin/internal/casbin"
-	"shadmin/internal/cachex"
 	"shadmin/internal/scheduler"
 	"shadmin/internal/userstatus"
 	"shadmin/repository"
@@ -22,8 +21,8 @@ import (
 type Application struct {
 	Env               *Env
 	DB                *ent.Client
-	Redis             *redis.Client // 启用 Redis 时非 nil（captcha/jwt/userstatus 用）；casbin 适配器自行管理连接
-	Cacher            cachex.Cacher // 统一缓存后端：REDIS_ADDR 非空用 Redis，否则进程内 go-cache。供 tokenblacklist/captcha/userstatus 共用
+	Redis             *redis.Client // 启用 Redis 时非 nil（captcha/jwt/userstatus 用）；casbin 适配器自建 redigo 连接池
+	Cacher            cacher.Cacher // 统一缓存后端：REDIS_ADDR 非空用 Redis，否则进程内 go-cache。供 tokenblacklist/captcha/userstatus 共用
 	ApiEngine         *gin.Engine
 	FileStorage       domain.FileRepository // 新的通用文件存储接口
 	CasManager        casbin.Manager
@@ -42,7 +41,7 @@ func App() *Application {
 
 	// 可选：初始化 Redis 客户端（REDIS_ADDR 非空时启用）
 	if app.Env.RedisEnabled() {
-		cli, err := cache.NewClient(app.Env.RedisAddr, app.Env.RedisPassword, app.Env.RedisDB)
+		cli, err := cacher.NewClient(app.Env.RedisAddr, app.Env.RedisPassword, app.Env.RedisDB)
 		if err != nil {
 			panic(err)
 		}
@@ -50,31 +49,41 @@ func App() *Application {
 		log.Printf("Redis 已启用: %s db=%d", app.Env.RedisAddr, app.Env.RedisDB)
 	}
 
-	// 初始化全局Casbin管理器（启用 Redis 时走 redis-adapter，否则内存模式）
-	if err := casbin.Initialize(app.DB, casbin.Config{
+	// 初始化 Casbin 管理器（启用 Redis 时走 redis-adapter，否则内存模式）
+	// redis-adapter 通过自建 redigo 连接池按 REDIS_DB 选库，避免策略固定落在 DB 0。
+	app.CasManager = casbin.NewCasManager(app.DB, casbin.Config{
 		RedisAddr:     app.Env.RedisAddr,
 		RedisPassword: app.Env.RedisPassword,
 		RedisDB:       app.Env.RedisDB,
-	}); err != nil {
-		panic(err)
-	}
-	app.CasManager = casbin.GetManager()
+	})
 
 	// 初始化统一缓存后端：REDIS_ADDR 非空 → Redis cacher（共用上方 app.Redis 客户端），
 	// 否则进程内 go-cache。tokenblacklist / captcha / userstatus 三个模块共用同一实例，
 	// 通过各自的 namespace 隔离。
+	cacher, err := cacher.NewForRuntime(cacher.RuntimeConfig{
+		UseRedis: app.Redis != nil,
+		Redis: cacher.RedisConfig{
+			Addr:     app.Env.RedisAddr,
+			Password: app.Env.RedisPassword,
+			DB:       app.Env.RedisDB,
+		},
+		Memory: cacher.MemoryConfig{CleanupInterval: 2 * time.Minute},
+		Client: app.Redis,
+	})
+	if err != nil {
+		panic(err)
+	}
+	app.Cacher = cacher
 	if app.Redis != nil {
-		app.Cacher = cachex.NewRedisCacheWithClient(app.Redis)
 		log.Printf("Cacher: Redis mode")
 	} else {
-		app.Cacher = cachex.NewMemoryCache(cachex.MemoryConfig{CleanupInterval: 2 * time.Minute})
 		log.Printf("Cacher: memory mode")
 	}
 
 	// 用户状态缓存：直接复用共享 Cacher，Cache 层做 DB 回源与 TTL 协调。
 	app.UserStatusCache = userstatus.New(
 		repository.NewUserRepository(app.DB, app.CasManager),
-		userstatus.NewStore(app.Cacher),
+		app.Cacher,
 		userstatus.DefaultTTL,
 	)
 
@@ -82,7 +91,7 @@ func App() *Application {
 	app.TokenBlacklist = tokenblacklist.New(app.Cacher)
 
 	// 滑块验证码：复用共享 Cacher，ns="captcha"。
-	cm, err := captchapkg.NewSlideManager(captchapkg.NewStore(app.Cacher))
+	cm, err := captchapkg.NewSlideManager(app.Cacher)
 	if err != nil {
 		panic(err)
 	}

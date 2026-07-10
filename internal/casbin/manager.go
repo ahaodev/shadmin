@@ -9,7 +9,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
-	redisadapter "github.com/casbin/redis-adapter/v2"
+	redisadapter "github.com/casbin/redis-adapter/v3"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -66,7 +66,6 @@ func (l *defaultLogger) Log(action, message string) {
 	log.Printf("[%s] %s", action, message)
 }
 
-// 配置常量
 const (
 	ModelConf = `
 [request_definition]
@@ -84,9 +83,6 @@ e = some(where (p.eft == allow))
 [matchers]
 m = g(r.sub, p.sub) && (r.obj == p.obj || p.obj == "*" || keyMatch2(r.obj, p.obj) ) && (r.act == p.act || p.act == "*")
 `
-	// 资源类型前缀常量 - 用于对象标识（保留以备将来扩展）
-	MenuResourcePrefix   = "menu:"
-	ButtonResourcePrefix = "button:"
 )
 
 // NewCasManager 创建权限管理器实例
@@ -129,13 +125,12 @@ func initializeCasbin(entClient *ent.Client, cfg Config) error {
 		if cfg.RedisDB != 0 {
 			adapterKey = fmt.Sprintf("casbin_rules:%d", cfg.RedisDB)
 		}
-		options := []redisadapter.Option{
-			redisadapter.WithNetwork("tcp"),
-			redisadapter.WithAddress(cfg.RedisAddr),
-			redisadapter.WithPassword(cfg.RedisPassword),
-			redisadapter.WithKey(adapterKey),
-		}
-		adapter = redisadapter.NewAdpaterWithOption(options...)
+		adapter, err = redisadapter.NewAdapter(&redisadapter.Config{
+			Network:  "tcp",
+			Address:  cfg.RedisAddr,
+			Password: cfg.RedisPassword,
+			Key:      adapterKey,
+		})
 		enforcer, err = casbin.NewEnforcer(m, adapter)
 	} else {
 		// 纯内存模式：无适配器；AddPolicy 仅作用于内存，SavePolicy 需短路。
