@@ -15,14 +15,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 )
 
 type Application struct {
 	Env               *Env
 	DB                *ent.Client
-	Redis             *redis.Client // 启用 Redis 时非 nil（captcha/jwt/userstatus 用）；casbin 适配器自建 redigo 连接池
-	Cacher            cacher.Cacher // 统一缓存后端：REDIS_ADDR 非空用 Redis，否则进程内 go-cache。供 tokenblacklist/captcha/userstatus 共用
+	Cacher            cacher.Cacher
 	ApiEngine         *gin.Engine
 	FileStorage       domain.FileRepository // 新的通用文件存储接口
 	CasManager        casbin.Manager
@@ -39,42 +37,27 @@ func App() *Application {
 	app.Env = NewEnv()
 	app.DB = NewEntDatabase(app.Env)
 
-	// 可选：初始化 Redis 客户端（REDIS_ADDR 非空时启用）
-	if app.Env.RedisEnabled() {
-		cli, err := cacher.NewClient(app.Env.RedisAddr, app.Env.RedisPassword, app.Env.RedisDB)
-		if err != nil {
-			panic(err)
-		}
-		app.Redis = cli
-		log.Printf("Redis 已启用: %s db=%d", app.Env.RedisAddr, app.Env.RedisDB)
-	}
-
 	// 初始化 Casbin 管理器（启用 Redis 时走 redis-adapter，否则内存模式）
-	// redis-adapter 通过自建 redigo 连接池按 REDIS_DB 选库，避免策略固定落在 DB 0。
 	app.CasManager = casbin.NewCasManager(app.DB, casbin.Config{
 		RedisAddr:     app.Env.RedisAddr,
 		RedisPassword: app.Env.RedisPassword,
 		RedisDB:       app.Env.RedisDB,
 	})
 
-	// 初始化统一缓存后端：REDIS_ADDR 非空 → Redis cacher（共用上方 app.Redis 客户端），
-	// 否则进程内 go-cache。tokenblacklist / captcha / userstatus 三个模块共用同一实例，
-	// 通过各自的 namespace 隔离。
 	cacher, err := cacher.NewForRuntime(cacher.RuntimeConfig{
-		UseRedis: app.Redis != nil,
+		UseRedis: app.Env.RedisEnabled(),
 		Redis: cacher.RedisConfig{
 			Addr:     app.Env.RedisAddr,
 			Password: app.Env.RedisPassword,
 			DB:       app.Env.RedisDB,
 		},
 		Memory: cacher.MemoryConfig{CleanupInterval: 2 * time.Minute},
-		Client: app.Redis,
 	})
 	if err != nil {
 		panic(err)
 	}
 	app.Cacher = cacher
-	if app.Redis != nil {
+	if app.Env.RedisEnabled() {
 		log.Printf("Cacher: Redis mode")
 	} else {
 		log.Printf("Cacher: memory mode")
@@ -129,14 +112,8 @@ func (app *Application) CloseDBConnection() {
 		app.CasbinScheduler.Stop()
 	}
 
-	// Cacher 由 bootstrap 自建 Redis 客户端时负责关闭；此处复用 app.Redis，
-	// Close 是 no-op，真正的 Redis 连接在下方统一关闭。
 	if app.Cacher != nil {
 		_ = app.Cacher.Close(context.Background())
-	}
-
-	if app.Redis != nil {
-		_ = app.Redis.Close()
 	}
 
 	CloseEntConnection(app.DB)
