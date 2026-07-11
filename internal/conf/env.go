@@ -54,8 +54,11 @@ type Env struct {
 	S3Token     string `mapstructure:"S3_TOKEN"`
 
 	// 缓存配置（mem=内存，redis=Redis）
-	CacheType string `mapstructure:"CACHE_TYPE"`
-	RedisURL  string `mapstructure:"REDIS_URL"`
+	CacheType     string `mapstructure:"CACHE_TYPE"`
+	RedisAddress  string `mapstructure:"REDIS_ADDRESS"`
+	RedisUsername string `mapstructure:"REDIS_USERNAME"`
+	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
+	RedisDB       int    `mapstructure:"REDIS_DB"`
 }
 
 // CacheTypeValue 返回规范化后的缓存类型。
@@ -65,7 +68,7 @@ func (e *Env) CacheTypeValue() string {
 
 // RedisEnabled 返回是否启用 Redis 缓存后端。
 func (e *Env) RedisEnabled() bool {
-	return e.CacheTypeValue() == CacheTypeRedis && strings.TrimSpace(e.RedisURL) != ""
+	return e.CacheTypeValue() == CacheTypeRedis && strings.TrimSpace(e.RedisAddress) != ""
 }
 
 func setDefaults() {
@@ -102,8 +105,11 @@ func setDefaults() {
 		"S3_TOKEN":      "",
 
 		// 缓存配置
-		"CACHE_TYPE": CacheTypeMem,
-		"REDIS_URL":  "",
+		"CACHE_TYPE":     CacheTypeMem,
+		"REDIS_ADDRESS":  "",
+		"REDIS_USERNAME": "",
+		"REDIS_PASSWORD": "",
+		"REDIS_DB":       0,
 	}
 	// 绑定环境变量
 	viper.AutomaticEnv()
@@ -144,7 +150,7 @@ func generateEnvFile() error {
 		},
 		{
 			title: "# 缓存配置（mem=内存，redis=Redis）",
-			keys:  []string{"CACHE_TYPE", "REDIS_URL"},
+			keys:  []string{"CACHE_TYPE", "REDIS_ADDRESS", "REDIS_USERNAME", "REDIS_PASSWORD", "REDIS_DB"},
 		},
 	}
 
@@ -248,8 +254,11 @@ func (e *Env) validate() error {
 	if cacheType != CacheTypeMem && cacheType != CacheTypeRedis {
 		errs = append(errs, "CACHE_TYPE必须是mem或redis")
 	}
-	if cacheType == CacheTypeRedis && strings.TrimSpace(e.RedisURL) == "" {
-		errs = append(errs, "CACHE_TYPE=redis时REDIS_URL不能为空")
+	if cacheType == CacheTypeRedis && strings.TrimSpace(e.RedisAddress) == "" {
+		errs = append(errs, "CACHE_TYPE=redis时REDIS_ADDRESS不能为空")
+	}
+	if cacheType == CacheTypeRedis && e.RedisDB < 0 {
+		errs = append(errs, "REDIS_DB不能小于0")
 	}
 
 	if len(errs) > 0 {

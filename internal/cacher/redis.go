@@ -40,21 +40,6 @@ func (cfg RedisConfig) options() *redis.Options {
 	}
 }
 
-// ParseRedisURL 将 Redis URL 解析为内部配置。
-func ParseRedisURL(redisURL string) (RedisConfig, error) {
-	opts, err := redis.ParseURL(redisURL)
-	if err != nil {
-		return RedisConfig{}, err
-	}
-
-	return RedisConfig{
-		Addr:     opts.Addr,
-		Username: opts.Username,
-		Password: opts.Password,
-		DB:       opts.DB,
-	}, nil
-}
-
 // NewRedisClient 根据配置构造一个共享的 *redis.Client，并执行一次 Ping 校验。
 func NewRedisClient(cfg RedisConfig) (*redis.Client, error) {
 	cli := redis.NewClient(cfg.options())

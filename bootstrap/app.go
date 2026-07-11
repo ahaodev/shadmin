@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"fmt"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/internal/auth/tokenblacklist"
@@ -38,21 +37,16 @@ func App() *Application {
 	app.Env = conf.NewEnv()
 	app.DB = NewEntDatabase(app.Env)
 
-	// 初始化 Casbin 管理器（启用 Redis 时走 redis-adapter，否则内存模式）
-	app.CasManager = casbin.NewCasManager(app.DB, casbin.Config{
-		Debug:    app.Env.AppEnv == conf.AppEnvDev || app.Env.AppEnv == conf.AppEnvTest,
-		RedisURL: app.Env.RedisURL,
-	})
-
 	redisCfg := cacher.RedisConfig{}
 	var err error
 	if app.Env.RedisEnabled() {
-		redisCfg, err = cacher.ParseRedisURL(app.Env.RedisURL)
-		if err != nil {
-			panic(fmt.Errorf("parse redis url: %w", err))
+		redisCfg = cacher.RedisConfig{
+			Addr:     app.Env.RedisAddress,
+			Username: app.Env.RedisUsername,
+			Password: app.Env.RedisPassword,
+			DB:       app.Env.RedisDB,
 		}
 	}
-
 	cacher, err := cacher.NewForRuntime(cacher.RuntimeConfig{
 		UseRedis: app.Env.RedisEnabled(),
 		Redis:    redisCfg,
@@ -74,6 +68,13 @@ func App() *Application {
 		app.Cacher,
 		userstatus.DefaultTTL,
 	)
+
+	casAdapter, err := casbin.NewAdapter(app.DB, redisCfg)
+	if err != nil {
+		panic(err)
+	}
+	// 初始化 Casbin 管理器（启用 Redis 时走 redis-adapter，否则内存模式）
+	app.CasManager = casbin.NewCasManager(casAdapter)
 
 	// JWT 登出黑名单：复用共享 Cacher，ns="jwt:blacklist"。
 	app.TokenBlacklist = tokenblacklist.New(app.Cacher)

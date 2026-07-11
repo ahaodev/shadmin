@@ -2,7 +2,6 @@
 // so the JWT middleware and login/refresh flows can check whether a user
 // is still active without hitting the DB on every request.
 //
-// 后端由 Store 决定：进程内存（cachex 内存 cacher，go-cache）或 Redis
 // （cachex Redis cacher，依靠 key TTL）。Cache 自身只负责回源与协调。
 package userstatus
 

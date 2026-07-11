@@ -2,22 +2,11 @@ package casbin
 
 import (
 	"fmt"
-	"shadmin/ent"
-	"shadmin/internal/cacher"
 	"sync"
 
 	"github.com/casbin/casbin/v3"
 	"github.com/casbin/casbin/v3/model"
-	entadapter "github.com/casbin/ent-adapter"
-	adapterent "github.com/casbin/ent-adapter/ent"
-	"github.com/casbin/redis-adapter/v3"
 )
-
-// Config 控制 Casbin 后端选择。RedisURL 非空 → 走 Redis 适配器；否则为 Ent 适配器。
-type Config struct {
-	Debug    bool
-	RedisURL string
-}
 
 var (
 	enforcer *casbin.Enforcer
@@ -52,35 +41,15 @@ type Manager interface {
 
 // CasManager 权限管理器实现
 type CasManager struct {
-	enforcer  *casbin.Enforcer
-	entClient *ent.Client
+	enforcer *casbin.Enforcer
 }
 
-const (
-	ModelConf = `
-[request_definition]
-r = sub, obj, act
-
-[policy_definition]
-p = sub, obj, act
-
-[role_definition]
-g = _, _
-
-[policy_effect]
-e = some(where (p.eft == allow))
-
-[matchers]
-m = g(r.sub, p.sub) && (r.obj == p.obj || p.obj == "*" || keyMatch2(r.obj, p.obj) ) && (r.act == p.act || r.act == "*")
-`
-)
-
 // NewCasManager 创建权限管理器实例
-func NewCasManager(entClient *ent.Client, cfg Config) Manager {
+func NewCasManager(adapter any) Manager {
 	var err error
 
 	once.Do(func() {
-		err = initializeCasbin(entClient, cfg)
+		err = initializeCasbin(adapter)
 	})
 
 	if err != nil {
@@ -88,19 +57,13 @@ func NewCasManager(entClient *ent.Client, cfg Config) Manager {
 	}
 
 	return &CasManager{
-		enforcer:  enforcer,
-		entClient: entClient,
+		enforcer: enforcer,
 	}
 }
 
 // initializeCasbin 初始化Casbin组件
-func initializeCasbin(entClient *ent.Client, cfg Config) error {
+func initializeCasbin(adapter any) error {
 	m, err := model.NewModelFromString(ModelConf)
-	if err != nil {
-		return err
-	}
-
-	adapter, err := newCasbinAdapter(entClient, cfg)
 	if err != nil {
 		return err
 	}
@@ -111,36 +74,9 @@ func initializeCasbin(entClient *ent.Client, cfg Config) error {
 	}
 
 	enforcer.EnableAutoSave(true)
-	if cfg.Debug {
-		enforcer.SetLogger(newCasbinLogger())
-	}
+
+	enforcer.SetLogger(newCasbinLogger())
 	return nil
-}
-
-func newCasbinAdapter(entClient *ent.Client, cfg Config) (any, error) {
-	if cfg.RedisURL != "" {
-		redisCfg, err := cacher.ParseRedisURL(cfg.RedisURL)
-		if err != nil {
-			return nil, err
-		}
-
-		adapterKey := "casbin_rules"
-		if redisCfg.DB != 0 {
-			adapterKey = fmt.Sprintf("casbin_rules:%d", redisCfg.DB)
-		}
-
-		config := redisadapter.Config{
-			Network:  "tcp",
-			Address:  redisCfg.Addr,
-			Password: redisCfg.Password,
-			Key:      adapterKey,
-		}
-
-		return redisadapter.NewAdapter(&config)
-	}
-
-	adapterClient := adapterent.NewClient(adapterent.Driver(entClient.Driver()))
-	return entadapter.NewAdapterWithClient(adapterClient)
 }
 
 // GetEnforcer 获取 enforcer 实例

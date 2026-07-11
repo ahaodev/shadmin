@@ -4,9 +4,9 @@ go 1.26.4
 
 require (
 	entgo.io/ent v0.14.6
+	github.com/ahaodev/casbin-redis-adapter/v3 v3.0.4
 	github.com/casbin/casbin/v3 v3.10.0
 	github.com/casbin/ent-adapter v1.4.0
-	github.com/casbin/redis-adapter/v3 v3.6.0
 	github.com/gin-contrib/static v1.1.6
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-sql-driver/mysql v1.10.0
@@ -41,7 +41,6 @@ require (
 	github.com/bytedance/gopkg v0.1.4 // indirect
 	github.com/bytedance/sonic v1.15.2 // indirect
 	github.com/bytedance/sonic/loader v0.5.1 // indirect
-	github.com/casbin/casbin/v2 v2.135.0 // indirect
 	github.com/casbin/govaluate v1.10.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.7 // indirect
