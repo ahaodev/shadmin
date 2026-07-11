@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"shadmin/ent"
 	"shadmin/internal/cacher"
+	"shadmin/internal/casbin/entadapter"
+	"shadmin/internal/casbin/redisadapter"
 
-	redisadapter "github.com/ahaodev/casbin-redis-adapter/v3"
 	"github.com/casbin/casbin/v3/persist"
-	entadapter "github.com/casbin/ent-adapter"
-	adapterent "github.com/casbin/ent-adapter/ent"
 )
 
 const casbinKey = "casbin_rules"
@@ -21,8 +20,11 @@ func NewAdapter(entClient *ent.Client, conf cacher.RedisConfig) (persist.Adapter
 }
 
 func newEntAdapter(entClient *ent.Client) (persist.Adapter, error) {
-	adapterClient := adapterent.NewClient(adapterent.Driver(entClient.Driver()))
-	return entadapter.NewAdapterWithClient(adapterClient)
+	entAdapter, err := entadapter.NewAdapterWithClient(entClient)
+	if err != nil {
+		return nil, err
+	}
+	return entAdapter, nil
 }
 
 func newRedisAdapter(conf cacher.RedisConfig) (persist.Adapter, error) {
