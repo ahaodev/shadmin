@@ -3,11 +3,13 @@ package scheduler
 import (
 	"context"
 	"fmt"
-	"log"
 	"shadmin/internal/casbin"
+	"shadmin/pkg"
 	"sync"
 	"time"
 )
+
+var log = pkg.Log
 
 // CasbinSyncScheduler casbin同步定时任务调度器
 type CasbinSyncScheduler struct {
