@@ -6,12 +6,11 @@ import (
 	"shadmin/ent"
 	"sync"
 
-	"github.com/casbin/casbin/v2"
-	"github.com/casbin/casbin/v2/model"
-	"github.com/casbin/casbin/v2/persist"
+	"github.com/casbin/casbin/v3"
+	"github.com/casbin/casbin/v3/model"
 	entadapter "github.com/casbin/ent-adapter"
 	adapterent "github.com/casbin/ent-adapter/ent"
-	redisadapter "github.com/casbin/redis-adapter/v3"
+	"github.com/casbin/redis-adapter/v3"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -119,40 +118,31 @@ func initializeCasbin(entClient *ent.Client, cfg Config) error {
 		return fmt.Errorf("failed to create casbin model: %w", err)
 	}
 
-	var adapter persist.Adapter
 	if cfg.RedisAddr != "" {
 		adapterKey := "casbin_rules"
 		if cfg.RedisDB != 0 {
 			adapterKey = fmt.Sprintf("casbin_rules:%d", cfg.RedisDB)
 		}
-		adapter, err = redisadapter.NewAdapter(&redisadapter.Config{
+		config := redisadapter.Config{
 			Network:  "tcp",
 			Address:  cfg.RedisAddr,
 			Password: cfg.RedisPassword,
 			Key:      adapterKey,
-		})
-		enforcer, err = casbin.NewEnforcer(m, adapter)
+		}
+		adapter, err := redisadapter.NewAdapter(&config)
+		if err != nil {
+			return fmt.Errorf("failed to create redis adapter: %w", err)
+		}
+		enforcer, _ = casbin.NewEnforcer(m, adapter)
 	} else {
 		adapterClient := adapterent.NewClient(adapterent.Driver(entClient.Driver()))
-		adapter, err = entadapter.NewAdapterWithClient(adapterClient)
+		adapter, err := entadapter.NewAdapterWithClient(adapterClient)
 		if err != nil {
 			return fmt.Errorf("failed to create ent adapter: %w", err)
 		}
 		enforcer, err = casbin.NewEnforcer(m, adapter)
 	}
-	if err != nil {
-		return fmt.Errorf("failed to create casbin enforcer: %w", err)
-	}
-
-	enforcer.EnableLog(true)
 	enforcer.EnableAutoSave(true)
-
-	if adapter != nil {
-		if err = enforcer.LoadPolicy(); err != nil {
-			return fmt.Errorf("failed to load casbin policy: %w", err)
-		}
-	}
-
 	return nil
 }
 
