@@ -9,11 +9,13 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
+	entadapter "github.com/casbin/ent-adapter"
+	adapterent "github.com/casbin/ent-adapter/ent"
 	redisadapter "github.com/casbin/redis-adapter/v3"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// Config 控制 Casbin 后端选择。RedisAddr 非空 → 走 Redis 适配器；否则为纯内存模式。
+// Config 控制 Casbin 后端选择。RedisAddr 非空 → 走 Redis 适配器；否则为 Ent 适配器。
 type Config struct {
 	RedisAddr     string
 	RedisPassword string
@@ -110,8 +112,6 @@ func NewCasManagerWithLogger(entClient *ent.Client, cfg Config, logger Logger) M
 }
 
 // initializeCasbin 初始化Casbin组件
-// 启用 Redis 时使用 casbin-redis-adapter（自行管理 redigo 连接）；
-// 否则使用无适配器的纯内存 enforcer，策略由 SyncService 从 PG 同步入内存。
 func initializeCasbin(entClient *ent.Client, cfg Config) error {
 	// 创建模型
 	m, err := model.NewModelFromString(ModelConf)
@@ -133,8 +133,12 @@ func initializeCasbin(entClient *ent.Client, cfg Config) error {
 		})
 		enforcer, err = casbin.NewEnforcer(m, adapter)
 	} else {
-		// 纯内存模式：无适配器；AddPolicy 仅作用于内存，SavePolicy 需短路。
-		enforcer, err = casbin.NewEnforcer(m)
+		adapterClient := adapterent.NewClient(adapterent.Driver(entClient.Driver()))
+		adapter, err = entadapter.NewAdapterWithClient(adapterClient)
+		if err != nil {
+			return fmt.Errorf("failed to create ent adapter: %w", err)
+		}
+		enforcer, err = casbin.NewEnforcer(m, adapter)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to create casbin enforcer: %w", err)
@@ -143,7 +147,6 @@ func initializeCasbin(entClient *ent.Client, cfg Config) error {
 	enforcer.EnableLog(true)
 	enforcer.EnableAutoSave(true)
 
-	// 仅在有适配器时从后端加载策略；内存模式由 SyncService 填充。
 	if adapter != nil {
 		if err = enforcer.LoadPolicy(); err != nil {
 			return fmt.Errorf("failed to load casbin policy: %w", err)
@@ -227,15 +230,11 @@ func (m *CasManager) GetRolesForUser(userID string) []string {
 
 // ========== 系统管理 ==========
 
-// GetAllRoles 获取所有角色映射
 func (m *CasManager) GetAllRoles() [][]string {
 	roles, _ := m.enforcer.GetNamedGroupingPolicy("g")
 	return roles
 }
 
-// SavePolicy 保存策略到后端。
-// 纯内存模式下 enforcer 无适配器，SavePolicy 会触发 nil 解引用 panic；
-// 因此内存模式直接返回 nil（策略已由 AutoSave/AddPolicy 作用于内存）。
 func (m *CasManager) SavePolicy() error {
 	if m.enforcer == nil || m.enforcer.GetAdapter() == nil {
 		return nil
@@ -243,7 +242,6 @@ func (m *CasManager) SavePolicy() error {
 	return m.enforcer.SavePolicy()
 }
 
-// LoadPolicy 从数据库加载策略
 func (m *CasManager) LoadPolicy() error {
 	return m.enforcer.LoadPolicy()
 }
