@@ -3,6 +3,7 @@ package casbin
 import (
 	"fmt"
 	"shadmin/ent"
+	"shadmin/internal/cacher"
 	"sync"
 
 	"github.com/casbin/casbin/v3"
@@ -12,12 +13,10 @@ import (
 	"github.com/casbin/redis-adapter/v3"
 )
 
-// Config 控制 Casbin 后端选择。RedisAddr 非空 → 走 Redis 适配器；否则为 Ent 适配器。
+// Config 控制 Casbin 后端选择。RedisURL 非空 → 走 Redis 适配器；否则为 Ent 适配器。
 type Config struct {
-	Debug         bool
-	RedisAddr     string
-	RedisPassword string
-	RedisDB       int
+	Debug    bool
+	RedisURL string
 }
 
 var (
@@ -72,7 +71,7 @@ g = _, _
 e = some(where (p.eft == allow))
 
 [matchers]
-m = g(r.sub, p.sub) && (r.obj == p.obj || p.obj == "*" || keyMatch2(r.obj, p.obj) ) && (r.act == p.act || p.act == "*")
+m = g(r.sub, p.sub) && (r.obj == p.obj || p.obj == "*" || keyMatch2(r.obj, p.obj) ) && (r.act == p.act || r.act == "*")
 `
 )
 
@@ -119,16 +118,21 @@ func initializeCasbin(entClient *ent.Client, cfg Config) error {
 }
 
 func newCasbinAdapter(entClient *ent.Client, cfg Config) (any, error) {
-	if cfg.RedisAddr != "" {
+	if cfg.RedisURL != "" {
+		redisCfg, err := cacher.ParseRedisURL(cfg.RedisURL)
+		if err != nil {
+			return nil, err
+		}
+
 		adapterKey := "casbin_rules"
-		if cfg.RedisDB != 0 {
-			adapterKey = fmt.Sprintf("casbin_rules:%d", cfg.RedisDB)
+		if redisCfg.DB != 0 {
+			adapterKey = fmt.Sprintf("casbin_rules:%d", redisCfg.DB)
 		}
 
 		config := redisadapter.Config{
 			Network:  "tcp",
-			Address:  cfg.RedisAddr,
-			Password: cfg.RedisPassword,
+			Address:  redisCfg.Addr,
+			Password: redisCfg.Password,
 			Key:      adapterKey,
 		}
 
@@ -218,6 +222,7 @@ func (m *CasManager) GetRolesForUser(userID string) []string {
 
 func (m *CasManager) GetAllRoles() [][]string {
 	roles, _ := m.enforcer.GetNamedGroupingPolicy("g")
+
 	return roles
 }
 

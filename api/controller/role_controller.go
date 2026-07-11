@@ -3,16 +3,16 @@ package controller
 import (
 	"errors"
 	"net/http"
-	"shadmin/bootstrap"
 	"shadmin/domain"
 	"shadmin/internal/casbin"
+	"shadmin/internal/conf"
 
 	"github.com/gin-gonic/gin"
 )
 
 type RoleController struct {
 	CasManager     casbin.Manager
-	Env            *bootstrap.Env
+	Env            *conf.Env
 	RoleUseCase    domain.RoleUseCase
 	UserRepository domain.UserRepository
 	RoleRepository domain.RoleRepository

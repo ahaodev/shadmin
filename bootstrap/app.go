@@ -2,12 +2,14 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/internal/auth/tokenblacklist"
 	"shadmin/internal/cacher"
 	captchapkg "shadmin/internal/captcha"
 	"shadmin/internal/casbin"
+	"shadmin/internal/conf"
 	"shadmin/internal/scheduler"
 	"shadmin/internal/userstatus"
 	"shadmin/repository"
@@ -17,7 +19,7 @@ import (
 )
 
 type Application struct {
-	Env               *Env
+	Env               *conf.Env
 	DB                *ent.Client
 	Cacher            cacher.Cacher
 	ApiEngine         *gin.Engine
@@ -33,25 +35,28 @@ type Application struct {
 
 func App() *Application {
 	app := &Application{}
-	app.Env = NewEnv()
+	app.Env = conf.NewEnv()
 	app.DB = NewEntDatabase(app.Env)
 
 	// 初始化 Casbin 管理器（启用 Redis 时走 redis-adapter，否则内存模式）
 	app.CasManager = casbin.NewCasManager(app.DB, casbin.Config{
-		Debug:         app.Env.AppEnv == "debug" || app.Env.AppEnv == "development",
-		RedisAddr:     app.Env.RedisAddr,
-		RedisPassword: app.Env.RedisPassword,
-		RedisDB:       app.Env.RedisDB,
+		Debug:    app.Env.AppEnv == conf.AppEnvDev || app.Env.AppEnv == conf.AppEnvTest,
+		RedisURL: app.Env.RedisURL,
 	})
+
+	redisCfg := cacher.RedisConfig{}
+	var err error
+	if app.Env.RedisEnabled() {
+		redisCfg, err = cacher.ParseRedisURL(app.Env.RedisURL)
+		if err != nil {
+			panic(fmt.Errorf("parse redis url: %w", err))
+		}
+	}
 
 	cacher, err := cacher.NewForRuntime(cacher.RuntimeConfig{
 		UseRedis: app.Env.RedisEnabled(),
-		Redis: cacher.RedisConfig{
-			Addr:     app.Env.RedisAddr,
-			Password: app.Env.RedisPassword,
-			DB:       app.Env.RedisDB,
-		},
-		Memory: cacher.MemoryConfig{CleanupInterval: 2 * time.Minute},
+		Redis:    redisCfg,
+		Memory:   cacher.MemoryConfig{CleanupInterval: 2 * time.Minute},
 	})
 	if err != nil {
 		panic(err)
@@ -138,20 +143,7 @@ func (app *Application) registerUserStatusCacheHook() {
 				}
 			}
 
-			if tx := ent.TxFromContext(ctx); tx != nil {
-				tx.OnCommit(func(next ent.Committer) ent.Committer {
-					return ent.CommitFunc(func(ctx context.Context, tx *ent.Tx) error {
-						err := next.Commit(ctx, tx)
-						if err == nil {
-							invalidate()
-						}
-						return err
-					})
-				})
-			} else {
-				invalidate()
-			}
-
+			invalidate()
 			return v, nil
 		})
 	})

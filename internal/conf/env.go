@@ -1,4 +1,4 @@
-package bootstrap
+package conf
 
 import (
 	"errors"
@@ -8,6 +8,19 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+)
+
+const (
+	AppEnvDev      = "dev"
+	AppEnvProd     = "prod"
+	AppEnvTest     = "test"
+	DbTypeMysql    = "mysql"
+	DbTypeSqlite   = "sqlite"
+	DbTypePgSql    = "postgres"
+	CacheTypeMem   = "mem"
+	CacheTypeRedis = "redis"
+	StoreTypeMinio = "minio"
+	StoreTypeDisk  = "disk"
 )
 
 type Env struct {
@@ -40,26 +53,30 @@ type Env struct {
 	S3Bucket    string `mapstructure:"S3_BUCKET"`
 	S3Token     string `mapstructure:"S3_TOKEN"`
 
-	// Redis 配置（留空 = 全部走内存默认；填写即 casbin/jwt/captcha 切 Redis）
-	RedisAddr     string `mapstructure:"REDIS_ADDR"`
-	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
-	RedisDB       int    `mapstructure:"REDIS_DB"`
+	// 缓存配置（mem=内存，redis=Redis）
+	CacheType string `mapstructure:"CACHE_TYPE"`
+	RedisURL  string `mapstructure:"REDIS_URL"`
 }
 
-// RedisEnabled 返回是否启用 Redis 后端（REDIS_ADDR 非空即启用）。
+// CacheTypeValue 返回规范化后的缓存类型。
+func (e *Env) CacheTypeValue() string {
+	return strings.ToLower(strings.TrimSpace(e.CacheType))
+}
+
+// RedisEnabled 返回是否启用 Redis 缓存后端。
 func (e *Env) RedisEnabled() bool {
-	return strings.TrimSpace(e.RedisAddr) != ""
+	return e.CacheTypeValue() == CacheTypeRedis && strings.TrimSpace(e.RedisURL) != ""
 }
 
 func setDefaults() {
 	defaults := map[string]interface{}{
 		// 基础配置
-		"APP_ENV":         "development",
+		"APP_ENV":         AppEnvDev,
 		"CONTEXT_TIMEOUT": 60,
 		"PORT":            ":55667",
 
 		// 数据库配置
-		"DB_TYPE": "sqlite",
+		"DB_TYPE": DbTypeSqlite,
 		"DB_DSN":  "",
 
 		// 令牌配置
@@ -74,7 +91,7 @@ func setDefaults() {
 		"ADMIN_EMAIL":    "admin@gmail.com",
 
 		// 存储配置
-		"STORAGE_TYPE":      "disk",
+		"STORAGE_TYPE":      StoreTypeDisk,
 		"STORAGE_BASE_PATH": ".uploads",
 
 		// S3/MinIO 配置
@@ -84,10 +101,9 @@ func setDefaults() {
 		"S3_BUCKET":     "shadmin",
 		"S3_TOKEN":      "",
 
-		// Redis 配置
-		"REDIS_ADDR":     "",
-		"REDIS_PASSWORD": "",
-		"REDIS_DB":       0,
+		// 缓存配置
+		"CACHE_TYPE": CacheTypeMem,
+		"REDIS_URL":  "",
 	}
 	// 绑定环境变量
 	viper.AutomaticEnv()
@@ -127,8 +143,8 @@ func generateEnvFile() error {
 			keys:  []string{"S3_ADDRESS", "S3_ACCESS_KEY", "S3_SECRET_KEY", "S3_BUCKET", "S3_TOKEN"},
 		},
 		{
-			title: "# Redis 配置（留空则全部走内存默认）",
-			keys:  []string{"REDIS_ADDR", "REDIS_PASSWORD", "REDIS_DB"},
+			title: "# 缓存配置（mem=内存，redis=Redis）",
+			keys:  []string{"CACHE_TYPE", "REDIS_URL"},
 		},
 	}
 
@@ -161,8 +177,8 @@ func loadConfig() (*Env, error) {
 func (e *Env) validate() error {
 	var errs []string
 
-	if e.AppEnv != "development" && e.AppEnv != "production" && e.AppEnv != "testing" {
-		errs = append(errs, "APP_ENV必须是development、production或testing之一")
+	if e.AppEnv != AppEnvDev && e.AppEnv != AppEnvProd && e.AppEnv != AppEnvTest {
+		errs = append(errs, "APP_ENV必须是 dev、prod 或 test")
 	}
 
 	if e.ContextTimeout <= 0 {
@@ -173,11 +189,11 @@ func (e *Env) validate() error {
 		errs = append(errs, "PORT不能为空")
 	}
 
-	if e.DBType != "sqlite" && e.DBType != "postgres" && e.DBType != "mysql" {
+	if e.DBType != DbTypeSqlite && e.DBType != DbTypePgSql && e.DBType != DbTypeMysql {
 		errs = append(errs, "DB_TYPE必须是sqlite、postgres或mysql")
 	}
 
-	if (e.DBType == "postgres" || e.DBType == "mysql") && e.DBDSN == "" {
+	if (e.DBType == DbTypePgSql || e.DBType == DbTypeMysql) && e.DBDSN == "" {
 		errs = append(errs, "使用PostgreSQL或MySQL时必须提供DB_DSN")
 	}
 
@@ -205,15 +221,15 @@ func (e *Env) validate() error {
 		errs = append(errs, "ADMIN_PASSWORD长度不能少于3位")
 	}
 
-	if e.StorageType != "disk" && e.StorageType != "minio" {
+	if e.StorageType != StoreTypeDisk && e.StorageType != StoreTypeMinio {
 		errs = append(errs, "STORAGE_TYPE必须是disk或minio")
 	}
 
-	if e.StorageType == "disk" && e.StorageBasePath == "" {
+	if e.StorageType == StoreTypeDisk && e.StorageBasePath == "" {
 		errs = append(errs, "使用本地存储时必须提供STORAGE_BASE_PATH")
 	}
 
-	if e.StorageType == "minio" {
+	if e.StorageType == StoreTypeMinio {
 		if e.S3Address == "" {
 			errs = append(errs, "使用MinIO时S3_ADDRESS不能为空")
 		}
@@ -228,11 +244,12 @@ func (e *Env) validate() error {
 		}
 	}
 
-	// Redis 配置校验（可选，留空即走内存默认）
-	if e.RedisAddr != "" {
-		if e.RedisDB < 0 || e.RedisDB > 15 {
-			errs = append(errs, "REDIS_DB必须在0到15之间")
-		}
+	cacheType := e.CacheTypeValue()
+	if cacheType != CacheTypeMem && cacheType != CacheTypeRedis {
+		errs = append(errs, "CACHE_TYPE必须是mem或redis")
+	}
+	if cacheType == CacheTypeRedis && strings.TrimSpace(e.RedisURL) == "" {
+		errs = append(errs, "CACHE_TYPE=redis时REDIS_URL不能为空")
 	}
 
 	if len(errs) > 0 {
@@ -263,8 +280,8 @@ func NewEnv() *Env {
 		pkg.Log.Error("配置验证失败: " + err.Error())
 	}
 
-	if env.AppEnv == "development" {
-		log.Println("The App is running in development env")
+	if env.AppEnv == AppEnvDev {
+		pkg.Log.Println("The App is running in development env")
 	}
 
 	return env

@@ -2,7 +2,7 @@ package controller
 
 import (
 	"net/http"
-	"shadmin/bootstrap"
+	"shadmin/internal/conf"
 	"strconv"
 	"time"
 
@@ -13,7 +13,7 @@ import (
 
 type LoginLogController struct {
 	LoginLogUsecase domain.LoginLogUseCase
-	Env             *bootstrap.Env
+	Env             *conf.Env
 }
 
 // GetLoginLogs godoc

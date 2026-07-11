@@ -3,6 +3,7 @@ package route
 import (
 	"shadmin/api/middleware"
 	"shadmin/bootstrap"
+	"shadmin/internal/conf"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,8 +22,7 @@ func NewPublicRoutes(factory *ControllerFactory) *PublicRoutes {
 
 // Setup configures all public routes
 func (pr *PublicRoutes) Setup(router *gin.RouterGroup, app *bootstrap.Application) {
-	// Add development logging middleware
-	if app.Env.AppEnv == "development" {
+	if app.Env.AppEnv == conf.AppEnvDev {
 		router.Use(middleware.LogMiddleware())
 	}
 

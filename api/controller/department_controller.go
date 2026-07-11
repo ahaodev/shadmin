@@ -3,15 +3,15 @@ package controller
 import (
 	"errors"
 	"net/http"
-	"shadmin/bootstrap"
 	"shadmin/domain"
+	"shadmin/internal/conf"
 
 	"github.com/gin-gonic/gin"
 )
 
 type DepartmentController struct {
 	DepartmentUseCase domain.DepartmentUseCase
-	Env               *bootstrap.Env
+	Env               *conf.Env
 }
 
 // GetDepartmentTree 获取部门树结构

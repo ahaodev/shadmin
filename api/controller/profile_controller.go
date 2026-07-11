@@ -3,7 +3,7 @@ package controller
 import (
 	"errors"
 	"net/http"
-	"shadmin/bootstrap"
+	"shadmin/internal/conf"
 	"shadmin/internal/constants"
 
 	"shadmin/domain"
@@ -13,7 +13,7 @@ import (
 
 type ProfileController struct {
 	ProfileUsecase domain.ProfileUsecase
-	Env            *bootstrap.Env
+	Env            *conf.Env
 }
 
 // GetProfile godoc

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"shadmin/ent"
 	"shadmin/ent/migrate"
+	"shadmin/internal/conf"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -14,7 +15,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func NewEntDatabase(env *Env) *ent.Client {
+func NewEntDatabase(env *conf.Env) *ent.Client {
 	var client *ent.Client
 	var err error
 
@@ -79,7 +80,7 @@ func connectSQLite() (*ent.Client, error) {
 	return ent.Open("sqlite3", dsn)
 }
 
-func connectPostgreSQL(env *Env) (*ent.Client, error) {
+func connectPostgreSQL(env *conf.Env) (*ent.Client, error) {
 	dsn := env.DBDSN
 	if dsn == "" {
 		return nil, fmt.Errorf("PostgreSQL DSN is required but not provided")
@@ -99,7 +100,7 @@ func connectPostgreSQL(env *Env) (*ent.Client, error) {
 	return client, nil
 }
 
-func connectMySQL(env *Env) (*ent.Client, error) {
+func connectMySQL(env *conf.Env) (*ent.Client, error) {
 	dsn := env.DBDSN
 	if dsn == "" {
 		return nil, fmt.Errorf("MySQL DSN is required but not provided")

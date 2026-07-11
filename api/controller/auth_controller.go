@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"shadmin/bootstrap"
+	"shadmin/internal/conf"
 	"strings"
 	"time"
 
@@ -24,7 +24,7 @@ import (
 type AuthController struct {
 	LoginUsecase    domain.LoginUsecase
 	LoginLogUsecase domain.LoginLogUseCase
-	Env             *bootstrap.Env
+	Env             *conf.Env
 	SecurityManager *internal.LoginSecurityManager
 	TokenService    *tokenservice.TokenService
 	CaptchaUsecase  domain.CaptchaUsecase

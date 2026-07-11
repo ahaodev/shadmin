@@ -2,8 +2,8 @@ package controller
 
 import (
 	"net/http"
-	"shadmin/bootstrap"
 	"shadmin/domain"
+	"shadmin/internal/conf"
 	"shadmin/internal/constants"
 	"shadmin/pkg"
 
@@ -14,7 +14,7 @@ type ResourceController struct {
 	MenuRepository domain.MenuRepository
 	UserRepository domain.UserRepository
 	RoleRepository domain.RoleRepository
-	Env            *bootstrap.Env
+	Env            *conf.Env
 }
 
 // GetResources 获取用户可访问的系统资源菜单 (基于RBAC权限过滤)

@@ -19,7 +19,7 @@ func Setup(app *bootstrap.Application, timeout time.Duration, engine *gin.Engine
 	}
 
 	// Register static assets (skip in development — Vite dev server handles frontend)
-	//if app.Env.AppEnv != "development" {
+	//if app.Env.AppEnv != conf.AppEnvDev {
 	frontend.Register(engine)
 	//}
 	setupSwagger(engine)

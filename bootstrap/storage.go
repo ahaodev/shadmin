@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"shadmin/domain"
+	"shadmin/internal/conf"
 	"shadmin/repository"
 	"strings"
 
@@ -14,7 +15,7 @@ type StorageConfig struct {
 	FileStorage domain.FileRepository
 }
 
-func InitStorage(env *Env) *StorageConfig {
+func InitStorage(env *conf.Env) *StorageConfig {
 	config := &StorageConfig{}
 
 	storageType := strings.ToLower(env.StorageType)
@@ -30,7 +31,7 @@ func InitStorage(env *Env) *StorageConfig {
 	return config
 }
 
-func (sc *StorageConfig) initMinioStorage(env *Env) {
+func (sc *StorageConfig) initMinioStorage(env *conf.Env) {
 	minioClient, err := minio.New(env.S3Address, &minio.Options{
 		Creds:  credentials.NewStaticV4(env.S3AccessKey, env.S3SecretKey, env.S3Token),
 		Secure: false,
@@ -44,12 +45,12 @@ func (sc *StorageConfig) initMinioStorage(env *Env) {
 	log.Info("文件存储: 使用 MinIO 对象存储")
 }
 
-func (sc *StorageConfig) initDiskStorage(env *Env) {
+func (sc *StorageConfig) initDiskStorage(env *conf.Env) {
 	sc.FileStorage = repository.NewDiskFileRepository(env.StorageBasePath)
 	log.Infof("文件存储: 使用本地磁盘存储 (%s)", env.StorageBasePath)
 }
 
-func (sc *StorageConfig) initDefaultStorage(env *Env) {
+func (sc *StorageConfig) initDefaultStorage(env *conf.Env) {
 	sc.FileStorage = repository.NewDiskFileRepository(env.StorageBasePath)
 	log.Infof("文件存储: 使用默认本地磁盘存储 (%s)", env.StorageBasePath)
 }
