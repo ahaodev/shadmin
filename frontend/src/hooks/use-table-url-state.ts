@@ -168,8 +168,7 @@ export function useTableUrlState(
   const onColumnFiltersChange: OnChangeFn<ColumnFiltersState> = useCallback(
     (
       updater:
-        | ColumnFiltersState
-        | ((prev: ColumnFiltersState) => ColumnFiltersState)
+        ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)
     ) => {
       const next =
         typeof updater === 'function' ? updater(columnFilters) : updater
