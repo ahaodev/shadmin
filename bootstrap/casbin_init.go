@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// CasbinInitializer casbin初始化器
+// CasbinInitializer casbin initializer
 type CasbinInitializer struct {
 	entClient       *ent.Client
 	syncService     *casbin.SyncService
@@ -23,7 +23,7 @@ type CasbinInitializer struct {
 	cond            *sync.Cond
 }
 
-// NewCasbinInitializer 创建casbin初始化器
+// NewCasbinInitializer creates a casbin initializer
 func NewCasbinInitializer(entClient *ent.Client, casManager casbin.Manager) *CasbinInitializer {
 	syncService := casbin.NewSyncService(entClient, casManager)
 	ci := &CasbinInitializer{
@@ -35,11 +35,11 @@ func NewCasbinInitializer(entClient *ent.Client, casManager casbin.Manager) *Cas
 	return ci
 }
 
-// InitializeCasbin 初始化casbin系统
-// 这个方法会在应用启动时调用，执行以下操作：
-// 1. 初始化casbin管理器
-// 2. 从数据库同步权限数据到casbin
-// 3. 验证同步结果
+// InitializeCasbin initializes the casbin system.
+// This method is called during application startup and performs the following:
+// 1. Initializes the casbin manager
+// 2. Synchronizes permission data from the database to casbin
+// 3. Validates the sync result
 func (ci *CasbinInitializer) InitializeCasbin(ctx context.Context) error {
 	ci.mu.Lock()
 	for ci.initializing {
@@ -53,33 +53,33 @@ func (ci *CasbinInitializer) InitializeCasbin(ctx context.Context) error {
 	ci.initializing = true
 	ci.mu.Unlock()
 
-	log.Info("Casbin Initializing...")
+	log.Info("Casbin initializing...")
 
 	startTime := time.Now()
 	var err error
 
-	// 1. 验证casbin管理器是否已初始化
+	// 1. Validate that the casbin manager is initialized
 	if ci.casManager == nil {
-		err = fmt.Errorf("casbin管理器未初始化")
+		err = fmt.Errorf("casbin manager is not initialized")
 	} else {
-		// 2. 从数据库同步权限数据到casbin
-		log.Info("DB to Casbin ...")
+		// 2. Synchronize permission data from the database to casbin
+		log.Info("Syncing database data to Casbin...")
 		if syncErr := ci.syncService.SyncFromDatabase(ctx); syncErr != nil {
-			err = fmt.Errorf("从数据库同步权限数据失败: %w", syncErr)
+			err = fmt.Errorf("failed to sync permission data from the database: %w", syncErr)
 		} else {
-			// 3. 验证同步结果
+			// 3. Validate the synchronization result
 			stats, statsErr := ci.syncService.GetSyncStats(ctx)
 			if statsErr != nil {
-				log.WithError(statsErr).Warn("获取同步统计失败")
+				log.WithError(statsErr).Warn("failed to get sync statistics")
 			} else {
-				log.Infof("Casbin同步统计: 数据库用户角色关系: %d, 数据库角色权限关系: %d, Casbin角色映射: %d, Casbin权限策略: %d",
+				log.Infof("Casbin sync statistics: database user-role relationships: %d, database role-permission relationships: %d, Casbin role mappings: %d, Casbin permission policies: %d",
 					stats.DatabaseUserRoles,
 					stats.DatabaseRolePermissions,
 					stats.CasbinRoles,
 					stats.CasbinPolicies)
 
 				if !stats.IsHealthy() {
-					log.Warn("Casbin同步状态可能不健康，请检查数据")
+					log.Warn("Casbin sync state may be unhealthy; please check the data")
 				}
 			}
 		}
@@ -87,9 +87,9 @@ func (ci *CasbinInitializer) InitializeCasbin(ctx context.Context) error {
 
 	duration := time.Since(startTime)
 	if err != nil {
-		log.WithError(err).Errorf("Casbin权限系统初始化失败，耗时: %v", duration)
+		log.WithError(err).Errorf("Casbin permission system initialization failed, elapsed: %v", duration)
 	} else {
-		log.Infof("Casbin权限系统初始化完成，耗时: %v", duration)
+		log.Infof("Casbin permission system initialization completed, elapsed: %v", duration)
 	}
 
 	ci.mu.Lock()
@@ -104,33 +104,33 @@ func (ci *CasbinInitializer) InitializeCasbin(ctx context.Context) error {
 	return err
 }
 
-// InitError 返回首次初始化同步的错误（nil 表示成功或尚未初始化）
+// InitError returns the first initialization sync error (nil means success or not initialized yet)
 func (ci *CasbinInitializer) InitError() error {
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
 	return ci.initErr
 }
 
-// SyncFromDatabase 手动触发从数据库全量同步（绕过初始化状态检查）
+// SyncFromDatabase manually triggers a full sync from the database (bypassing initialization state checks)
 func (ci *CasbinInitializer) SyncFromDatabase(ctx context.Context) error {
 	return ci.syncService.SyncFromDatabase(ctx)
 }
 
-// GetSyncStats 获取同步统计信息
+// GetSyncStats gets sync statistics
 func (ci *CasbinInitializer) GetSyncStats(ctx context.Context) (*casbin.SyncStats, error) {
 	return ci.syncService.GetSyncStats(ctx)
 }
 
-// GetSyncService 获取同步服务实例
+// GetSyncService gets the sync service instance
 func (ci *CasbinInitializer) GetSyncService() *casbin.SyncService {
 	return ci.syncService
 }
 
-// HealthCheck 健康检查：casbin 中有角色映射且有权限策略则视为健康
+// HealthCheck checks whether Casbin has role mappings and permission policies and is therefore healthy
 func (ci *CasbinInitializer) HealthCheck(ctx context.Context) (bool, error) {
 	stats, err := ci.syncService.GetSyncStats(ctx)
 	if err != nil {
-		return false, fmt.Errorf("获取同步统计失败: %w", err)
+		return false, fmt.Errorf("failed to get sync statistics: %w", err)
 	}
 	return stats.IsHealthy(), nil
 }
@@ -175,11 +175,11 @@ func mergeIDs(dst, src []string) []string {
 	return merged
 }
 
-// triggerHookSync 在权限相关表变更后，按变更对象定向刷新 Casbin。
-// 在后台 goroutine 中执行，稍作延迟以等待事务传播。
+// triggerHookSync triggers targeted Casbin refresh after permission-related table changes.
+// It runs in a background goroutine and waits briefly for transaction propagation.
 func (ci *CasbinInitializer) triggerHookSync(schemaType string, target casbinSyncTarget) {
 	if target.empty() {
-		log.Debugf("跳过 Casbin 定向同步 (来源: %s 变更，无目标对象)", schemaType)
+		log.Debugf("Skipping targeted Casbin sync (source: %s change, no target objects)", schemaType)
 		return
 	}
 
@@ -188,10 +188,10 @@ func (ci *CasbinInitializer) triggerHookSync(schemaType string, target casbinSyn
 		syncCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 		defer cancel()
 
-		log.Infof("触发 Casbin 定向同步 (来源: %s 变更, users=%d, roles=%d, menus=%d, api_resources=%d)",
+		log.Infof("Triggering targeted Casbin sync (source: %s change, users=%d, roles=%d, menus=%d, api_resources=%d)",
 			schemaType, len(target.userIDs), len(target.roleIDs), len(target.menuIDs), len(target.apiResourceIDs))
 		if err := ci.syncTarget(syncCtx, target); err != nil {
-			log.WithError(err).Error("Casbin 定向同步失败")
+			log.WithError(err).Error("Targeted Casbin sync failed")
 		}
 	}()
 }
@@ -201,15 +201,15 @@ func (ci *CasbinInitializer) syncTarget(ctx context.Context, target casbinSyncTa
 
 	for _, userID := range target.userIDs {
 		if err := ci.syncService.SyncUserRole(ctx, userID); err != nil {
-			log.WithError(err).Warnf("同步用户角色失败: user=%s", userID)
-			errs = append(errs, fmt.Errorf("同步用户 %s 失败: %w", userID, err))
+			log.WithError(err).Warnf("Failed to sync user roles: user=%s", userID)
+			errs = append(errs, fmt.Errorf("failed to sync user %s: %w", userID, err))
 		}
 	}
 
 	if len(target.menuIDs) > 0 {
 		roleIDs, err := ci.syncService.RoleIDsForMenus(ctx, target.menuIDs)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("查询菜单关联角色失败: %w", err))
+			errs = append(errs, fmt.Errorf("failed to query roles associated with menus: %w", err))
 		} else {
 			target.roleIDs = mergeIDs(target.roleIDs, roleIDs)
 		}
@@ -218,7 +218,7 @@ func (ci *CasbinInitializer) syncTarget(ctx context.Context, target casbinSyncTa
 	if len(target.apiResourceIDs) > 0 {
 		roleIDs, err := ci.syncService.RoleIDsForAPIResources(ctx, target.apiResourceIDs)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("查询API资源关联角色失败: %w", err))
+			errs = append(errs, fmt.Errorf("failed to query roles associated with API resources: %w", err))
 		} else {
 			target.roleIDs = mergeIDs(target.roleIDs, roleIDs)
 		}
@@ -226,15 +226,15 @@ func (ci *CasbinInitializer) syncTarget(ctx context.Context, target casbinSyncTa
 
 	for _, roleID := range target.roleIDs {
 		if err := ci.syncService.SyncRolePermissions(ctx, roleID); err != nil {
-			log.WithError(err).Warnf("同步角色权限失败: role=%s", roleID)
-			errs = append(errs, fmt.Errorf("同步角色 %s 失败: %w", roleID, err))
+			log.WithError(err).Warnf("Failed to sync role permissions: role=%s", roleID)
+			errs = append(errs, fmt.Errorf("failed to sync role %s: %w", roleID, err))
 		}
 	}
 
 	return errors.Join(errs...)
 }
 
-// SetupHooks 注册 Ent Hook，在 User/Role/Menu/APIResource 变更提交后触发 Casbin 定向同步
+// SetupHooks registers Ent hooks so that User/Role/Menu/APIResource changes trigger targeted Casbin sync after commit
 func (ci *CasbinInitializer) SetupHooks() {
 	ci.mu.Lock()
 	if ci.hooksRegistered {
@@ -282,7 +282,7 @@ func (ci *CasbinInitializer) collectHookTarget(ctx context.Context, m ent.Mutati
 	target := casbinSyncTarget{}
 	ids, err := mutationIDs(ctx, m)
 	if err != nil {
-		log.WithError(err).Warnf("收集 Casbin 同步目标失败 (schema=%s)", m.Type())
+		log.WithError(err).Warnf("Failed to collect Casbin sync targets (schema=%s)", m.Type())
 		return target
 	}
 
@@ -295,7 +295,7 @@ func (ci *CasbinInitializer) collectHookTarget(ctx context.Context, m ent.Mutati
 		target.menuIDs = ids
 		roleIDs, err := ci.syncService.RoleIDsForMenus(ctx, ids)
 		if err != nil {
-			log.WithError(err).Warn("收集菜单关联角色失败")
+			log.WithError(err).Warn("Failed to collect roles associated with menus")
 		} else {
 			target.roleIDs = mergeIDs(target.roleIDs, roleIDs)
 		}
@@ -303,7 +303,7 @@ func (ci *CasbinInitializer) collectHookTarget(ctx context.Context, m ent.Mutati
 		target.apiResourceIDs = ids
 		roleIDs, err := ci.syncService.RoleIDsForAPIResources(ctx, ids)
 		if err != nil {
-			log.WithError(err).Warn("收集API资源关联角色失败")
+			log.WithError(err).Warn("Failed to collect roles associated with API resources")
 		} else {
 			target.roleIDs = mergeIDs(target.roleIDs, roleIDs)
 		}
@@ -373,7 +373,7 @@ func (ci *CasbinInitializer) collectValueTarget(v ent.Value) casbinSyncTarget {
 	}
 }
 
-// InitCasbinHooks 在应用启动完成后调用：执行一次全量同步（幂等）、注册 Hook 并启动增量调度器
+// InitCasbinHooks is called after application startup completes: run a full sync (idempotent), register hooks, and start the incremental scheduler
 func InitCasbinHooks(app *Application) {
 	ctx := context.Background()
 	if err := app.CasbinInitializer.InitializeCasbin(ctx); err != nil {

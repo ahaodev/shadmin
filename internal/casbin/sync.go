@@ -12,13 +12,13 @@ import (
 	"time"
 )
 
-// SyncService casbin同步服务
+// SyncService casbin sync service
 type SyncService struct {
 	entClient *ent.Client
 	manager   Manager
 }
 
-// NewSyncService 创建新的同步服务实例
+// NewSyncService creates a new sync service instance
 func NewSyncService(entClient *ent.Client, manager Manager) *SyncService {
 	return &SyncService{
 		entClient: entClient,
@@ -26,88 +26,88 @@ func NewSyncService(entClient *ent.Client, manager Manager) *SyncService {
 	}
 }
 
-// SyncFromDatabase 从数据库同步所有casbin数据
-// 这是主要的同步方法，会清空现有的casbin数据并重新从数据库加载
+// SyncFromDatabase syncs all Casbin data from the database.
+// This is the primary sync method; it clears existing Casbin data and reloads it from the database.
 func (s *SyncService) SyncFromDatabase(ctx context.Context) error {
-	logger.Info("开始从数据库同步casbin数据")
+	logger.Info("Starting Casbin data sync from database")
 
 	startTime := time.Now()
 
-	// 1. 清空现有的casbin策略
+	// 1. Clear existing Casbin policies
 	if err := s.clearCasbinPolicies(ctx); err != nil {
-		return fmt.Errorf("清空casbin策略失败: %w", err)
+		return fmt.Errorf("failed to clear Casbin policies: %w", err)
 	}
 
-	// 2. 同步用户角色关系
+	// 2. Sync user-role relationships
 	if err := s.syncUserRoles(ctx); err != nil {
-		return fmt.Errorf("同步用户角色关系失败: %w", err)
+		return fmt.Errorf("failed to sync user-role relationships: %w", err)
 	}
 
-	// 3. 同步角色权限策略
+	// 3. Sync role permission policies
 	if err := s.syncRolePermissions(ctx); err != nil {
-		return fmt.Errorf("同步角色权限策略失败: %w", err)
+		return fmt.Errorf("failed to sync role permission policies: %w", err)
 	}
 
-	// 4. 保存策略到数据库
+	// 4. Save policies to the database
 	if err := s.manager.SavePolicy(); err != nil {
-		return fmt.Errorf("保存casbin策略失败: %w", err)
+		return fmt.Errorf("failed to save Casbin policies: %w", err)
 	}
 
 	duration := time.Since(startTime)
-	logger.Infof("同步完成，耗时: %v", duration)
+	logger.Infof("Sync completed, elapsed: %v", duration)
 
 	return nil
 }
 
-// SyncIncremental 基于 updated_at 差异同步最近变化的用户、角色、菜单与 API 资源。
-// 删除类变更依赖 Ent Hook 定向同步兜底；没有变更日志表时，定时任务只处理可由时间戳识别的增量。
+// SyncIncremental syncs recently changed users, roles, menus, and API resources based on updated_at.
+// Delete changes rely on Ent hook fallback; without a change log table, the scheduler only processes changes identifiable by timestamps.
 func (s *SyncService) SyncIncremental(ctx context.Context, since time.Time) error {
-	logger.Infof("开始增量同步casbin数据，since=%s", since.Format(time.RFC3339Nano))
+	logger.Infof("Starting incremental Casbin data sync, since=%s", since.Format(time.RFC3339Nano))
 
 	startTime := time.Now()
 	var errs []error
 
 	userIDs, err := s.changedUserIDs(ctx, since)
 	if err != nil {
-		return fmt.Errorf("查询变更用户失败: %w", err)
+		return fmt.Errorf("failed to query changed users: %w", err)
 	}
 
 	roleIDs, err := s.changedRoleIDs(ctx, since)
 	if err != nil {
-		return fmt.Errorf("查询变更角色失败: %w", err)
+		return fmt.Errorf("failed to query changed roles: %w", err)
 	}
 
 	menuIDs, err := s.changedMenuIDs(ctx, since)
 	if err != nil {
-		return fmt.Errorf("查询变更菜单失败: %w", err)
+		return fmt.Errorf("failed to query changed menus: %w", err)
 	}
 	apiResourceIDs, err := s.changedAPIResourceIDs(ctx, since)
 	if err != nil {
-		return fmt.Errorf("查询变更API资源失败: %w", err)
+		return fmt.Errorf("failed to query changed API resources: %w", err)
 	}
 
 	menuRoleIDs, err := s.roleIDsForMenus(ctx, menuIDs)
 	if err != nil {
-		return fmt.Errorf("查询菜单关联角色失败: %w", err)
+		return fmt.Errorf("failed to query roles associated with menus: %w", err)
 	}
 	apiResourceRoleIDs, err := s.roleIDsForAPIResources(ctx, apiResourceIDs)
 	if err != nil {
-		return fmt.Errorf("查询API资源关联角色失败: %w", err)
+		return fmt.Errorf("failed to query roles associated with API resources: %w", err)
 	}
 	roleIDs = uniqueStrings(append(roleIDs, append(menuRoleIDs, apiResourceRoleIDs...)...))
 	userIDs = uniqueStrings(userIDs)
 
 	for _, userID := range userIDs {
 		if err := s.SyncUserRole(ctx, userID); err != nil {
-			logger.WithError(err).Warnf("增量同步用户角色失败: user=%s", userID)
-			errs = append(errs, fmt.Errorf("同步用户 %s 失败: %w", userID, err))
+			logger.WithError(err).Warnf("Incremental sync user role failed: user=%s", userID)
+			errs = append(errs, fmt.Errorf("failed to sync user %s: %w", userID, err))
 		}
 	}
 
 	for _, roleID := range roleIDs {
 		if err := s.SyncRolePermissions(ctx, roleID); err != nil {
-			logger.WithError(err).Warnf("增量同步角色权限失败: role=%s", roleID)
-			errs = append(errs, fmt.Errorf("同步角色 %s 失败: %w", roleID, err))
+			logger.WithError(err).Warnf("Incremental sync role permissions failed: role=%s", roleID)
+			errs = append(errs, fmt.Errorf("failed to sync role %s: %w", roleID, err))
 		}
 	}
 
@@ -116,7 +116,7 @@ func (s *SyncService) SyncIncremental(ctx context.Context, since time.Time) erro
 	}
 
 	duration := time.Since(startTime)
-	logger.Infof("增量同步完成，用户: %d, 角色: %d, 菜单: %d, API资源: %d, 耗时: %v",
+	logger.Infof("Incremental sync completed, users: %d, roles: %d, menus: %d, API resources: %d, elapsed: %v",
 		len(userIDs), len(roleIDs), len(menuIDs), len(apiResourceIDs), duration)
 	return nil
 }
@@ -149,11 +149,11 @@ func (s *SyncService) changedAPIResourceIDs(ctx context.Context, since time.Time
 		Strings(ctx)
 }
 
-// clearCasbinPolicies 清空所有casbin策略
+// clearCasbinPolicies clears all Casbin policies
 func (s *SyncService) clearCasbinPolicies(_ context.Context) error {
-	logger.Info("清空现有casbin策略")
+	logger.Info("Clearing existing Casbin policies")
 
-	// 清空所有权限策略 (p规则)：收集唯一 sub，每个 sub 一次批量删除
+	// Clear all permission policies (p rules): collect unique subs and delete them in batches
 	subs := make(map[string]struct{})
 	for _, policy := range s.manager.GetAllPolicies() {
 		if len(policy) >= 1 {
@@ -162,11 +162,11 @@ func (s *SyncService) clearCasbinPolicies(_ context.Context) error {
 	}
 	for sub := range subs {
 		if _, err := s.manager.RemoveFilteredPolicy(0, sub); err != nil {
-			logger.WithField("sub", sub).Warnf("批量移除策略失败: %v", err)
+			logger.WithField("sub", sub).Warnf("Failed to remove policies in batch: %v", err)
 		}
 	}
 
-	// 清空所有角色映射 (g规则)：收集唯一 user，每人一次批量删除
+	// Clear all role mappings (g rules): collect unique users and delete them in batches
 	users := make(map[string]struct{})
 	for _, roleMapping := range s.manager.GetAllRoles() {
 		if len(roleMapping) >= 1 {
@@ -175,19 +175,19 @@ func (s *SyncService) clearCasbinPolicies(_ context.Context) error {
 	}
 	for uid := range users {
 		if _, err := s.manager.DeleteRolesForUser(uid); err != nil {
-			logger.WithField("user", uid).Warnf("批量移除角色映射失败: %v", err)
+			logger.WithField("user", uid).Warnf("Failed to remove role mappings in batch: %v", err)
 		}
 	}
 
-	logger.Info("清空策略完成")
+	logger.Info("Cleared policies")
 	return nil
 }
 
-// syncUserRoles 同步用户角色关系
+// syncUserRoles syncs user-role relationships
 func (s *SyncService) syncUserRoles(ctx context.Context) error {
-	logger.Info("开始同步用户角色关系")
+	logger.Info("Starting user-role relationship sync")
 
-	// 查询所有活跃用户及其角色
+	// Query all active users and their roles
 	users, err := s.entClient.User.Query().
 		Where(user.StatusEQ("active")).
 		WithRoles(func(q *ent.RoleQuery) {
@@ -196,7 +196,7 @@ func (s *SyncService) syncUserRoles(ctx context.Context) error {
 		All(ctx)
 
 	if err != nil {
-		return fmt.Errorf("查询用户角色关系失败: %w", err)
+		return fmt.Errorf("failed to query user-role relationships: %w", err)
 	}
 
 	userRoleCount := 0
@@ -204,34 +204,34 @@ func (s *SyncService) syncUserRoles(ctx context.Context) error {
 	for _, u := range users {
 		for _, r := range u.Edges.Roles {
 			if _, err := s.manager.AddRoleForUser(u.ID, r.ID); err != nil {
-				logger.WithError(err).Warnf("添加用户角色失败: user=%s, role=%s", u.ID, r.ID)
+				logger.WithError(err).Warnf("Failed to add user role: user=%s, role=%s", u.ID, r.ID)
 				continue
 			}
 			userRoleCount++
 		}
 	}
 
-	logger.Infof("同步用户角色关系完成，共处理 %d 条关系", userRoleCount)
+	logger.Infof("Completed user-role sync, processed %d relationships", userRoleCount)
 	return nil
 }
 
-// syncRolePermissions 同步角色权限策略
+// syncRolePermissions syncs role permission policies
 func (s *SyncService) syncRolePermissions(ctx context.Context) error {
-	logger.Info("开始同步角色权限策略")
+	logger.Info("Starting role permission policy sync")
 
-	// 查询所有活跃角色及其菜单和API资源
+	// Query all active roles and their menus and API resources
 	roles, err := s.entClient.Role.Query().
 		Where(role.StatusEQ("active")).
 		WithMenus(func(q *ent.MenuQuery) {
 			q.Where().
 				WithAPIResources(func(ar *ent.ApiResourceQuery) {
-					ar.Where(apiresource.IsPublicEQ(false)) // 只同步需要权限验证的API
+					ar.Where(apiresource.IsPublicEQ(false)) // Only sync API resources that require permission validation
 				})
 		}).
 		All(ctx)
 
 	if err != nil {
-		return fmt.Errorf("查询角色权限关系失败: %w", err)
+		return fmt.Errorf("failed to query role permission relationships: %w", err)
 	}
 
 	policyCount := 0
@@ -243,22 +243,22 @@ func (s *SyncService) syncRolePermissions(ctx context.Context) error {
 		policyCount += n
 	}
 
-	logger.Infof("同步角色权限策略完成，共处理 %d 条策略", policyCount)
+	logger.Infof("Completed role permission policy sync, processed %d policies", policyCount)
 	return nil
 }
 
-// applyRolePolicies 将角色的权限写入 Casbin。
-// admin 角色写入通配符策略；其余角色按关联菜单的 API 资源写入。
-// 返回实际写入的策略条数。
+// applyRolePolicies writes a role's permissions to Casbin.
+// The admin role receives a wildcard policy; other roles receive policies based on the API resources of their associated menus.
+// Returns the number of policies actually written.
 func (s *SyncService) applyRolePolicies(roleID, roleName string, menus []*ent.Menu) (int, error) {
 	log := logger.WithField("role", roleID)
 
 	if roleName == "admin" {
 		if _, err := s.manager.AddPolicy(roleID, "*", "*"); err != nil {
-			log.WithError(err).Warn("添加admin通配符权限失败")
+			log.WithError(err).Warn("Failed to add admin wildcard permission")
 			return 0, nil
 		}
-		log.Info("已为admin角色添加通配符权限")
+		log.Info("Added wildcard permission for admin role")
 		return 1, nil
 	}
 
@@ -266,7 +266,7 @@ func (s *SyncService) applyRolePolicies(roleID, roleName string, menus []*ent.Me
 	for _, menu := range menus {
 		for _, apiRes := range menu.Edges.APIResources {
 			if _, err := s.manager.AddPolicy(roleID, apiRes.Path, apiRes.Method); err != nil {
-				log.WithError(err).Warnf("添加API权限失败: %s %s", apiRes.Method, apiRes.Path)
+				log.WithError(err).Warnf("Failed to add API permission: %s %s", apiRes.Method, apiRes.Path)
 				continue
 			}
 			count++
@@ -275,16 +275,16 @@ func (s *SyncService) applyRolePolicies(roleID, roleName string, menus []*ent.Me
 	return count, nil
 }
 
-// SyncUserRole 同步单个用户的角色关系
+// SyncUserRole syncs a single user's role relationships
 func (s *SyncService) SyncUserRole(ctx context.Context, userID string) error {
-	logger.Infof("同步用户角色: %s", userID)
+	logger.Infof("Syncing user roles: %s", userID)
 
-	// 清除用户现有的所有角色
+	// Clear the user's existing roles
 	if _, err := s.manager.DeleteRolesForUser(userID); err != nil {
-		logger.WithError(err).Warnf("清除用户角色失败: user=%s", userID)
+		logger.WithError(err).Warnf("Failed to clear user roles: user=%s", userID)
 	}
 
-	// 查询用户的当前角色（仅活跃用户有效）
+	// Query the user's current roles (only active users are valid)
 	u, err := s.entClient.User.Query().
 		Where(user.IDEQ(userID), user.StatusEQ("active")).
 		WithRoles(func(q *ent.RoleQuery) {
@@ -296,29 +296,29 @@ func (s *SyncService) SyncUserRole(ctx context.Context, userID string) error {
 		if ent.IsNotFound(err) {
 			return s.manager.SavePolicy()
 		}
-		return fmt.Errorf("查询用户角色失败: %w", err)
+		return fmt.Errorf("failed to query user roles: %w", err)
 	}
 
-	// 重新添加用户角色
+	// Re-add user roles
 	for _, r := range u.Edges.Roles {
 		if _, err := s.manager.AddRoleForUser(userID, r.ID); err != nil {
-			logger.WithError(err).Warnf("添加用户角色失败: user=%s, role=%s", userID, r.ID)
+			logger.WithError(err).Warnf("Failed to add user role: user=%s, role=%s", userID, r.ID)
 		}
 	}
 
 	return s.manager.SavePolicy()
 }
 
-// SyncRolePermissions 同步单个角色的权限策略
+// SyncRolePermissions syncs a single role's permission policies
 func (s *SyncService) SyncRolePermissions(ctx context.Context, roleID string) error {
-	logger.Infof("同步角色权限: %s", roleID)
+	logger.Infof("Syncing role permissions: %s", roleID)
 
-	// 清除角色现有权限策略
+	// Clear the role's existing permission policies
 	if err := s.clearRolePolicies(ctx, roleID); err != nil {
-		return fmt.Errorf("清除角色现有权限失败: %w", err)
+		return fmt.Errorf("failed to clear existing role permissions: %w", err)
 	}
 
-	// 查询角色的当前菜单和API资源
+	// Query the role's current menus and API resources
 	r, err := s.entClient.Role.Query().
 		Where(role.IDEQ(roleID), role.StatusEQ("active")).
 		WithMenus(func(q *ent.MenuQuery) {
@@ -333,7 +333,7 @@ func (s *SyncService) SyncRolePermissions(ctx context.Context, roleID string) er
 		if ent.IsNotFound(err) {
 			return s.manager.SavePolicy()
 		}
-		return fmt.Errorf("查询角色权限失败: %w", err)
+		return fmt.Errorf("failed to query role permissions: %w", err)
 	}
 
 	if _, err := s.applyRolePolicies(roleID, r.Name, r.Edges.Menus); err != nil {
@@ -343,10 +343,10 @@ func (s *SyncService) SyncRolePermissions(ctx context.Context, roleID string) er
 	return s.manager.SavePolicy()
 }
 
-// clearRolePolicies 清除指定角色的所有权限策略
+// clearRolePolicies clears all permission policies for a specific role
 func (s *SyncService) clearRolePolicies(_ context.Context, roleID string) error {
 	if _, err := s.manager.RemoveFilteredPolicy(0, roleID); err != nil {
-		logger.WithField("role", roleID).Warnf("移除角色策略失败: %v", err)
+		logger.WithField("role", roleID).Warnf("Failed to remove role policies: %v", err)
 	}
 	return nil
 }
@@ -423,11 +423,11 @@ func uniqueStrings(values []string) []string {
 	return unique
 }
 
-// GetSyncStats 获取同步统计信息
+// GetSyncStats gets sync statistics
 func (s *SyncService) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 	stats := &SyncStats{}
 
-	// 统计数据库中活跃的 user-role 对数（不是用户数）
+	// Count the database's active user-role pairs (not user count)
 	users, err := s.entClient.User.Query().
 		Where(user.StatusEQ("active")).
 		WithRoles(func(q *ent.RoleQuery) {
@@ -435,7 +435,7 @@ func (s *SyncService) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 		}).
 		All(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("统计用户角色数量失败: %w", err)
+		return nil, fmt.Errorf("failed to count user-role relationships: %w", err)
 	}
 	userRoleCount := 0
 	for _, u := range users {
@@ -447,10 +447,10 @@ func (s *SyncService) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 		WithMenus().
 		Count(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("统计角色权限数量失败: %w", err)
+		return nil, fmt.Errorf("failed to count role permission policies: %w", err)
 	}
 
-	// 统计casbin中的数据
+	// Count the data in Casbin
 	stats.DatabaseUserRoles = userRoleCount
 	stats.DatabaseRolePermissions = rolePermCount
 	stats.CasbinRoles = len(s.manager.GetAllRoles())
@@ -459,7 +459,7 @@ func (s *SyncService) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 	return stats, nil
 }
 
-// SyncStats 同步统计信息
+// SyncStats sync statistics
 type SyncStats struct {
 	DatabaseUserRoles       int `json:"database_user_roles"`
 	DatabaseRolePermissions int `json:"database_role_permissions"`
@@ -467,8 +467,8 @@ type SyncStats struct {
 	CasbinPolicies          int `json:"casbin_policies"`
 }
 
-// IsHealthy 检查同步状态是否健康
+// IsHealthy checks whether the sync status is healthy
 func (stats *SyncStats) IsHealthy() bool {
-	// 简单的健康检查：casbin中的数据不应该为空
+	// A simple health check: the data in Casbin should not be empty
 	return stats.CasbinRoles > 0 && stats.CasbinPolicies > 0
 }
