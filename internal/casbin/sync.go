@@ -99,16 +99,14 @@ func (s *SyncService) SyncIncremental(ctx context.Context, since time.Time) erro
 
 	for _, userID := range userIDs {
 		if err := s.SyncUserRole(ctx, userID); err != nil {
-			logger.
-				WithError(err).Warnf("增量同步用户角色失败: user=%s", userID)
+			logger.WithError(err).Warnf("增量同步用户角色失败: user=%s", userID)
 			errs = append(errs, fmt.Errorf("同步用户 %s 失败: %w", userID, err))
 		}
 	}
 
 	for _, roleID := range roleIDs {
 		if err := s.SyncRolePermissions(ctx, roleID); err != nil {
-			logger.
-				WithError(err).Warnf("增量同步角色权限失败: role=%s", roleID)
+			logger.WithError(err).Warnf("增量同步角色权限失败: role=%s", roleID)
 			errs = append(errs, fmt.Errorf("同步角色 %s 失败: %w", roleID, err))
 		}
 	}
@@ -177,8 +175,7 @@ func (s *SyncService) clearCasbinPolicies(_ context.Context) error {
 	}
 	for uid := range users {
 		if _, err := s.manager.DeleteRolesForUser(uid); err != nil {
-			logger.
-				WithField("user", uid).Warnf("批量移除角色映射失败: %v", err)
+			logger.WithField("user", uid).Warnf("批量移除角色映射失败: %v", err)
 		}
 	}
 
@@ -207,16 +204,14 @@ func (s *SyncService) syncUserRoles(ctx context.Context) error {
 	for _, u := range users {
 		for _, r := range u.Edges.Roles {
 			if _, err := s.manager.AddRoleForUser(u.ID, r.ID); err != nil {
-				logger.
-					WithError(err).Warnf("添加用户角色失败: user=%s, role=%s", u.ID, r.ID)
+				logger.WithError(err).Warnf("添加用户角色失败: user=%s, role=%s", u.ID, r.ID)
 				continue
 			}
 			userRoleCount++
 		}
 	}
 
-	logger.
-		Infof("同步用户角色关系完成，共处理 %d 条关系", userRoleCount)
+	logger.Infof("同步用户角色关系完成，共处理 %d 条关系", userRoleCount)
 	return nil
 }
 
@@ -248,8 +243,7 @@ func (s *SyncService) syncRolePermissions(ctx context.Context) error {
 		policyCount += n
 	}
 
-	logger.
-		Infof("同步角色权限策略完成，共处理 %d 条策略", policyCount)
+	logger.Infof("同步角色权限策略完成，共处理 %d 条策略", policyCount)
 	return nil
 }
 
@@ -317,8 +311,7 @@ func (s *SyncService) SyncUserRole(ctx context.Context, userID string) error {
 
 // SyncRolePermissions 同步单个角色的权限策略
 func (s *SyncService) SyncRolePermissions(ctx context.Context, roleID string) error {
-	logger.
-		Infof("同步角色权限: %s", roleID)
+	logger.Infof("同步角色权限: %s", roleID)
 
 	// 清除角色现有权限策略
 	if err := s.clearRolePolicies(ctx, roleID); err != nil {
