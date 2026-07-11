@@ -2,10 +2,9 @@ package bootstrap
 
 import (
 	"fmt"
-	"strings"
-
 	"shadmin/domain"
 	"shadmin/repository"
+	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"

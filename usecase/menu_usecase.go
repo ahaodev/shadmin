@@ -117,7 +117,7 @@ func (mu *menuUsecase) UpdateMenu(ctx context.Context, id string, req *domain.Up
 	}
 
 	// 注意: casbin权限同步由定时任务自动处理，无需在此手动操作
-	log.Printf("INFO: Successfully updated menu %s", updatedMenu.ID)
+	log.Printf(" Successfully updated menu %s", updatedMenu.ID)
 
 	return updatedMenu, nil
 }
@@ -132,7 +132,7 @@ func (mu *menuUsecase) DeleteMenu(ctx context.Context, id string) error {
 		return fmt.Errorf("menu not found: %w", err)
 	}
 
-	log.Printf("INFO: Starting deletion process for menu %s (ID: %s, Type: %s)",
+	log.Printf(" Starting deletion process for menu %s (ID: %s, Type: %s)",
 		menu.Name, id, menu.Type)
 
 	// 2. 在事务中递归删除菜单及其子菜单
@@ -152,7 +152,7 @@ func (mu *menuUsecase) DeleteMenu(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	log.Printf("INFO: Successfully deleted menu %s and all its children", menu.Name)
+	log.Printf(" Successfully deleted menu %s and all its children", menu.Name)
 	return nil
 }
 
@@ -174,7 +174,7 @@ func (mu *menuUsecase) deleteMenuRecursively(ctx context.Context, menuID string)
 
 	// 3. 递归删除所有子菜单
 	for _, child := range children {
-		log.Printf("INFO: Recursively deleting child menu %s (ID: %s) of parent %s",
+		log.Printf(" Recursively deleting child menu %s (ID: %s) of parent %s",
 			child.Name, child.ID, menu.Name)
 
 		if err := mu.deleteMenuRecursively(ctx, child.ID); err != nil {
@@ -183,13 +183,13 @@ func (mu *menuUsecase) deleteMenuRecursively(ctx context.Context, menuID string)
 	}
 
 	// 4. 删除当前菜单
-	log.Printf("INFO: Deleting menu %s (ID: %s)", menu.Name, menuID)
+	log.Printf(" Deleting menu %s (ID: %s)", menu.Name, menuID)
 	if err := mu.menuRepository.DeleteMenu(ctx, menuID); err != nil {
 		return fmt.Errorf("failed to delete menu %s from database: %w", menuID, err)
 	}
 
 	// 注意: casbin权限同步由定时任务自动处理，无需在此手动清理
-	log.Printf("INFO: Successfully deleted menu %s from database", menu.Name)
+	log.Printf(" Successfully deleted menu %s from database", menu.Name)
 
 	return nil
 }

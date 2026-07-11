@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"log"
 	"shadmin/ent/user"
 
 	"entgo.io/ent/dialect/sql"

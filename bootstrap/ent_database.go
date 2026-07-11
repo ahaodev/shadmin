@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"shadmin/ent"

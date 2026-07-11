@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"log"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/apiresource"

@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"log"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/internal/auth/tokenblacklist"
@@ -84,17 +83,9 @@ func App() *Application {
 	// 初始化Casbin初始化器并执行启动时同步
 	app.CasbinInitializer = NewCasbinInitializer(app.DB, app.CasManager)
 
-	// 执行启动时的casbin同步
-	ctx := context.Background()
-	if err := app.CasbinInitializer.InitializeCasbin(ctx); err != nil {
-		log.Printf("ERROR: Casbin初始化失败: %v", err)
-		// 不panic，允许应用继续启动，但会影响权限功能
-	}
-
-	// 初始化并启动Casbin定时同步调度器（每1小时同步一次作为兜底）
+	// 初始化Casbin定时同步调度器（每1小时同步一次作为兜底），启动时机在默认数据和全量同步完成之后
 	syncService := app.CasbinInitializer.GetSyncService()
-	app.CasbinScheduler = scheduler.NewCasbinSyncScheduler(syncService, 1*time.Hour)
-	app.CasbinScheduler.Start(ctx)
+	app.CasbinScheduler = scheduler.NewCasbinSyncScheduler(syncService, 1*time.Minute)
 
 	// 初始化文件存储
 	storageConfig := InitStorage(app.Env)

@@ -27,17 +27,23 @@ func (l *casbinLogger) SetEventTypes(types []casbinlog.EventType) error {
 }
 
 func (l *casbinLogger) OnBeforeEvent(entry *casbinlog.LogEntry) error {
-
-	l.loggerForEntry(entry).Debug("casbin event started")
+	if !l.shouldLog(entry.EventType) {
+		return nil
+	}
 	return nil
 }
 
 func (l *casbinLogger) OnAfterEvent(entry *casbinlog.LogEntry) error {
+	if !l.shouldLog(entry.EventType) {
+		return nil
+	}
+
 	logger := l.loggerForEntry(entry)
-	if entry.Error != nil {
-		logger.WithError(entry.Error).Error("casbin event finished")
-	} else {
-		logger.WithField("allowed", entry.Allowed).WithField("duration_ms", entry.Duration.Milliseconds()).Info("casbin event finished")
+	switch {
+	case entry.Error != nil:
+		logger.WithError(entry.Error).Error("casbin event failed")
+	case entry.EventType == casbinlog.EventEnforce && !entry.Allowed:
+		logger.WithField("allowed", false).Warn("casbin authorization denied")
 	}
 
 	if l.callback != nil {

@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"shadmin/pkg"
 	"strings"

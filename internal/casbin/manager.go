@@ -33,11 +33,15 @@ type Manager interface {
 	// AddPolicy 策略管理 - sync服务使用
 	AddPolicy(roleID, object, action string) (bool, error)
 	RemovePolicy(roleID, object, action string) (bool, error)
+	// RemoveFilteredPolicy 按字段过滤批量删除策略，fieldIndex=0 时即"删除某角色所有策略"
+	RemoveFilteredPolicy(fieldIndex int, fieldValues ...string) (bool, error)
 	GetAllPolicies() [][]string
 
 	// AddRoleForUser 角色管理 - sync服务使用
 	AddRoleForUser(userID, roleID string) (bool, error)
 	DeleteRoleForUser(userID, roleID string) (bool, error)
+	// DeleteRolesForUser 删除某用户的所有角色映射
+	DeleteRolesForUser(userID string) (bool, error)
 	GetRolesForUser(userID string) []string
 	GetAllRoles() [][]string
 
@@ -176,6 +180,11 @@ func (m *CasManager) RemovePolicy(roleID, object, action string) (bool, error) {
 	return m.enforcer.RemoveNamedPolicy("p", roleID, object, action)
 }
 
+// RemoveFilteredPolicy 按字段过滤批量删除策略（fieldIndex=0 即删某角色所有策略）
+func (m *CasManager) RemoveFilteredPolicy(fieldIndex int, fieldValues ...string) (bool, error) {
+	return m.enforcer.RemoveFilteredNamedPolicy("p", fieldIndex, fieldValues...)
+}
+
 // GetAllPolicies 获取所有策略
 func (m *CasManager) GetAllPolicies() [][]string {
 	policies, _ := m.enforcer.GetNamedPolicy("p")
@@ -189,9 +198,14 @@ func (m *CasManager) AddRoleForUser(userID, roleID string) (bool, error) {
 	return m.enforcer.AddRoleForUser(userID, roleID)
 }
 
-// DeleteRoleForUser 删除用户角色
+// DeleteRoleForUser 删除用户的单个角色
 func (m *CasManager) DeleteRoleForUser(userID, roleID string) (bool, error) {
 	return m.enforcer.DeleteRoleForUser(userID, roleID)
+}
+
+// DeleteRolesForUser 删除用户的所有角色映射
+func (m *CasManager) DeleteRolesForUser(userID string) (bool, error) {
+	return m.enforcer.DeleteRolesForUser(userID)
 }
 
 // GetRolesForUser 获取用户的角色列表
