@@ -11,6 +11,8 @@ import (
 	adapterent "github.com/casbin/ent-adapter/ent"
 )
 
+const casbinKey = "casbin_rules"
+
 func NewAdapter(entClient *ent.Client, conf cacher.RedisConfig) (persist.Adapter, error) {
 	if conf.Addr != "" {
 		return newRedisAdapter(conf)
@@ -24,9 +26,9 @@ func newEntAdapter(entClient *ent.Client) (persist.Adapter, error) {
 }
 
 func newRedisAdapter(conf cacher.RedisConfig) (persist.Adapter, error) {
-	adapterKey := "casbin_rules"
+	adapterKey := casbinKey
 	if conf.DB != 0 {
-		adapterKey = fmt.Sprintf("casbin_rules:%d", conf.DB)
+		adapterKey = fmt.Sprintf("%s:%d", casbinKey, conf.DB)
 	}
 	config := &redisadapter.Config{Network: "tcp", Address: conf.Addr, Key: adapterKey}
 	adapter, _ := redisadapter.NewAdapter(config)
