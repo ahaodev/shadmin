@@ -11,7 +11,6 @@ import (
 	entadapter "github.com/casbin/ent-adapter"
 	adapterent "github.com/casbin/ent-adapter/ent"
 	"github.com/casbin/redis-adapter/v3"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 // Config 控制 Casbin 后端选择。RedisAddr 非空 → 走 Redis 适配器；否则为 Ent 适配器。
