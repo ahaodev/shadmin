@@ -46,8 +46,6 @@ func (s *CasbinSyncScheduler) Start(ctx context.Context) {
 	s.wg.Add(1)
 
 	go s.run(ctx)
-
-	log.Printf(" Casbin同步调度器已启动，同步间隔: %v", s.interval)
 }
 
 // Stop 停止定时同步任务
@@ -84,8 +82,6 @@ func (s *CasbinSyncScheduler) run(ctx context.Context) {
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()
 
-	log.Printf("Casbin同步定时任务开始运行")
-
 	for {
 		select {
 		case <-s.stopChan:
@@ -112,8 +108,6 @@ func (s *CasbinSyncScheduler) performSync(ctx context.Context) error {
 	since := s.lastSync
 	s.mutex.RUnlock()
 
-	log.Printf("DEBUG: 开始执行Casbin定时增量同步，since=%s", since.Format(time.RFC3339Nano))
-
 	// 使用带超时的上下文，避免单次同步时间过长
 	syncCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -126,9 +120,6 @@ func (s *CasbinSyncScheduler) performSync(ctx context.Context) error {
 	s.mutex.Lock()
 	s.lastSync = startTime
 	s.mutex.Unlock()
-
-	duration := time.Since(startTime)
-	log.Printf("DEBUG: Casbin定时增量同步完成，耗时: %v", duration)
 
 	// 可选：获取并记录同步统计
 	if stats, err := s.syncService.GetSyncStats(syncCtx); err == nil {

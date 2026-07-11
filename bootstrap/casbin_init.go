@@ -8,8 +8,6 @@ import (
 	"shadmin/internal/casbin"
 	"sync"
 	"time"
-
-	"github.com/bytedance/gopkg/util/logger"
 )
 
 // CasbinInitializer casbin初始化器
@@ -55,7 +53,7 @@ func (ci *CasbinInitializer) InitializeCasbin(ctx context.Context) error {
 	ci.initializing = true
 	ci.mu.Unlock()
 
-	logger.Info("Casbin Initializing...")
+	log.Info("Casbin Initializing...")
 
 	startTime := time.Now()
 	var err error

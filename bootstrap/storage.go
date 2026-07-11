@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"fmt"
 	"shadmin/domain"
 	"shadmin/repository"
 	"strings"
@@ -42,15 +41,15 @@ func (sc *StorageConfig) initMinioStorage(env *Env) {
 
 	sc.MinioClient = minioClient
 	sc.FileStorage = repository.NewFileRepository(minioClient)
-	fmt.Println("文件存储: 使用 MinIO 对象存储")
+	log.Info("文件存储: 使用 MinIO 对象存储")
 }
 
 func (sc *StorageConfig) initDiskStorage(env *Env) {
 	sc.FileStorage = repository.NewDiskFileRepository(env.StorageBasePath)
-	fmt.Printf("文件存储: 使用本地磁盘存储 (%s)\n", env.StorageBasePath)
+	log.Infof("文件存储: 使用本地磁盘存储 (%s)", env.StorageBasePath)
 }
 
 func (sc *StorageConfig) initDefaultStorage(env *Env) {
 	sc.FileStorage = repository.NewDiskFileRepository(env.StorageBasePath)
-	fmt.Printf("文件存储: 使用默认本地磁盘存储 (%s)\n", env.StorageBasePath)
+	log.Infof("文件存储: 使用默认本地磁盘存储 (%s)", env.StorageBasePath)
 }
