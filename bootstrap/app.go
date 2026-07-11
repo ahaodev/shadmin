@@ -4,13 +4,12 @@ import (
 	"context"
 	"shadmin/domain"
 	"shadmin/ent"
-	"shadmin/internal/auth/tokenblacklist"
+	"shadmin/internal/auth"
 	"shadmin/internal/cacher"
 	captchapkg "shadmin/internal/captcha"
 	"shadmin/internal/casbin"
 	"shadmin/internal/conf"
 	"shadmin/internal/scheduler"
-	"shadmin/internal/userstatus"
 	"shadmin/repository"
 	"time"
 
@@ -27,8 +26,8 @@ type Application struct {
 	CasbinInitializer *CasbinInitializer             // Casbin初始化器
 	CasbinScheduler   *scheduler.CasbinSyncScheduler // Casbin同步调度器
 	CaptchaManager    *captchapkg.SlideManager       // 滑块验证码管理器（内部使用共享 Cacher）
-	UserStatusCache   *userstatus.Cache              // 用户状态TTL缓存，用于登录/刷新/中间件检查
-	TokenBlacklist    tokenblacklist.Blacklist       // JWT 登出黑名单（内存或 Redis）
+	UserStatusCache   *auth.Cache                    // 用户状态TTL缓存，用于登录/刷新/中间件检查
+	TokenBlacklist    auth.JWTBlacklist              // JWT 登出黑名单（内存或 Redis）
 	Version           string                         // 应用版本
 }
 
@@ -63,10 +62,10 @@ func App() *Application {
 	}
 
 	// 用户状态缓存：直接复用共享 Cacher，Cache 层做 DB 回源与 TTL 协调。
-	app.UserStatusCache = userstatus.New(
+	app.UserStatusCache = auth.NewUserStatusCacher(
 		repository.NewUserRepository(app.DB, app.CasManager),
 		app.Cacher,
-		userstatus.DefaultTTL,
+		auth.DefaultTTL,
 	)
 
 	casAdapter, err := casbin.NewAdapter(app.DB, redisCfg)
@@ -77,7 +76,7 @@ func App() *Application {
 	app.CasManager = casbin.NewCasManager(casAdapter)
 
 	// JWT 登出黑名单：复用共享 Cacher，ns="jwt:blacklist"。
-	app.TokenBlacklist = tokenblacklist.New(app.Cacher)
+	app.TokenBlacklist = auth.NewTokenBlacklist(app.Cacher)
 
 	// 滑块验证码：复用共享 Cacher，ns="captcha"。
 	cm, err := captchapkg.NewSlideManager(app.Cacher)

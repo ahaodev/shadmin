@@ -1,4 +1,4 @@
-package internal
+package auth
 
 import (
 	"sync"

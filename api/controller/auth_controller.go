@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"shadmin/internal/auth"
 	"shadmin/internal/conf"
 	"strings"
 	"time"
@@ -13,8 +14,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"shadmin/domain"
-	"shadmin/internal"
-	"shadmin/internal/auth/tokenblacklist"
 	"shadmin/internal/tokenservice"
 	"shadmin/internal/tokenutil"
 
@@ -25,10 +24,10 @@ type AuthController struct {
 	LoginUsecase    domain.LoginUsecase
 	LoginLogUsecase domain.LoginLogUseCase
 	Env             *conf.Env
-	SecurityManager *internal.LoginSecurityManager
+	SecurityManager *auth.LoginSecurityManager
 	TokenService    *tokenservice.TokenService
 	CaptchaUsecase  domain.CaptchaUsecase
-	TokenBlacklist  tokenblacklist.Blacklist
+	TokenBlacklist  auth.JWTBlacklist
 }
 
 // getClientIP 获取客户端真实IP地址

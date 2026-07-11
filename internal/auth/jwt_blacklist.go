@@ -1,7 +1,4 @@
-// Package tokenblacklist 提供 JWT 登出黑名单。
-// 仅在用户主动登出时写入；过期后由底层 cacher.Cacher 自动清理。
-// 缓存后端（进程内存或 Redis）由注入的 cacher.Cacher 决定，本包不再自行实现双后端。
-package tokenblacklist
+package auth
 
 import (
 	"context"
@@ -10,8 +7,8 @@ import (
 	"shadmin/internal/cacher"
 )
 
-// Blacklist 记录已登出的 JWT jti，直到其原始过期时间。
-type Blacklist interface {
+// JWTBlacklist 记录已登出的 JWT jti，直到其原始过期时间。
+type JWTBlacklist interface {
 	// Add 将 jti 加入黑名单直到 expiry；expiry 已过则直接忽略。
 	Add(ctx context.Context, jti string, expiry time.Time) error
 	// Exists 检查 jti 是否在黑名单中且仍有效。
@@ -20,9 +17,9 @@ type Blacklist interface {
 	Close() error
 }
 
-// New 返回基于 cacher.Cacher 的黑名单实现。
+// NewTokenBlacklist 返回基于 cacher.Cacher 的黑名单实现。
 // 内存/Redis 的后端选择由调用方通过 cacher 一次性决定。
-func New(cacher cacher.Cacher) Blacklist {
+func NewTokenBlacklist(cacher cacher.Cacher) JWTBlacklist {
 	return &blacklist{cacher: cacher}
 }
 

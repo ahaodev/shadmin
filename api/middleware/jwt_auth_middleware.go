@@ -3,10 +3,9 @@ package middleware
 import (
 	"net/http"
 	"shadmin/domain"
-	"shadmin/internal/auth/tokenblacklist"
+	"shadmin/internal/auth"
 	"shadmin/internal/constants"
 	"shadmin/internal/tokenutil"
-	"shadmin/internal/userstatus"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -17,7 +16,7 @@ import (
 // 状态非 active（或缓存报告为禁用）时返回 401，
 // 让 admin 对账户的禁用/启用立刻生效，无需等到 access token 自然过期。
 // 若传入的 tokenBlacklist 非 nil，则校验 jti 是否已登出。
-func JwtAuthMiddleware(secret string, userStatusCache *userstatus.Cache, tokenBlacklist tokenblacklist.Blacklist) gin.HandlerFunc {
+func JwtAuthMiddleware(secret string, userStatusCache *auth.Cache, tokenBlacklist auth.JWTBlacklist) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.Request.Header.Get("Authorization")
 		t := strings.Split(authHeader, " ")

@@ -4,7 +4,7 @@ import (
 	"log"
 	"shadmin/api/controller"
 	"shadmin/bootstrap"
-	"shadmin/internal"
+	"shadmin/internal/auth"
 	captchapkg "shadmin/internal/captcha"
 	"shadmin/internal/casbin"
 	"shadmin/internal/tokenservice"
@@ -52,7 +52,7 @@ func (f *ControllerFactory) CreateAuthController(casManager casbin.Manager) *con
 		LoginUsecase:    usecase.NewLoginUsecase(ur, f.timeout),
 		LoginLogUsecase: loginLogUseCase,
 		Env:             f.app.Env,
-		SecurityManager: internal.NewLoginSecurityManager(),
+		SecurityManager: auth.NewLoginSecurityManager(),
 		TokenService:    ts,
 		CaptchaUsecase:  usecase.NewCaptchaUsecase(f.captchaManager, f.timeout),
 		TokenBlacklist:  f.app.TokenBlacklist,
