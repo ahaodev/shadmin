@@ -2,7 +2,6 @@ package casbin
 
 import (
 	"fmt"
-	"log"
 	"shadmin/ent"
 	"sync"
 
@@ -15,6 +14,7 @@ import (
 
 // Config 控制 Casbin 后端选择。RedisAddr 非空 → 走 Redis 适配器；否则为 Ent 适配器。
 type Config struct {
+	Debug         bool
 	RedisAddr     string
 	RedisPassword string
 	RedisDB       int
@@ -51,19 +51,6 @@ type Manager interface {
 type CasManager struct {
 	enforcer  *casbin.Enforcer
 	entClient *ent.Client
-	logger    Logger
-}
-
-// Logger 日志接口
-type Logger interface {
-	Log(action, message string)
-}
-
-// defaultLogger 默认日志实现
-type defaultLogger struct{}
-
-func (l *defaultLogger) Log(action, message string) {
-	log.Printf("[%s] %s", action, message)
 }
 
 const (
@@ -87,11 +74,6 @@ m = g(r.sub, p.sub) && (r.obj == p.obj || p.obj == "*" || keyMatch2(r.obj, p.obj
 
 // NewCasManager 创建权限管理器实例
 func NewCasManager(entClient *ent.Client, cfg Config) Manager {
-	return NewCasManagerWithLogger(entClient, cfg, &defaultLogger{})
-}
-
-// NewCasManagerWithLogger 创建带自定义日志的权限管理器实例
-func NewCasManagerWithLogger(entClient *ent.Client, cfg Config, logger Logger) Manager {
 	var err error
 
 	once.Do(func() {
@@ -105,44 +87,52 @@ func NewCasManagerWithLogger(entClient *ent.Client, cfg Config, logger Logger) M
 	return &CasManager{
 		enforcer:  enforcer,
 		entClient: entClient,
-		logger:    logger,
 	}
 }
 
 // initializeCasbin 初始化Casbin组件
 func initializeCasbin(entClient *ent.Client, cfg Config) error {
-	// 创建模型
 	m, err := model.NewModelFromString(ModelConf)
 	if err != nil {
-		return fmt.Errorf("failed to create casbin model: %w", err)
+		return err
 	}
 
+	adapter, err := newCasbinAdapter(entClient, cfg)
+	if err != nil {
+		return err
+	}
+
+	enforcer, err = casbin.NewEnforcer(m, adapter)
+	if err != nil {
+		return err
+	}
+
+	enforcer.EnableAutoSave(true)
+	if cfg.Debug {
+		enforcer.SetLogger(newCasbinLogger())
+	}
+	return nil
+}
+
+func newCasbinAdapter(entClient *ent.Client, cfg Config) (any, error) {
 	if cfg.RedisAddr != "" {
 		adapterKey := "casbin_rules"
 		if cfg.RedisDB != 0 {
 			adapterKey = fmt.Sprintf("casbin_rules:%d", cfg.RedisDB)
 		}
+
 		config := redisadapter.Config{
 			Network:  "tcp",
 			Address:  cfg.RedisAddr,
 			Password: cfg.RedisPassword,
 			Key:      adapterKey,
 		}
-		adapter, err := redisadapter.NewAdapter(&config)
-		if err != nil {
-			return fmt.Errorf("failed to create redis adapter: %w", err)
-		}
-		enforcer, _ = casbin.NewEnforcer(m, adapter)
-	} else {
-		adapterClient := adapterent.NewClient(adapterent.Driver(entClient.Driver()))
-		adapter, err := entadapter.NewAdapterWithClient(adapterClient)
-		if err != nil {
-			return fmt.Errorf("failed to create ent adapter: %w", err)
-		}
-		enforcer, err = casbin.NewEnforcer(m, adapter)
+
+		return redisadapter.NewAdapter(&config)
 	}
-	enforcer.EnableAutoSave(true)
-	return nil
+
+	adapterClient := adapterent.NewClient(adapterent.Driver(entClient.Driver()))
+	return entadapter.NewAdapterWithClient(adapterClient)
 }
 
 // GetEnforcer 获取 enforcer 实例
@@ -154,7 +144,7 @@ func (m *CasManager) GetEnforcer() *casbin.Enforcer {
 
 // CheckPermission 检查权限
 func (m *CasManager) CheckPermission(userID, object, action string) (bool, error) {
-	m.logger.Log("CheckPermission", fmt.Sprintf("user:%s, object:%s, action:%s", userID, object, action))
+	casLog("CheckPermission", fmt.Sprintf("user:%s, object:%s, action:%s", userID, object, action))
 
 	// 获取用户的所有角色
 	roles := m.GetRolesForUser(userID)
@@ -180,13 +170,13 @@ func (m *CasManager) CheckPermission(userID, object, action string) (bool, error
 
 // AddPolicy 添加权限策略
 func (m *CasManager) AddPolicy(roleID, object, action string) (bool, error) {
-	m.logger.Log("AddPolicy", fmt.Sprintf("%s, %s, %s", roleID, object, action))
+	casLog("AddPolicy", fmt.Sprintf("%s, %s, %s", roleID, object, action))
 	return m.enforcer.AddNamedPolicy("p", roleID, object, action)
 }
 
 // RemovePolicy 移除权限策略
 func (m *CasManager) RemovePolicy(roleID, object, action string) (bool, error) {
-	m.logger.Log("RemovePolicy", fmt.Sprintf("%s, %s, %s", roleID, object, action))
+	casLog("RemovePolicy", fmt.Sprintf("%s, %s, %s", roleID, object, action))
 	return m.enforcer.RemoveNamedPolicy("p", roleID, object, action)
 }
 
@@ -200,20 +190,20 @@ func (m *CasManager) GetAllPolicies() [][]string {
 
 // AddRoleForUser 为用户添加角色
 func (m *CasManager) AddRoleForUser(userID, roleID string) (bool, error) {
-	m.logger.Log("AddRoleForUser", fmt.Sprintf("%s, %s", userID, roleID))
+	casLog("AddRoleForUser", fmt.Sprintf("%s, %s", userID, roleID))
 	return m.enforcer.AddRoleForUser(userID, roleID)
 }
 
 // DeleteRoleForUser 删除用户角色
 func (m *CasManager) DeleteRoleForUser(userID, roleID string) (bool, error) {
-	m.logger.Log("DeleteRoleForUser", fmt.Sprintf("%s, %s", userID, roleID))
+	casLog("DeleteRoleForUser", fmt.Sprintf("%s, %s", userID, roleID))
 	return m.enforcer.DeleteRoleForUser(userID, roleID)
 }
 
 // GetRolesForUser 获取用户的角色列表
 func (m *CasManager) GetRolesForUser(userID string) []string {
 	roles, _ := m.enforcer.GetRolesForUser(userID)
-	m.logger.Log("GetRolesForUser", fmt.Sprintf("%s -> %v", userID, roles))
+	casLog("GetRolesForUser", fmt.Sprintf("%s -> %v", userID, roles))
 	return roles
 }
 

@@ -39,6 +39,7 @@ func App() *Application {
 
 	// 初始化 Casbin 管理器（启用 Redis 时走 redis-adapter，否则内存模式）
 	app.CasManager = casbin.NewCasManager(app.DB, casbin.Config{
+		Debug:         app.Env.AppEnv == "debug" || app.Env.AppEnv == "development",
 		RedisAddr:     app.Env.RedisAddr,
 		RedisPassword: app.Env.RedisPassword,
 		RedisDB:       app.Env.RedisDB,
