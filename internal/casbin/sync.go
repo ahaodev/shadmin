@@ -27,7 +27,7 @@ func NewSyncService(entClient *ent.Client, manager Manager) *SyncService {
 // SyncFromDatabase 从数据库同步所有casbin数据
 // 这是主要的同步方法，会清空现有的casbin数据并重新从数据库加载
 func (s *SyncService) SyncFromDatabase(ctx context.Context) error {
-	casLog("SyncFromDatabase", "开始从数据库同步casbin数据")
+	logger.WithField("component", "casbin").WithField("action", "SyncFromDatabase").Info("开始从数据库同步casbin数据")
 
 	startTime := time.Now()
 
@@ -52,21 +52,21 @@ func (s *SyncService) SyncFromDatabase(ctx context.Context) error {
 	}
 
 	duration := time.Since(startTime)
-	casLog("SyncFromDatabase", fmt.Sprintf("同步完成，耗时: %v", duration))
+	logger.WithField("component", "casbin").WithField("action", "SyncFromDatabase").Info(fmt.Sprintf("同步完成，耗时: %v", duration))
 
 	return nil
 }
 
 // clearCasbinPolicies 清空所有casbin策略
 func (s *SyncService) clearCasbinPolicies(ctx context.Context) error {
-	casLog("clearCasbinPolicies", "清空现有casbin策略")
+	logger.WithField("component", "casbin").WithField("action", "clearCasbinPolicies").Info("清空现有casbin策略")
 
 	// 清空所有权限策略 (p规则)
 	allPolicies := s.manager.GetAllPolicies()
 	for _, policy := range allPolicies {
 		if len(policy) >= 3 {
 			if _, err := s.manager.RemovePolicy(policy[0], policy[1], policy[2]); err != nil {
-				casLog("clearCasbinPolicies", fmt.Sprintf("移除策略失败: %v", err))
+				logger.WithField("component", "casbin").WithField("action", "clearCasbinPolicies").Info(fmt.Sprintf("移除策略失败: %v", err))
 			}
 		}
 	}
@@ -76,18 +76,18 @@ func (s *SyncService) clearCasbinPolicies(ctx context.Context) error {
 	for _, roleMapping := range allRoles {
 		if len(roleMapping) >= 2 {
 			if _, err := s.manager.DeleteRoleForUser(roleMapping[0], roleMapping[1]); err != nil {
-				casLog("clearCasbinPolicies", fmt.Sprintf("移除角色映射失败: %v", err))
+				logger.WithField("component", "casbin").WithField("action", "clearCasbinPolicies").Info(fmt.Sprintf("移除角色映射失败: %v", err))
 			}
 		}
 	}
 
-	casLog("clearCasbinPolicies", "清空策略完成")
+	logger.WithField("component", "casbin").WithField("action", "clearCasbinPolicies").Info("清空策略完成")
 	return nil
 }
 
 // syncUserRoles 同步用户角色关系
 func (s *SyncService) syncUserRoles(ctx context.Context) error {
-	casLog("syncUserRoles", "开始同步用户角色关系")
+	logger.WithField("component", "casbin").WithField("action", "syncUserRoles").Info("开始同步用户角色关系")
 
 	// 查询所有活跃用户及其角色
 	users, err := s.entClient.User.Query().
@@ -107,20 +107,20 @@ func (s *SyncService) syncUserRoles(ctx context.Context) error {
 		for _, r := range u.Edges.Roles {
 			// 添加用户角色映射到casbin
 			if _, err := s.manager.AddRoleForUser(u.ID, r.ID); err != nil {
-				casLog("syncUserRoles", fmt.Sprintf("添加用户角色失败: user=%s, role=%s, error=%v", u.ID, r.ID, err))
+				logger.WithField("component", "casbin").WithField("action", "syncUserRoles").Info(fmt.Sprintf("添加用户角色失败: user=%s, role=%s, error=%v", u.ID, r.ID, err))
 				continue
 			}
 			userRoleCount++
 		}
 	}
 
-	casLog("syncUserRoles", fmt.Sprintf("同步用户角色关系完成，共处理 %d 条关系", userRoleCount))
+	logger.WithField("component", "casbin").WithField("action", "syncUserRoles").Info(fmt.Sprintf("同步用户角色关系完成，共处理 %d 条关系", userRoleCount))
 	return nil
 }
 
 // syncRolePermissions 同步角色权限策略
 func (s *SyncService) syncRolePermissions(ctx context.Context) error {
-	casLog("syncRolePermissions", "开始同步角色权限策略")
+	logger.WithField("component", "casbin").WithField("action", "syncRolePermissions").Info("开始同步角色权限策略")
 
 	// 查询所有活跃角色及其菜单和API资源
 	roles, err := s.entClient.Role.Query().
@@ -144,9 +144,9 @@ func (s *SyncService) syncRolePermissions(ctx context.Context) error {
 		if r.Name == "admin" {
 			// admin角色获得通配符权限
 			if _, err := s.manager.AddPolicy(r.ID, "*", "*"); err != nil {
-				casLog("syncRolePermissions", fmt.Sprintf("添加admin通配符权限失败: role=%s, error=%v", r.ID, err))
+				logger.WithField("component", "casbin").WithField("action", "syncRolePermissions").Info(fmt.Sprintf("添加admin通配符权限失败: role=%s, error=%v", r.ID, err))
 			} else {
-				casLog("syncRolePermissions", fmt.Sprintf("已为admin角色 %s 添加通配符权限", r.ID))
+				logger.WithField("component", "casbin").WithField("action", "syncRolePermissions").Info(fmt.Sprintf("已为admin角色 %s 添加通配符权限", r.ID))
 				policyCount++
 			}
 		} else {
@@ -157,7 +157,7 @@ func (s *SyncService) syncRolePermissions(ctx context.Context) error {
 					// API资源权限直接使用路径作为对象，不添加前缀
 					apiObject := apiRes.Path
 					if _, err := s.manager.AddPolicy(r.ID, apiObject, apiRes.Method); err != nil {
-						casLog("syncRolePermissions", fmt.Sprintf("添加API权限失败: role=%s, api=%s:%s, error=%v", r.ID, apiRes.Method, apiRes.Path, err))
+						logger.WithField("component", "casbin").WithField("action", "syncRolePermissions").Info(fmt.Sprintf("添加API权限失败: role=%s, api=%s:%s, error=%v", r.ID, apiRes.Method, apiRes.Path, err))
 						continue
 					}
 					policyCount++
@@ -166,19 +166,19 @@ func (s *SyncService) syncRolePermissions(ctx context.Context) error {
 		}
 	}
 
-	casLog("syncRolePermissions", fmt.Sprintf("同步角色权限策略完成，共处理 %d 条策略", policyCount))
+	logger.WithField("component", "casbin").WithField("action", "syncRolePermissions").Info(fmt.Sprintf("同步角色权限策略完成，共处理 %d 条策略", policyCount))
 	return nil
 }
 
 // SyncUserRole 同步单个用户的角色关系
 func (s *SyncService) SyncUserRole(ctx context.Context, userID string) error {
-	casLog("SyncUserRole", fmt.Sprintf("同步用户角色: %s", userID))
+	logger.WithField("component", "casbin").WithField("action", "SyncUserRole").Info(fmt.Sprintf("同步用户角色: %s", userID))
 
 	// 清除用户现有角色
 	existingRoles := s.manager.GetRolesForUser(userID)
 	for _, roleID := range existingRoles {
 		if _, err := s.manager.DeleteRoleForUser(userID, roleID); err != nil {
-			casLog("SyncUserRole", fmt.Sprintf("删除用户角色失败: user=%s, role=%s, error=%v", userID, roleID, err))
+			logger.WithField("component", "casbin").WithField("action", "SyncUserRole").Info(fmt.Sprintf("删除用户角色失败: user=%s, role=%s, error=%v", userID, roleID, err))
 		}
 	}
 
@@ -197,7 +197,7 @@ func (s *SyncService) SyncUserRole(ctx context.Context, userID string) error {
 	// 重新添加用户角色
 	for _, r := range u.Edges.Roles {
 		if _, err := s.manager.AddRoleForUser(userID, r.ID); err != nil {
-			casLog("SyncUserRole", fmt.Sprintf("添加用户角色失败: user=%s, role=%s, error=%v", userID, r.ID, err))
+			logger.WithField("component", "casbin").WithField("action", "SyncUserRole").Info(fmt.Sprintf("添加用户角色失败: user=%s, role=%s, error=%v", userID, r.ID, err))
 		}
 	}
 
@@ -206,7 +206,7 @@ func (s *SyncService) SyncUserRole(ctx context.Context, userID string) error {
 
 // SyncRolePermissions 同步单个角色的权限策略
 func (s *SyncService) SyncRolePermissions(ctx context.Context, roleID string) error {
-	casLog("SyncRolePermissions", fmt.Sprintf("同步角色权限: %s", roleID))
+	logger.WithField("component", "casbin").WithField("action", "SyncRolePermissions").Info(fmt.Sprintf("同步角色权限: %s", roleID))
 
 	// 清除角色现有权限策略
 	if err := s.clearRolePolicies(ctx, roleID); err != nil {
@@ -232,9 +232,9 @@ func (s *SyncService) SyncRolePermissions(ctx context.Context, roleID string) er
 	if r.Name == "admin" {
 		// admin角色获得通配符权限
 		if _, err := s.manager.AddPolicy(roleID, "*", "*"); err != nil {
-			casLog("SyncRolePermissions", fmt.Sprintf("添加admin通配符权限失败: role=%s, error=%v", roleID, err))
+			logger.WithField("component", "casbin").WithField("action", "SyncRolePermissions").Info(fmt.Sprintf("添加admin通配符权限失败: role=%s, error=%v", roleID, err))
 		} else {
-			casLog("SyncRolePermissions", fmt.Sprintf("已为admin角色 %s 添加通配符权限", roleID))
+			logger.WithField("component", "casbin").WithField("action", "SyncRolePermissions").Info(fmt.Sprintf("已为admin角色 %s 添加通配符权限", roleID))
 		}
 	} else {
 		// 非admin角色才需要通过菜单和API资源设置权限
@@ -244,7 +244,7 @@ func (s *SyncService) SyncRolePermissions(ctx context.Context, roleID string) er
 				// API资源权限直接使用路径作为对象，不添加前缀
 				apiObject := apiRes.Path
 				if _, err := s.manager.AddPolicy(roleID, apiObject, apiRes.Method); err != nil {
-					casLog("SyncRolePermissions", fmt.Sprintf("添加API权限失败: role=%s, api=%s:%s, error=%v", roleID, apiRes.Method, apiRes.Path, err))
+					logger.WithField("component", "casbin").WithField("action", "SyncRolePermissions").Info(fmt.Sprintf("添加API权限失败: role=%s, api=%s:%s, error=%v", roleID, apiRes.Method, apiRes.Path, err))
 				}
 			}
 		}
@@ -259,7 +259,7 @@ func (s *SyncService) clearRolePolicies(ctx context.Context, roleID string) erro
 	for _, policy := range policies {
 		if len(policy) >= 3 && policy[0] == roleID {
 			if _, err := s.manager.RemovePolicy(policy[0], policy[1], policy[2]); err != nil {
-				casLog("clearRolePolicies", fmt.Sprintf("移除角色策略失败: %v", err))
+				logger.WithField("component", "casbin").WithField("action", "clearRolePolicies").Info(fmt.Sprintf("移除角色策略失败: %v", err))
 			}
 		}
 	}

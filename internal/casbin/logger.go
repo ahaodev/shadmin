@@ -9,10 +9,6 @@ import (
 
 var logger = pkg.Log
 
-func casLog(action, message string) {
-	logger.WithField("component", "casbin").WithField("action", action).Info(message)
-}
-
 type casbinLogger struct {
 	eventTypes map[casbinlog.EventType]struct{}
 	callback   func(entry *casbinlog.LogEntry) error
@@ -56,20 +52,20 @@ func (l *casbinLogger) SetLogCallback(callback func(entry *casbinlog.LogEntry) e
 }
 
 func (l *casbinLogger) loggerForEntry(entry *casbinlog.LogEntry) *logrus.Entry {
-	logger := pkg.Log.WithField("component", "casbin").WithField("event_type", string(entry.EventType))
+	entryLogger := logger.WithField("component", "casbin").WithField("event_type", string(entry.EventType))
 	if entry.Subject != "" {
-		logger = logger.WithField("subject", entry.Subject)
+		entryLogger = entryLogger.WithField("subject", entry.Subject)
 	}
 	if entry.Object != "" {
-		logger = logger.WithField("object", entry.Object)
+		entryLogger = entryLogger.WithField("object", entry.Object)
 	}
 	if entry.Action != "" {
-		logger = logger.WithField("action", entry.Action)
+		entryLogger = entryLogger.WithField("action", entry.Action)
 	}
 	if entry.Domain != "" {
-		logger = logger.WithField("domain", entry.Domain)
+		entryLogger = entryLogger.WithField("domain", entry.Domain)
 	}
-	return logger
+	return entryLogger
 }
 
 func (l *casbinLogger) shouldLog(eventType casbinlog.EventType) bool {

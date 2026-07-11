@@ -10,6 +10,14 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const (
+	defaultRedisDialTimeout  = 5 * time.Second
+	defaultRedisReadTimeout  = 3 * time.Second
+	defaultRedisWriteTimeout = 3 * time.Second
+	defaultRedisPoolSize     = 20
+	defaultRedisMinIdleConns = 2
+)
+
 // RedisConfig 用于在无现成客户端时由本包自行构造 Redis 客户端。
 type RedisConfig struct {
 	Addr     string
@@ -18,19 +26,23 @@ type RedisConfig struct {
 	DB       int
 }
 
-// NewRedisClient 根据配置构造一个共享的 *redis.Client，并执行一次 Ping 校验。
-func NewRedisClient(cfg RedisConfig) (*redis.Client, error) {
-	cli := redis.NewClient(&redis.Options{
+func (cfg RedisConfig) options() *redis.Options {
+	return &redis.Options{
 		Addr:         cfg.Addr,
 		Username:     cfg.Username,
 		Password:     cfg.Password,
 		DB:           cfg.DB,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-		PoolSize:     20,
-		MinIdleConns: 2,
-	})
+		DialTimeout:  defaultRedisDialTimeout,
+		ReadTimeout:  defaultRedisReadTimeout,
+		WriteTimeout: defaultRedisWriteTimeout,
+		PoolSize:     defaultRedisPoolSize,
+		MinIdleConns: defaultRedisMinIdleConns,
+	}
+}
+
+// NewRedisClient 根据配置构造一个共享的 *redis.Client，并执行一次 Ping 校验。
+func NewRedisClient(cfg RedisConfig) (*redis.Client, error) {
+	cli := redis.NewClient(cfg.options())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -49,16 +61,6 @@ func NewClient(addr, password string, db int) (*redis.Client, error) {
 		Password: password,
 		DB:       db,
 	})
-}
-
-// NewRedisCache 自行创建 Redis 客户端并返回 Cacher；
-// 该客户端归本实例所有，Close 时会被关闭。
-func NewRedisCache(cfg RedisConfig, opts ...Option) Cacher {
-	cli, err := NewRedisClient(cfg)
-	if err != nil {
-		panic(err)
-	}
-	return newRedisCache(cli, true, opts...)
 }
 
 // NewRedisCacheWithClient 复用已有 *redis.Client，适合共享连接池的场景；

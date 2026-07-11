@@ -144,8 +144,6 @@ func (m *CasManager) GetEnforcer() *casbin.Enforcer {
 
 // CheckPermission 检查权限
 func (m *CasManager) CheckPermission(userID, object, action string) (bool, error) {
-	casLog("CheckPermission", fmt.Sprintf("user:%s, object:%s, action:%s", userID, object, action))
-
 	// 获取用户的所有角色
 	roles := m.GetRolesForUser(userID)
 	if len(roles) == 0 {
@@ -170,13 +168,11 @@ func (m *CasManager) CheckPermission(userID, object, action string) (bool, error
 
 // AddPolicy 添加权限策略
 func (m *CasManager) AddPolicy(roleID, object, action string) (bool, error) {
-	casLog("AddPolicy", fmt.Sprintf("%s, %s, %s", roleID, object, action))
 	return m.enforcer.AddNamedPolicy("p", roleID, object, action)
 }
 
 // RemovePolicy 移除权限策略
 func (m *CasManager) RemovePolicy(roleID, object, action string) (bool, error) {
-	casLog("RemovePolicy", fmt.Sprintf("%s, %s, %s", roleID, object, action))
 	return m.enforcer.RemoveNamedPolicy("p", roleID, object, action)
 }
 
@@ -190,20 +186,17 @@ func (m *CasManager) GetAllPolicies() [][]string {
 
 // AddRoleForUser 为用户添加角色
 func (m *CasManager) AddRoleForUser(userID, roleID string) (bool, error) {
-	casLog("AddRoleForUser", fmt.Sprintf("%s, %s", userID, roleID))
 	return m.enforcer.AddRoleForUser(userID, roleID)
 }
 
 // DeleteRoleForUser 删除用户角色
 func (m *CasManager) DeleteRoleForUser(userID, roleID string) (bool, error) {
-	casLog("DeleteRoleForUser", fmt.Sprintf("%s, %s", userID, roleID))
 	return m.enforcer.DeleteRoleForUser(userID, roleID)
 }
 
 // GetRolesForUser 获取用户的角色列表
 func (m *CasManager) GetRolesForUser(userID string) []string {
 	roles, _ := m.enforcer.GetRolesForUser(userID)
-	casLog("GetRolesForUser", fmt.Sprintf("%s -> %v", userID, roles))
 	return roles
 }
 
