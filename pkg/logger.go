@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	rotatelogs "github.com/lestrrat/go-file-rotatelogs"
@@ -22,6 +24,7 @@ type consoleFormatter struct{}
 func init() {
 	Log = create()
 }
+
 func create() *logrus.Logger {
 	if Log != nil {
 		return Log
@@ -59,6 +62,23 @@ func create() *logrus.Logger {
 func todayFileName() string {
 	return time.Now().Format(TimeFormatDay) + ".log"
 }
+
+func formatFields(fields logrus.Fields) string {
+	if len(fields) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(fields))
+	for key := range fields {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%v", key, fields[key]))
+	}
+	return " " + strings.Join(parts, " ")
+}
+
 func (s *consoleFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var b *bytes.Buffer
 	if entry.Buffer != nil {
@@ -70,23 +90,26 @@ func (s *consoleFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var newLog string
 	if entry.HasCaller() {
 		fName := filepath.Base(entry.Caller.File)
-		//newLog = fmt.Sprintf("[%s] %s %s:%d %s\n",
-		//	entry.Level,
-		//	entry.Caller.Function,
-		//	fName,
-		//	entry.Caller.Line,
-		//	entry.Message)
-		newLog = fmt.Sprintf("[%s] %s %s:%d:%s\n", entry.Level, entry.Caller.Function, fName, entry.Caller.Line, entry.Message)
+		newLog = fmt.Sprintf("[%s] %s %s:%d:%s%s\n",
+			entry.Level,
+			entry.Caller.Function,
+			fName,
+			entry.Caller.Line,
+			entry.Message,
+			formatFields(entry.Data),
+		)
 	} else {
-		newLog = fmt.Sprintf("[%s][%s] %s\n",
+		newLog = fmt.Sprintf("[%s][%s] %s%s\n",
 			timeStamp,
 			entry.Level,
 			entry.Message,
+			formatFields(entry.Data),
 		)
 	}
 	b.WriteString(newLog)
 	return b.Bytes(), nil
 }
+
 func (s *mineFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var b *bytes.Buffer
 	if entry.Buffer != nil {
@@ -98,18 +121,21 @@ func (s *mineFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var newLog string
 	if entry.HasCaller() {
 		fName := filepath.Base(entry.Caller.File)
-		newLog = fmt.Sprintf("[%s][%s][%s:%d %s] %s\n",
+		newLog = fmt.Sprintf("[%s][%s][%s:%d %s] %s%s\n",
 			timeStamp,
 			entry.Level,
 			fName,
 			entry.Caller.Line,
 			entry.Caller.Function,
-			entry.Message)
+			entry.Message,
+			formatFields(entry.Data),
+		)
 	} else {
-		newLog = fmt.Sprintf("[%s][%s] %s\n",
+		newLog = fmt.Sprintf("[%s][%s] %s%s\n",
 			timeStamp,
 			entry.Level,
 			entry.Message,
+			formatFields(entry.Data),
 		)
 	}
 	b.WriteString(newLog)
