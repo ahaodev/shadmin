@@ -75,6 +75,7 @@ func (User) Edges() []ent.Edge {
 			Ref("users").
 			Field("department_id").
 			Unique(),
+		edge.To("social_accounts", SocialAccount.Type).Comment("用户绑定的第三方账号"),
 	}
 }
 

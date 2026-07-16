@@ -20,10 +20,11 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
   const queryClient = useQueryClient()
 
   // Fetch user roles if editing
-  const { data: userRoles = [] } = useQuery({
+  const { data: userRoles = [] } = useQuery<string[]>({
     queryKey: ['userRoles', currentRow?.id],
-    queryFn: () => getUserRoleList(currentRow!.id) as Promise<string[]>,
+    queryFn: () => getUserRoleList(currentRow!.id),
     enabled: !!currentRow?.id,
+    select: (data) => (Array.isArray(data) ? data : []),
   })
 
   // Fetch all roles for selection

@@ -66,6 +66,27 @@ func (f *ControllerFactory) CreateCaptchaController() *controller.CaptchaControl
 	}
 }
 
+// CreateSocialAuthController creates the social login controller (Google/GitHub OAuth).
+// 复用既有 TokenService + env 令牌密钥签发 JWT，绑定记录走 SocialAccountRepository。
+func (f *ControllerFactory) CreateSocialAuthController() *controller.SocialAuthController {
+	userRepo := repository.NewUserRepository(f.db, f.app.CasManager)
+	socialAccountRepo := repository.NewSocialAccountRepository(f.db)
+	tokenService := tokenservice.NewTokenService()
+	return &controller.SocialAuthController{
+		SocialLoginUsecase: usecase.NewSocialLoginUsecase(
+			userRepo,
+			socialAccountRepo,
+			tokenService,
+			f.app.Env.AccessTokenSecret,
+			f.app.Env.RefreshTokenSecret,
+			f.app.Env.AccessTokenExpiryMinute,
+			f.app.Env.RefreshTokenExpiryMinute,
+			f.timeout,
+		),
+		RedirectURL: f.app.Env.SocialRedirectURL,
+	}
+}
+
 // CreateDeviceAuthController creates a device authorization controller
 func (f *ControllerFactory) CreateDeviceAuthController() *controller.DeviceAuthController {
 	if f.deviceAuthController != nil {

@@ -7,7 +7,7 @@ import {
   removeAllTokens,
 } from '@/lib/token-storage'
 
-const getApiBaseURL = () => {
+export const getApiBaseURL = () => {
   return `${window.location.protocol}//${window.location.host}`
 }
 

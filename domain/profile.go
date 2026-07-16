@@ -11,6 +11,7 @@ type Profile struct {
 	Email     string    `json:"email"`
 	Phone     string    `json:"phone"`
 	Bio       string    `json:"bio"`
+	Avatar    string    `json:"avatar"`
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

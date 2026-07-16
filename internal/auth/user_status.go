@@ -56,8 +56,8 @@ func (c *Cache) Get(ctx context.Context, userID string) (string, error) {
 
 	status, err := c.loader.GetStatusByID(ctx, userID)
 	if err != nil {
-		// 缓存错误不阻塞流程：视为禁用并让下次请求重试。
-		return "", domain.ErrUserDisabled
+		// 透传源头错误，让调用方根据错误类型决定是账户禁用还是服务暂时不可用。
+		return "", err
 	}
 
 	if err := c.cacher.Set(ctx, userStatusNS, userID, status, c.ttl); err != nil {

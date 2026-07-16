@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { updateProfile } from '@/services'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -81,6 +82,24 @@ export function ProfileForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-8'>
+        <div className='flex items-center gap-4'>
+          <Avatar className='h-20 w-20 rounded-full'>
+            <AvatarImage src={profile?.avatar} alt={profile?.username} />
+            <AvatarFallback className='rounded-full text-2xl'>
+              {profile?.username
+                ? profile.username.charAt(0).toUpperCase()
+                : 'A'}
+            </AvatarFallback>
+          </Avatar>
+          <div className='space-y-1'>
+            <p className='text-sm font-medium'>头像</p>
+            <p className='text-muted-foreground text-xs'>
+              {profile?.avatar
+                ? '来自第三方登录账号的头像。'
+                : '暂未设置头像，绑定第三方账号后将自动同步。'}
+            </p>
+          </div>
+        </div>
         <FormField
           control={form.control}
           name='username'

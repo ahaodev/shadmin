@@ -54,5 +54,7 @@ export async function deleteUser(id: string): Promise<string> {
 // GET /system/user/{userId}/roles - Get user roles
 export async function getUserRoleList(userId: string): Promise<string[]> {
   const response = await apiClient.get(`/api/v1/system/user/${userId}/roles`)
-  return response.data.data
+  const data = response.data?.data
+
+  return Array.isArray(data) ? data : []
 }

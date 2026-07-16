@@ -59,6 +59,15 @@ type Env struct {
 	RedisUsername string `mapstructure:"REDIS_USERNAME"`
 	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
 	RedisDB       int    `mapstructure:"REDIS_DB"`
+
+	// 社交登录配置
+	SocialBaseURL       string `mapstructure:"SOCIAL_BASE_URL"`       // 后端外部可达地址，用于拼接 OAuth 回调 URL
+	SocialRedirectURL   string `mapstructure:"SOCIAL_REDIRECT_URL"`   // 前端回调地址，登录成功后带 token 重定向到这里
+	SocialSessionSecret string `mapstructure:"SOCIAL_SESSION_SECRET"` // gothic session cookie 签名密钥
+	GoogleClientID      string `mapstructure:"GOOGLE_CLIENT_ID"`
+	GoogleClientSecret  string `mapstructure:"GOOGLE_CLIENT_SECRET"`
+	GitHubClientID      string `mapstructure:"GITHUB_CLIENT_ID"`
+	GitHubClientSecret  string `mapstructure:"GITHUB_CLIENT_SECRET"`
 }
 
 // CacheTypeValue 返回规范化后的缓存类型。
@@ -110,6 +119,15 @@ func setDefaults() {
 		"REDIS_USERNAME": "",
 		"REDIS_PASSWORD": "",
 		"REDIS_DB":       0,
+
+		// 社交登录配置
+		"SOCIAL_BASE_URL":       "http://localhost:55667",
+		"SOCIAL_REDIRECT_URL":   "http://localhost:5173/oauth-callback",
+		"SOCIAL_SESSION_SECRET": "shadmin-social-session-secret-change-me",
+		"GOOGLE_CLIENT_ID":      "",
+		"GOOGLE_CLIENT_SECRET":  "",
+		"GITHUB_CLIENT_ID":      "",
+		"GITHUB_CLIENT_SECRET":  "",
 	}
 	// 绑定环境变量
 	viper.AutomaticEnv()
@@ -151,6 +169,10 @@ func generateEnvFile() error {
 		{
 			title: "# 缓存配置（mem=内存，redis=Redis）",
 			keys:  []string{"CACHE_TYPE", "REDIS_ADDRESS", "REDIS_USERNAME", "REDIS_PASSWORD", "REDIS_DB"},
+		},
+		{
+			title: "# 社交登录配置",
+			keys:  []string{"SOCIAL_BASE_URL", "SOCIAL_REDIRECT_URL", "SOCIAL_SESSION_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"},
 		},
 	}
 

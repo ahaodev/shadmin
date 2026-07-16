@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/config.ts'
+import { apiClient, getApiBaseURL } from '@/services/config.ts'
 import { type ApiResponse } from '@/types/api.ts'
 import { type Profile } from '@/types/profile.ts'
 import { type User } from '@/types/user'
@@ -100,6 +100,39 @@ export async function activateDevice(
   request: DeviceActivateRequest
 ): Promise<ApiResponse<DeviceActivateResponse>> {
   const resp = await apiClient.post('/api/v1/auth/device/activate', request)
+  return resp.data
+}
+
+// 已启用的第三方登录 provider
+export interface SocialProvider {
+  provider: string
+  name: string
+}
+
+const SOCIAL_LOGIN_BASE_PATH = '/api/v1/auth/social'
+
+export function getSocialLoginHref(
+  provider: SocialProvider['provider']
+): string {
+  return new URL(
+    `${SOCIAL_LOGIN_BASE_PATH}/${provider}`,
+    getApiBaseURL()
+  ).toString()
+}
+
+// 获取后端当前已启用的第三方登录 provider 列表
+export async function getSocialProviders(): Promise<
+  ApiResponse<SocialProvider[]>
+> {
+  const resp = await apiClient.get('/api/v1/auth/social/providers')
+  return resp.data
+}
+
+// 用一次性 code 交换第三方登录的 JWT 令牌
+export async function exchangeSocialCode(
+  code: string
+): Promise<ApiResponse<LoginResponse>> {
+  const resp = await apiClient.post('/api/v1/auth/social/exchange', { code })
   return resp.data
 }
 
