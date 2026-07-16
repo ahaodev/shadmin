@@ -558,6 +558,8 @@ definitions:
     type: object
   domain.Profile:
     properties:
+      avatar:
+        type: string
       bio:
         type: string
       created_at:
@@ -649,6 +651,14 @@ definitions:
         type: integer
       tile_y:
         type: integer
+    type: object
+  domain.SocialProviderInfo:
+    properties:
+      name:
+        description: 展示名，如 Google / GitHub
+        type: string
+      provider:
+        type: string
     type: object
   domain.UpdateDepartmentRequest:
     properties:
@@ -1095,6 +1105,57 @@ paths:
           schema:
             $ref: '#/definitions/domain.Response'
       summary: Refresh access token
+      tags:
+      - Authentication
+  /auth/social/{provider}:
+    get:
+      description: Redirect to the OAuth provider authorization page
+      parameters:
+      - description: OAuth provider (google / github)
+        in: path
+        name: provider
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Begin social login
+      tags:
+      - Authentication
+  /auth/social/{provider}/callback:
+    get:
+      description: OAuth provider redirects here; exchanges code for profile and issues
+        JWT
+      parameters:
+      - description: OAuth provider (google / github)
+        in: path
+        name: provider
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Social login callback
+      tags:
+      - Authentication
+  /auth/social/providers:
+    get:
+      description: Returns the list of OAuth providers enabled by the backend
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/domain.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.SocialProviderInfo'
+                  type: array
+              type: object
+      summary: List enabled social providers
       tags:
       - Authentication
   /health:
