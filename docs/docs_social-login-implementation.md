@@ -20,7 +20,7 @@
 
 ---
 
-## 2. 推荐架构
+## 2. 架构
 
 保持 Clean Architecture 风格：
 
@@ -58,12 +58,6 @@ GOOGLE_CLIENT_SECRET=
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 
-WECHAT_APP_ID=
-WECHAT_APP_SECRET=
-
-ALIPAY_APP_ID=
-ALIPAY_PRIVATE_KEY=
-ALIPAY_PUBLIC_KEY=
 ```
 
 ---
@@ -437,19 +431,6 @@ func setupApiRoutes(app *bootstrap.Application, timeout time.Duration, engine *g
   Continue with GitHub
 </a>
 
-<a
-  href="/api/v1/auth/social/wechat"
-  className="inline-flex items-center justify-center rounded-md border px-4 py-2"
->
-  Continue with WeChat
-</a>
-
-<a
-  href="/api/v1/auth/social/alipay"
-  className="inline-flex items-center justify-center rounded-md border px-4 py-2"
->
-  Continue with Alipay
-</a>
 ```
 
 ### 11.2 处理回调
@@ -490,7 +471,7 @@ export default function OAuthCallbackPage() {
 
 ## 12. 推荐后端回调跳转方式
 
-为了让前端更顺滑，推荐使用重定向而不是纯 JSON：
+为了让前端更顺滑，使用重定向而不是纯 JSON：
 
 ### 逻辑流程
 
