@@ -456,6 +456,85 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/social/providers": {
+            "get": {
+                "description": "Returns the list of OAuth providers enabled by the backend",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "List enabled social providers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/domain.SocialProviderInfo"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/social/{provider}": {
+            "get": {
+                "description": "Redirect to the OAuth provider authorization page",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Begin social login",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "OAuth provider (google / github)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/auth/social/{provider}/callback": {
+            "get": {
+                "description": "OAuth provider redirects here; exchanges code for profile and issues JWT",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Social login callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "OAuth provider (google / github)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/health": {
             "get": {
                 "description": "Returns service health status",
@@ -3964,6 +4043,9 @@ const docTemplate = `{
         "domain.Profile": {
             "type": "object",
             "properties": {
+                "avatar": {
+                    "type": "string"
+                },
                 "bio": {
                     "type": "string"
                 },
@@ -4102,6 +4184,18 @@ const docTemplate = `{
                 },
                 "tile_y": {
                     "type": "integer"
+                }
+            }
+        },
+        "domain.SocialProviderInfo": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "展示名，如 Google / GitHub",
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
                 }
             }
         },
