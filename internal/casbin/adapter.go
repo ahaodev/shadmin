@@ -33,6 +33,5 @@ func newRedisAdapter(conf cacher.RedisConfig) (persist.Adapter, error) {
 		adapterKey = fmt.Sprintf("%s:%d", casbinKey, conf.DB)
 	}
 	config := &redisadapter.Config{Network: "tcp", Address: conf.Addr, Key: adapterKey}
-	adapter, _ := redisadapter.NewAdapter(config)
-	return adapter, nil
+	return redisadapter.NewAdapter(config)
 }
