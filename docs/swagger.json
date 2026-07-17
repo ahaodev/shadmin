@@ -341,6 +341,143 @@
                 }
             }
         },
+        "/auth/identity/exchange": {
+            "post": {
+                "description": "Exchanges a one-time code issued by the OAuth callback for access/refresh tokens.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Exchange identity-login callback code for JWT tokens",
+                "parameters": [
+                    {
+                        "description": "Identity login callback code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.UserIdentityExchangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tokens exchanged successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.UserIdentityResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Code expired or invalid",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/identity/providers": {
+            "get": {
+                "description": "Returns the list of OAuth providers enabled by the backend",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "List enabled identity providers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/domain.UserIdentityProviderInfo"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/identity/{provider}": {
+            "get": {
+                "description": "Redirect to the OAuth provider authorization page",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Begin identity login",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "OAuth provider (google / github)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/auth/identity/{provider}/callback": {
+            "get": {
+                "description": "OAuth provider redirects here; exchanges code for profile and issues JWT",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "User identity login callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "OAuth provider (google / github)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/auth/logout": {
             "post": {
                 "description": "Logout user and invalidate tokens",
@@ -448,85 +585,6 @@
                         }
                     }
                 }
-            }
-        },
-        "/auth/social/providers": {
-            "get": {
-                "description": "Returns the list of OAuth providers enabled by the backend",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Authentication"
-                ],
-                "summary": "List enabled social providers",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/domain.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/domain.SocialProviderInfo"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/social/{provider}": {
-            "get": {
-                "description": "Redirect to the OAuth provider authorization page",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Authentication"
-                ],
-                "summary": "Begin social login",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "OAuth provider (google / github)",
-                        "name": "provider",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/auth/social/{provider}/callback": {
-            "get": {
-                "description": "OAuth provider redirects here; exchanges code for profile and issues JWT",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Authentication"
-                ],
-                "summary": "Social login callback",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "OAuth provider (google / github)",
-                        "name": "provider",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {}
             }
         },
         "/health": {
@@ -4181,18 +4239,6 @@
                 }
             }
         },
-        "domain.SocialProviderInfo": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "description": "展示名，如 Google / GitHub",
-                    "type": "string"
-                },
-                "provider": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.UpdateDepartmentRequest": {
             "type": "object",
             "properties": {
@@ -4406,6 +4452,46 @@
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.UserIdentityExchangeRequest": {
+            "type": "object",
+            "required": [
+                "code"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.UserIdentityProviderInfo": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "展示名，如 Google / GitHub",
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.UserIdentityResult": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "providerAvatarUrl": {
+                    "type": "string"
+                },
+                "refreshToken": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/domain.User"
                 }
             }
         },

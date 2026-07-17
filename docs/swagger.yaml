@@ -652,14 +652,6 @@ definitions:
       tile_y:
         type: integer
     type: object
-  domain.SocialProviderInfo:
-    properties:
-      name:
-        description: 展示名，如 Google / GitHub
-        type: string
-      provider:
-        type: string
-    type: object
   domain.UpdateDepartmentRequest:
     properties:
       email:
@@ -805,6 +797,32 @@ definitions:
         type: string
       username:
         type: string
+    type: object
+  domain.UserIdentityExchangeRequest:
+    properties:
+      code:
+        type: string
+    required:
+    - code
+    type: object
+  domain.UserIdentityProviderInfo:
+    properties:
+      name:
+        description: 展示名，如 Google / GitHub
+        type: string
+      provider:
+        type: string
+    type: object
+  domain.UserIdentityResult:
+    properties:
+      accessToken:
+        type: string
+      providerAvatarUrl:
+        type: string
+      refreshToken:
+        type: string
+      user:
+        $ref: '#/definitions/domain.User'
     type: object
   domain.UserUpdateRequest:
     properties:
@@ -1039,6 +1057,93 @@ paths:
       summary: Poll device authorization token
       tags:
       - Authentication
+  /auth/identity/{provider}:
+    get:
+      description: Redirect to the OAuth provider authorization page
+      parameters:
+      - description: OAuth provider (google / github)
+        in: path
+        name: provider
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Begin identity login
+      tags:
+      - Authentication
+  /auth/identity/{provider}/callback:
+    get:
+      description: OAuth provider redirects here; exchanges code for profile and issues
+        JWT
+      parameters:
+      - description: OAuth provider (google / github)
+        in: path
+        name: provider
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: User identity login callback
+      tags:
+      - Authentication
+  /auth/identity/exchange:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges a one-time code issued by the OAuth callback for access/refresh
+        tokens.
+      parameters:
+      - description: Identity login callback code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UserIdentityExchangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tokens exchanged successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/domain.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.UserIdentityResult'
+              type: object
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/domain.Response'
+        "404":
+          description: Code expired or invalid
+          schema:
+            $ref: '#/definitions/domain.Response'
+      summary: Exchange identity-login callback code for JWT tokens
+      tags:
+      - Authentication
+  /auth/identity/providers:
+    get:
+      description: Returns the list of OAuth providers enabled by the backend
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/domain.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.UserIdentityProviderInfo'
+                  type: array
+              type: object
+      summary: List enabled identity providers
+      tags:
+      - Authentication
   /auth/logout:
     post:
       consumes:
@@ -1105,57 +1210,6 @@ paths:
           schema:
             $ref: '#/definitions/domain.Response'
       summary: Refresh access token
-      tags:
-      - Authentication
-  /auth/social/{provider}:
-    get:
-      description: Redirect to the OAuth provider authorization page
-      parameters:
-      - description: OAuth provider (google / github)
-        in: path
-        name: provider
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses: {}
-      summary: Begin social login
-      tags:
-      - Authentication
-  /auth/social/{provider}/callback:
-    get:
-      description: OAuth provider redirects here; exchanges code for profile and issues
-        JWT
-      parameters:
-      - description: OAuth provider (google / github)
-        in: path
-        name: provider
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses: {}
-      summary: Social login callback
-      tags:
-      - Authentication
-  /auth/social/providers:
-    get:
-      description: Returns the list of OAuth providers enabled by the backend
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/domain.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/domain.SocialProviderInfo'
-                  type: array
-              type: object
-      summary: List enabled social providers
       tags:
       - Authentication
   /health:
