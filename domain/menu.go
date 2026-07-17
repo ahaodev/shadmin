@@ -113,6 +113,19 @@ type MenuQueryParams struct {
 	Search   string `form:"search"` // Search in name or code
 }
 
+// MenuItem 固定菜单定义
+type MenuItem struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Path          string `json:"path"`
+	Icon          string `json:"icon"`
+	Component     string `json:"component"`
+	Sort          int    `json:"sort"`
+	Visible       bool   `json:"visible"`
+	RequiresAuth  bool   `json:"requiresAuth"`
+	RequiresAdmin bool   `json:"requiresAdmin"`
+}
+
 // ValidateMenuQueryParams validates and sets default values for menu query parameters
 func ValidateMenuQueryParams(params *MenuQueryParams) error {
 	// 使用通用的分页参数验证
@@ -125,7 +138,7 @@ func ValidateMenuQueryParams(params *MenuQueryParams) error {
 		params.Type = "menu"
 	}
 	if params.Status == "" {
-		params.Status = "active"
+		params.Status = StatusActive
 	}
 
 	return nil
@@ -133,23 +146,14 @@ func ValidateMenuQueryParams(params *MenuQueryParams) error {
 
 // Menu status constants
 const (
-	MenuStatusActive   = "active"
-	MenuStatusInactive = "inactive"
+	MenuStatusActive   = StatusActive
+	MenuStatusInactive = StatusInactive
 )
 
 // Menu type constants
 const (
 	MenuTypeMenu   = "menu"
 	MenuTypeButton = "button"
-)
-
-// HTTP method constants for menu resources
-const (
-	HTTPMethodGet    = "GET"
-	HTTPMethodPost   = "POST"
-	HTTPMethodPut    = "PUT"
-	HTTPMethodDelete = "DELETE"
-	HTTPMethodPatch  = "PATCH"
 )
 
 // Menu error constants
@@ -163,13 +167,11 @@ var (
 
 // MenuRepository defines the interface for menu data operations
 type MenuRepository interface {
-	// Query operations
 	GetMenuTree(ctx context.Context) ([]MenuTreeNode, error)
 	GetMenus(ctx context.Context, params MenuQueryParams) (*PagedResult[Menu], error)
 	GetMenuByID(ctx context.Context, id string) (*Menu, error)
 	GetChildrenMenus(ctx context.Context, parentID string) ([]*Menu, error)
 
-	// CRUD operations
 	CreateMenu(ctx context.Context, menu *CreateMenuRequest) (*Menu, error)
 	UpdateMenu(ctx context.Context, id string, menu *UpdateMenuRequest) (*Menu, error)
 	DeleteMenu(ctx context.Context, id string) error
@@ -177,12 +179,10 @@ type MenuRepository interface {
 
 // MenuUseCase defines the interface for menu business logic
 type MenuUseCase interface {
-	// Query operations
 	GetMenuTree(ctx context.Context) ([]MenuTreeNode, error)
 	GetMenus(ctx context.Context, params MenuQueryParams) (*PagedResult[Menu], error)
 	GetMenuByID(ctx context.Context, id string) (*Menu, error)
 
-	// CRUD operations
 	CreateMenu(ctx context.Context, menu *CreateMenuRequest) (*Menu, error)
 	UpdateMenu(ctx context.Context, id string, menu *UpdateMenuRequest) (*Menu, error)
 	DeleteMenu(ctx context.Context, id string) error

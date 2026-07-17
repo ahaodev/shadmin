@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"shadmin/domain"
+	"slices"
 	"time"
 )
 
@@ -25,7 +26,7 @@ func (u *departmentUsecase) Create(ctx context.Context, req *domain.CreateDepart
 
 	// Set default status
 	if req.Status == "" {
-		req.Status = "active"
+		req.Status = domain.StatusActive
 	}
 
 	// If parent_id is provided, verify parent exists
@@ -93,7 +94,7 @@ func (u *departmentUsecase) Update(ctx context.Context, id string, req *domain.U
 	}
 	if req.Status != nil {
 		// If disabling, ensure no active descendants exist
-		if *req.Status == "inactive" && dept.Status == "active" {
+		if *req.Status == domain.StatusInactive && dept.Status == domain.StatusActive {
 			hasActive, err := u.departmentRepo.HasActiveChildren(ctx, id)
 			if err != nil {
 				return nil, fmt.Errorf("check active children: %w", err)
@@ -120,10 +121,8 @@ func (u *departmentUsecase) Update(ctx context.Context, id string, req *domain.U
 			if err != nil {
 				return nil, fmt.Errorf("check children: %w", err)
 			}
-			for _, cid := range childIDs {
-				if cid == *newParentID {
-					return nil, domain.ErrCircularDepartment
-				}
+			if slices.Contains(childIDs, *newParentID) {
+				return nil, domain.ErrCircularDepartment
 			}
 			dept.ParentID = newParentID
 		}

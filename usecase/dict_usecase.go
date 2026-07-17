@@ -31,12 +31,7 @@ func (du *dictUsecase) CreateDictType(ctx context.Context, request *domain.Creat
 
 	// 设置默认状态
 	if request.Status == "" {
-		request.Status = "active"
-	}
-
-	// 验证状态值
-	if request.Status != "active" && request.Status != "inactive" {
-		return nil, fmt.Errorf("invalid status: must be 'active' or 'inactive'")
+		request.Status = domain.StatusActive
 	}
 
 	// 创建域模型
@@ -84,13 +79,6 @@ func (du *dictUsecase) UpdateDictType(ctx context.Context, id string, updates do
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
 
-	// 验证状态值（如果提供）
-	if updates.Status != nil {
-		if *updates.Status != "active" && *updates.Status != "inactive" {
-			return fmt.Errorf("invalid status: must be 'active' or 'inactive'")
-		}
-	}
-
 	return du.dictRepository.UpdateType(ctx, id, updates)
 }
 
@@ -109,12 +97,7 @@ func (du *dictUsecase) CreateDictItem(ctx context.Context, request *domain.Creat
 
 	// 设置默认状态
 	if request.Status == "" {
-		request.Status = "active"
-	}
-
-	// 验证状态值
-	if request.Status != "active" && request.Status != "inactive" {
-		return nil, fmt.Errorf("invalid status: must be 'active' or 'inactive'")
+		request.Status = domain.StatusActive
 	}
 
 	// 验证字典类型是否存在
@@ -168,13 +151,6 @@ func (du *dictUsecase) UpdateDictItem(ctx context.Context, id string, updates do
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
 
-	// 验证状态值（如果提供）
-	if updates.Status != nil {
-		if *updates.Status != "active" && *updates.Status != "inactive" {
-			return fmt.Errorf("invalid status: must be 'active' or 'inactive'")
-		}
-	}
-
 	return du.dictRepository.UpdateItem(ctx, id, updates)
 }
 
@@ -191,5 +167,5 @@ func (du *dictUsecase) GetActiveItemsByTypeCode(ctx context.Context, typeCode st
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
 
-	return du.dictRepository.GetItemsByTypeCode(ctx, typeCode, "active")
+	return du.dictRepository.GetItemsByTypeCode(ctx, typeCode, domain.StatusActive)
 }

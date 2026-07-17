@@ -2,7 +2,13 @@
 export interface RoleInfo {
   id: string // 角色ID
   name: string // 角色显示名称
-  type: string // 角色类型
+  type?: string // 角色类型
+  status?: 'active' | 'inactive'
+  sequence?: number
+  created_at?: string | Date
+  updated_at?: string | Date
+  menus?: string[]
+  is_system?: boolean
 }
 
 // Role Management

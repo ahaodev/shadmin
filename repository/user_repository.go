@@ -12,13 +12,13 @@ import (
 // Helper function to convert domain status string to ent status enum
 func domainStatusToEntStatus(status string) user.Status {
 	switch status {
-	case "active":
+	case domain.StatusActive:
 		return user.StatusActive
-	case "inactive":
+	case domain.StatusInactive:
 		return user.StatusInactive
-	case "invited":
+	case domain.UserStatusInvited:
 		return user.StatusInvited
-	case "suspended":
+	case domain.UserStatusSuspended:
 		return user.StatusSuspended
 	default:
 		return user.StatusActive

@@ -68,18 +68,7 @@ func (rc *RoleController) GetRoles(c *gin.Context) {
 		return
 	}
 
-	var allRoles []RoleInfo
-	for _, role := range roles {
-		if role.Status == "active" {
-			allRoles = append(allRoles, RoleInfo{
-				ID:   role.ID,
-				Name: role.Name,
-				Type: "role",
-			})
-		}
-	}
-
-	c.JSON(http.StatusOK, domain.RespSuccess(allRoles))
+	c.JSON(http.StatusOK, domain.RespSuccess(roles))
 }
 
 // CreateRole 创建自定义角色
@@ -103,7 +92,7 @@ func (rc *RoleController) CreateRole(c *gin.Context) {
 
 	// Set default status if not provided
 	if request.Status == "" {
-		request.Status = "active"
+		request.Status = domain.RoleStatusActive
 	}
 
 	// Create the role

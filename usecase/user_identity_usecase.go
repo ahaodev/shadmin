@@ -50,6 +50,7 @@ func NewUserIdentityUsecase(
 
 // HandleCallback 处理 provider 回调：解析第三方 profile，查找/创建用户，
 // 绑定第三方账号，复用既有 JWT 体系签发令牌对。
+// 支持多 provider 绑定到同一用户：相同 email 的不同 provider 自动合并到同一用户。
 func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider string, profile *domain.UserIdentityProfile) (*domain.UserIdentityResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
@@ -62,7 +63,7 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 		return nil, fmt.Errorf("provider %s returned empty subject: %w", provider, domain.ErrUserIdentityAuthFailed)
 	}
 
-	// 1. 先查第三方账号是否已绑定
+	// 1. 先查该 (provider, provider_subject) 是否已绑定
 	account, err := u.userIdentityRepo.FindByProviderAndSubject(ctx, provider, profile.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("find identity account: %w", err)
@@ -75,13 +76,23 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 		if err != nil {
 			return nil, fmt.Errorf("get bound user: %w", err)
 		}
-	}
+	} else {
+		// 2b. 未绑定 → 检查相同 email 的用户是否已存在
+		// 如果存在，则绑定到同一用户；如果不存在，创建新用户
+		email := strings.TrimSpace(profile.Email)
+		if email != "" {
+			user, err = u.userRepo.GetByEmail(ctx, email)
+			if err != nil && !isNotFound(err) {
+				return nil, fmt.Errorf("find user by email: %w", err)
+			}
+		}
 
-	// 3. 用户不存在 → 基于第三方 profile 创建新用户
-	if user == nil {
-		user, err = u.createUserFromUserIdentity(ctx, provider, profile)
-		if err != nil {
-			return nil, fmt.Errorf("create user from user identity profile: %w", err)
+		// 3. 用户不存在 → 基于第三方 profile 创建新用户
+		if user == nil {
+			user, err = u.createUserFromUserIdentity(ctx, provider, profile)
+			if err != nil {
+				return nil, fmt.Errorf("create user from user identity profile: %w", err)
+			}
 		}
 	}
 
@@ -215,4 +226,13 @@ func isUniqueViolation(err error) bool {
 	}
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "unique") || strings.Contains(msg, "constraint") || strings.Contains(msg, "duplicate")
+}
+
+// isNotFound 判定是否为记录不存在的错误
+func isNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "not found") || strings.Contains(msg, "no rows")
 }

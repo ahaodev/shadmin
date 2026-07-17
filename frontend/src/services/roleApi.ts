@@ -63,11 +63,11 @@ export const getRolesPaged = async (
   const roleList: Role[] = paginatedRoles.map((role) => ({
     id: role.id,
     name: role.name,
-    sequence: 0, // Default value, may need adjustment
-    status: 'active' as const,
+    sequence: role.sequence ?? 0,
+    status: role.status ?? 'active',
     created_at: new Date(),
     updated_at: new Date(),
-    menu_ids: [],
+    menu_ids: role.menus,
   }))
 
   return {

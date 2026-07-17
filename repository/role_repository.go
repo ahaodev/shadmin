@@ -186,9 +186,10 @@ func (rr *entRoleRepository) Delete(c context.Context, id string) error {
 	return nil
 }
 
+// GetAllRoleNames returns active role names for downstream consumers.
 func (rr *entRoleRepository) GetAllRoleNames(c context.Context) ([]string, error) {
 	entRoles, err := rr.client.Role.Query().
-		Where(role.Status("active")).
+		Where(role.Status(domain.StatusActive)).
 		Select(role.FieldName).
 		All(c)
 	if err != nil {

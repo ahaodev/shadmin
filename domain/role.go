@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+const (
+	RoleStatusActive   = StatusActive
+	RoleStatusInactive = StatusInactive
+)
+
 var (
 	ErrCannotDeleteAdminRole = errors.New("不能删除系统管理员角色")
 	ErrCannotRenameAdminRole = errors.New("不能修改系统管理员角色名称")

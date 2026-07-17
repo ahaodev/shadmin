@@ -36,7 +36,7 @@ func (ru *roleUsecase) Create(c context.Context, request *domain.CreateRoleReque
 
 	// Set default status if not provided
 	if role.Status == "" {
-		role.Status = "active"
+		role.Status = domain.RoleStatusActive
 	}
 
 	// Create the role
@@ -174,11 +174,6 @@ func (ru *roleUsecase) Delete(c context.Context, id string) error {
 	// 提交事务
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	if err != nil {
-		log.Printf("ERROR: Failed to delete role %s from database: %v", role.Name, err)
-		return err
 	}
 
 	// 4. 清理Casbin中的角色策略

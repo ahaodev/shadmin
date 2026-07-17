@@ -13,28 +13,28 @@ import (
 // Helper functions for status conversion
 func domainStatusToDictTypeStatus(status string) dicttype.Status {
 	switch status {
-	case "active":
+	case domain.StatusActive:
 		return dicttype.StatusActive
-	case "inactive":
+	case domain.StatusInactive:
 		return dicttype.StatusInactive
 	default:
 		return dicttype.StatusActive
 	}
 }
 
-func dictTypeStatusToDomainStatus(status dicttype.Status) string {
-	return string(status)
-}
-
 func domainStatusToDictItemStatus(status string) dictitem.Status {
 	switch status {
-	case "active":
+	case domain.StatusActive:
 		return dictitem.StatusActive
-	case "inactive":
+	case domain.StatusInactive:
 		return dictitem.StatusInactive
 	default:
 		return dictitem.StatusActive
 	}
+}
+
+func dictTypeStatusToDomainStatus(status dicttype.Status) string {
+	return string(status)
 }
 
 func dictItemStatusToDomainStatus(status dictitem.Status) string {
@@ -579,7 +579,7 @@ func (dr *entDictRepository) GetItemsByTypeCode(ctx context.Context, typeCode st
 
 	// 应用状态过滤（默认只返回active状态）
 	if status == "" {
-		status = "active"
+		status = domain.StatusActive
 	}
 	query = query.Where(dictitem.StatusEQ(domainStatusToDictItemStatus(status)))
 

@@ -186,7 +186,7 @@ func (r *entDepartmentRepository) HasActiveChildren(ctx context.Context, id stri
 	var walk func(parentID string)
 	walk = func(parentID string) {
 		for _, cid := range childMap[parentID] {
-			if statusMap[cid] == "active" {
+			if statusMap[cid] == domain.StatusActive {
 				hasActive = true
 				return
 			}
