@@ -66,16 +66,16 @@ func (f *ControllerFactory) CreateCaptchaController() *controller.CaptchaControl
 	}
 }
 
-// CreateSocialAuthController creates the social login controller (Google/GitHub OAuth).
-// 复用既有 TokenService + env 令牌密钥签发 JWT，绑定记录走 SocialAccountRepository。
-func (f *ControllerFactory) CreateSocialAuthController() *controller.SocialAuthController {
+// CreateUserIdentityController creates the identity login controller (Google/GitHub OAuth).
+// 复用既有 TokenService + env 令牌密钥签发 JWT，绑定记录走 UserIdentityRepository。
+func (f *ControllerFactory) CreateUserIdentityController() *controller.UserIdentityController {
 	userRepo := repository.NewUserRepository(f.db, f.app.CasManager)
-	socialAccountRepo := repository.NewSocialAccountRepository(f.db)
+	userIdentityRepo := repository.NewUserIdentityRepository(f.db)
 	tokenService := tokenservice.NewTokenService()
-	return &controller.SocialAuthController{
-		SocialLoginUsecase: usecase.NewSocialLoginUsecase(
+	return &controller.UserIdentityController{
+		UserIdentityUsecase: usecase.NewUserIdentityUsecase(
 			userRepo,
-			socialAccountRepo,
+			userIdentityRepo,
 			tokenService,
 			f.app.Env.AccessTokenSecret,
 			f.app.Env.RefreshTokenSecret,
@@ -83,7 +83,8 @@ func (f *ControllerFactory) CreateSocialAuthController() *controller.SocialAuthC
 			f.app.Env.RefreshTokenExpiryMinute,
 			f.timeout,
 		),
-		RedirectURL: f.app.Env.SocialRedirectURL,
+		RedirectURL: f.app.Env.IdentityRedirectURL,
+		CodeStore:   controller.NewUserIdentityStore(5 * time.Minute),
 	}
 }
 

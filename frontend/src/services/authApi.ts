@@ -1,3 +1,4 @@
+import { getRefreshToken } from '@/lib/token-storage'
 import { apiClient, getApiBaseURL } from '@/services/config.ts'
 import { type ApiResponse } from '@/types/api.ts'
 import { type Profile } from '@/types/profile.ts'
@@ -31,6 +32,7 @@ export interface LoginResponse {
   user: User
   accessToken: string
   refreshToken: string
+  providerAvatarUrl?: string
 }
 
 // 刷新令牌响应类型
@@ -104,35 +106,35 @@ export async function activateDevice(
 }
 
 // 已启用的第三方登录 provider
-export interface SocialProvider {
+export interface IdentityProvider {
   provider: string
   name: string
 }
 
-const SOCIAL_LOGIN_BASE_PATH = '/api/v1/auth/social'
+const USER_IDENTITY_LOGIN_BASE_PATH = '/api/v1/auth/identity'
 
-export function getSocialLoginHref(
-  provider: SocialProvider['provider']
+export function getIdentityLoginHref(
+  provider: IdentityProvider['provider']
 ): string {
   return new URL(
-    `${SOCIAL_LOGIN_BASE_PATH}/${provider}`,
+    `${USER_IDENTITY_LOGIN_BASE_PATH}/${provider}`,
     getApiBaseURL()
   ).toString()
 }
 
 // 获取后端当前已启用的第三方登录 provider 列表
-export async function getSocialProviders(): Promise<
-  ApiResponse<SocialProvider[]>
+export async function getIdentityProviders(): Promise<
+  ApiResponse<IdentityProvider[]>
 > {
-  const resp = await apiClient.get('/api/v1/auth/social/providers')
+  const resp = await apiClient.get('/api/v1/auth/identity/providers')
   return resp.data
 }
 
 // 用一次性 code 交换第三方登录的 JWT 令牌
-export async function exchangeSocialCode(
+export async function exchangeUserIdentityCode(
   code: string
 ): Promise<ApiResponse<LoginResponse>> {
-  const resp = await apiClient.post('/api/v1/auth/social/exchange', { code })
+  const resp = await apiClient.post('/api/v1/auth/identity/exchange', { code })
   return resp.data
 }
 
@@ -148,12 +150,8 @@ export async function refreshToken(
 
 // 登出
 export async function logout(): Promise<ApiResponse<void>> {
-  // 尝试获取refresh token用于更完整的登出处理
-  const refreshToken =
-    document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('refreshToken='))
-      ?.split('=')[1] || localStorage.getItem('refreshToken')
+  // 使用 token-storage 获取 refresh token，保持存储策略一致性
+  const refreshToken = getRefreshToken()
 
   const requestBody = refreshToken ? { refresh_token: refreshToken } : {}
 

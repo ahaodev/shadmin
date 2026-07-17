@@ -98,7 +98,7 @@ func App() *Application {
 	app.ApiEngine = gin.Default()
 
 	// 注册第三方登录 provider（Google/GitHub），并初始化 gothic session store
-	InitSocialProviders(app.Env)
+	InitIdentityProviders(app.Env)
 
 	// 注册 User ent hook：状态变更时让缓存失效，
 	// 保证 admin 禁用/启用/邀请/恢复用户后，下一次请求即可看到新状态。

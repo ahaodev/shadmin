@@ -60,14 +60,14 @@ type Env struct {
 	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
 	RedisDB       int    `mapstructure:"REDIS_DB"`
 
-	// 社交登录配置
-	SocialBaseURL       string `mapstructure:"SOCIAL_BASE_URL"`       // 后端外部可达地址，用于拼接 OAuth 回调 URL
-	SocialRedirectURL   string `mapstructure:"SOCIAL_REDIRECT_URL"`   // 前端回调地址，登录成功后带 token 重定向到这里
-	SocialSessionSecret string `mapstructure:"SOCIAL_SESSION_SECRET"` // gothic session cookie 签名密钥
-	GoogleClientID      string `mapstructure:"GOOGLE_CLIENT_ID"`
-	GoogleClientSecret  string `mapstructure:"GOOGLE_CLIENT_SECRET"`
-	GitHubClientID      string `mapstructure:"GITHUB_CLIENT_ID"`
-	GitHubClientSecret  string `mapstructure:"GITHUB_CLIENT_SECRET"`
+	// 身份登录配置
+	IdentityBaseURL       string `mapstructure:"IDENTITY_BASE_URL"`       // 后端外部可达地址，用于拼接 OAuth 回调 URL
+	IdentityRedirectURL   string `mapstructure:"IDENTITY_REDIRECT_URL"`   // 前端回调地址，登录成功后带 token 重定向到这里
+	IdentitySessionSecret string `mapstructure:"IDENTITY_SESSION_SECRET"` // gothic session cookie 签名密钥
+	GoogleClientID        string `mapstructure:"GOOGLE_CLIENT_ID"`
+	GoogleClientSecret    string `mapstructure:"GOOGLE_CLIENT_SECRET"`
+	GitHubClientID        string `mapstructure:"GITHUB_CLIENT_ID"`
+	GitHubClientSecret    string `mapstructure:"GITHUB_CLIENT_SECRET"`
 }
 
 // CacheTypeValue 返回规范化后的缓存类型。
@@ -120,14 +120,14 @@ func setDefaults() {
 		"REDIS_PASSWORD": "",
 		"REDIS_DB":       0,
 
-		// 社交登录配置
-		"SOCIAL_BASE_URL":       "http://localhost:55667",
-		"SOCIAL_REDIRECT_URL":   "http://localhost:5173/oauth-callback",
-		"SOCIAL_SESSION_SECRET": "shadmin-social-session-secret-change-me",
-		"GOOGLE_CLIENT_ID":      "",
-		"GOOGLE_CLIENT_SECRET":  "",
-		"GITHUB_CLIENT_ID":      "",
-		"GITHUB_CLIENT_SECRET":  "",
+		// 身份登录配置
+		"IDENTITY_BASE_URL":       "http://localhost:55667",
+		"IDENTITY_REDIRECT_URL":   "http://localhost:5173/oauth-callback",
+		"IDENTITY_SESSION_SECRET": "shadmin-identity-session-secret-change-me",
+		"GOOGLE_CLIENT_ID":        "",
+		"GOOGLE_CLIENT_SECRET":    "",
+		"GITHUB_CLIENT_ID":        "",
+		"GITHUB_CLIENT_SECRET":    "",
 	}
 	// 绑定环境变量
 	viper.AutomaticEnv()
@@ -171,8 +171,8 @@ func generateEnvFile() error {
 			keys:  []string{"CACHE_TYPE", "REDIS_ADDRESS", "REDIS_USERNAME", "REDIS_PASSWORD", "REDIS_DB"},
 		},
 		{
-			title: "# 社交登录配置",
-			keys:  []string{"SOCIAL_BASE_URL", "SOCIAL_REDIRECT_URL", "SOCIAL_SESSION_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"},
+			title: "# 身份登录配置",
+			keys:  []string{"IDENTITY_BASE_URL", "IDENTITY_REDIRECT_URL", "IDENTITY_SESSION_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"},
 		},
 	}
 
@@ -281,6 +281,23 @@ func (e *Env) validate() error {
 	}
 	if cacheType == CacheTypeRedis && e.RedisDB < 0 {
 		errs = append(errs, "REDIS_DB不能小于0")
+	}
+
+	// 身份登录配置验证
+	if len(e.IdentitySessionSecret) < 16 {
+		errs = append(errs, "IDENTITY_SESSION_SECRET长度不能少于16位")
+	}
+	if e.GoogleClientID != "" && e.GoogleClientSecret == "" {
+		errs = append(errs, "GOOGLE_CLIENT_ID已设置但GOOGLE_CLIENT_SECRET未设置")
+	}
+	if e.GoogleClientID == "" && e.GoogleClientSecret != "" {
+		errs = append(errs, "GOOGLE_CLIENT_SECRET已设置但GOOGLE_CLIENT_ID未设置")
+	}
+	if e.GitHubClientID != "" && e.GitHubClientSecret == "" {
+		errs = append(errs, "GITHUB_CLIENT_ID已设置但GITHUB_CLIENT_SECRET未设置")
+	}
+	if e.GitHubClientID == "" && e.GitHubClientSecret != "" {
+		errs = append(errs, "GITHUB_CLIENT_SECRET已设置但GITHUB_CLIENT_ID未设置")
 	}
 
 	if len(errs) > 0 {

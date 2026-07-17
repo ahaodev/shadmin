@@ -31,6 +31,7 @@ func (User) Fields() []ent.Field {
 			Unique(),
 		field.String("phone").
 			MaxLen(20).
+			Unique().
 			Optional().
 			Comment("用户手机号码"),
 		field.Bool("is_admin").
@@ -75,7 +76,7 @@ func (User) Edges() []ent.Edge {
 			Ref("users").
 			Field("department_id").
 			Unique(),
-		edge.To("social_accounts", SocialAccount.Type).Comment("用户绑定的第三方账号"),
+		edge.To("identity_accounts", UserIdentity.Type).Comment("用户绑定的第三方账号"),
 	}
 }
 

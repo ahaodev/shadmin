@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
-  getSocialLoginHref,
-  getSocialProviders,
-  type SocialProvider,
+  getIdentityLoginHref,
+  getIdentityProviders,
+  type IdentityProvider,
 } from '@/services/authApi'
 import { Loader2 } from 'lucide-react'
 import { IconGithub } from '@/assets/brand-icons/icon-github'
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 
 const PROVIDER_ICON_CLASS_NAME = 'size-4 shrink-0'
 
-function providerIcon(provider: SocialProvider['provider']) {
+function providerIcon(provider: IdentityProvider['provider']) {
   switch (provider) {
     case 'github':
       return <IconGithub className={PROVIDER_ICON_CLASS_NAME} />
@@ -22,10 +22,10 @@ function providerIcon(provider: SocialProvider['provider']) {
   }
 }
 
-// SocialLoginButtons 拉取后端已启用的第三方登录 provider 列表，
+// IdentityProvider 拉取后端已启用的第三方登录 provider 列表，
 // 仅在后端启用至少一个 provider 时显示对应按钮；未启用时整组不显示。
-export function SocialLoginButtons() {
-  const [providers, setProviders] = useState<SocialProvider[] | null>(null)
+export function IdentityLoginButtons() {
+  const [providers, setProviders] = useState<IdentityProvider[] | null>(null)
   const [isError, setIsError] = useState(false)
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export function SocialLoginButtons() {
 
     void (async () => {
       try {
-        const response = await getSocialProviders()
+        const response = await getIdentityProviders()
         if (cancelled) return
 
         if (response?.code === 0 && Array.isArray(response.data)) {
@@ -85,7 +85,7 @@ export function SocialLoginButtons() {
             asChild
           >
             <a
-              href={getSocialLoginHref(provider.provider)}
+              href={getIdentityLoginHref(provider.provider)}
               className='flex w-full items-center justify-center gap-2'
               aria-label={`Continue with ${provider.name}`}
             >

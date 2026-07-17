@@ -31,6 +31,8 @@ const AUTH_ROUTES = [
   '/api/v1/auth/captcha/slide',
   '/api/v1/auth/device/code',
   '/api/v1/auth/device/token',
+  '/api/v1/auth/identity/providers',
+  '/api/v1/auth/identity/exchange',
 ]
 function isAuthRoute(url?: string): boolean {
   return AUTH_ROUTES.some((r) => url?.includes(r))

@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { AuthLayout } from '../auth-layout'
-import { SocialLoginButtons } from './components/social-login-buttons'
+import { IdentityLoginButtons } from './components/identity-login-buttons'
 import { UserAuthForm } from './components/user-auth-form'
 
 const errorMessages: Record<string, string> = {
@@ -38,7 +38,7 @@ export function SignIn() {
         </CardHeader>
         <CardContent>
           <UserAuthForm redirectTo={redirect} />
-          <SocialLoginButtons />
+          <IdentityLoginButtons />
         </CardContent>
         <CardFooter className='flex justify-center'>
           <p className='text-muted-foreground px-8 text-center text-sm'>

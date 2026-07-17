@@ -46,7 +46,7 @@ func (pr *PublicRoutes) setupAuthRoutes(group *gin.RouterGroup, app *bootstrap.A
 	authController := pr.factory.CreateAuthController(app.CasManager)
 	captchaController := pr.factory.CreateCaptchaController()
 	deviceAuthController := pr.factory.CreateDeviceAuthController()
-	socialAuthController := pr.factory.CreateSocialAuthController()
+	userIdentityController := pr.factory.CreateUserIdentityController()
 
 	group.POST("/login", authController.Login)
 	group.POST("/refresh", authController.RefreshToken)
@@ -57,9 +57,9 @@ func (pr *PublicRoutes) setupAuthRoutes(group *gin.RouterGroup, app *bootstrap.A
 
 	// 第三方登录：先注册 /providers，再注册 /:provider 与 /:provider/callback，
 	// 避免 gin 路由树把 /providers 当作 :provider 匹配。
-	social := group.Group("/social")
-	social.GET("/providers", socialAuthController.ListProviders)
-	social.POST("/exchange", socialAuthController.Exchange)
-	social.GET("/:provider", socialAuthController.BeginLogin)
-	social.GET("/:provider/callback", socialAuthController.Callback)
+	identity := group.Group("/identity")
+	identity.GET("/providers", userIdentityController.ListProviders)
+	identity.POST("/exchange", userIdentityController.Exchange)
+	identity.GET("/:provider", userIdentityController.BeginLogin)
+	identity.GET("/:provider/callback", userIdentityController.Callback)
 }

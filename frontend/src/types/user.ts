@@ -15,6 +15,7 @@ const userSchema = z.object({
   phone: z.string().optional(),
   avatar: z.string().optional(),
   bio: z.string().optional(),
+  provider_avatar_url: z.string().optional(),
   is_admin: z.boolean().optional(),
   status: userStatusSchema,
   department_id: z.string().optional(),

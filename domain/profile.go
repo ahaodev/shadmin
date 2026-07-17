@@ -6,15 +6,16 @@ import (
 )
 
 type Profile struct {
-	ID        string    `json:"id"`
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
-	Phone     string    `json:"phone"`
-	Bio       string    `json:"bio"`
-	Avatar    string    `json:"avatar"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID                string    `json:"id"`
+	Username          string    `json:"username"`
+	Email             string    `json:"email"`
+	Phone             string    `json:"phone"`
+	Bio               string    `json:"bio"`
+	Avatar            string    `json:"avatar"`
+	Status            string    `json:"status"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+	ProviderAvatarURL string    `json:"providerAvatarUrl,omitempty"`
 }
 type ProfileUsecase interface {
 	GetProfile(c context.Context, userID string) (*Profile, error)

@@ -11,14 +11,14 @@ import (
 	"entgo.io/ent/schema/index"
 )
 
-// SocialAccount holds the schema definition for the SocialAccount entity.
+// UserIdentity holds the schema definition for the UserIdentity entity.
 // 用于把第三方身份（如 Google / GitHub 用户ID）绑定到 shadmin 用户。
-type SocialAccount struct {
+type UserIdentity struct {
 	ent.Schema
 }
 
-// Fields of the SocialAccount.
-func (SocialAccount) Fields() []ent.Field {
+// Fields of the UserIdentity.
+func (UserIdentity) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
 			DefaultFunc(func() string {
@@ -53,19 +53,19 @@ func (SocialAccount) Fields() []ent.Field {
 	}
 }
 
-// Edges of the SocialAccount.
-func (SocialAccount) Edges() []ent.Edge {
+// Edges of the UserIdentity.
+func (UserIdentity) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("user", User.Type).
-			Ref("social_accounts").
+			Ref("identity_accounts").
 			Field("user_id").
 			Unique().
 			Required(),
 	}
 }
 
-// Indexes of the SocialAccount.
-func (SocialAccount) Indexes() []ent.Index {
+// Indexes of the UserIdentity.
+func (UserIdentity) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("provider", "provider_subject").Unique(),
 		index.Fields("user_id"),

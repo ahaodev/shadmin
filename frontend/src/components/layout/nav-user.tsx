@@ -38,13 +38,13 @@ export function NavUser({ user: propUser }: NavUserProps) {
     ? {
         name: auth.profile.username,
         email: auth.profile.email,
-        avatar: auth.profile.avatar || '',
+        avatar: auth.profile.avatar || auth.providerAvatar || '',
       }
     : auth.user
       ? {
           name: auth.user.accountNo || 'Admin',
           email: auth.user.email,
-          avatar: '',
+          avatar: auth.providerAvatar || '',
         }
       : propUser
 
@@ -91,8 +91,6 @@ export function NavUser({ user: propUser }: NavUserProps) {
                   </div>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>

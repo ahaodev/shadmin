@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/user"
@@ -21,10 +22,11 @@ func (pr *entProfileRepository) GetByID(c context.Context, id string) (*domain.P
 	u, err := pr.client.User.
 		Query().
 		Where(user.ID(id)).
+		WithIdentityAccounts().
 		First(c)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get profile by id: %w", err)
 	}
 
 	// Convert ent.User to domain.Profile
@@ -38,6 +40,11 @@ func (pr *entProfileRepository) GetByID(c context.Context, id string) (*domain.P
 		Status:    string(u.Status),
 		CreatedAt: u.CreatedAt,
 		UpdatedAt: u.UpdatedAt,
+	}
+
+	// Populate provider avatar from linked identity account (1:1, at most one record)
+	if len(u.Edges.IdentityAccounts) > 0 {
+		profile.ProviderAvatarURL = u.Edges.IdentityAccounts[0].AvatarURL
 	}
 
 	return profile, nil

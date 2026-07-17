@@ -14,7 +14,7 @@ import (
 	"github.com/markbates/goth/providers/google"
 )
 
-// InitSocialProviders 根据环境变量注册已配置的第三方登录 provider，
+// InitIdentityProviders 根据环境变量注册已配置的第三方登录 provider，
 // 并初始化 gothic 用来承载 OAuth state 的 cookie store。
 //
 //   - 仅当对应 provider 的 ClientID/Secret 都非空时才注册，
@@ -23,9 +23,9 @@ import (
 //   - gothic.Store 必须在任何 OAuth 流程开始之前初始化，
 //     否则 BeginAuth 会因没有 store 而无法写入 state。
 //
-// baseURL 为后端外部可达地址（env.SocialBaseURL），用于拼接 OAuth 回调 URL。
-func InitSocialProviders(env *conf.Env) {
-	gothic.Store = initGothicStore(env.SocialSessionSecret)
+// baseURL 为后端外部可达地址（env.IdentityBaseURL），用于拼接 OAuth 回调 URL。
+func InitIdentityProviders(env *conf.Env) {
+	gothic.Store = initGothicStore(env.IdentitySessionSecret)
 
 	registered := make([]string, 0)
 	if registerGoogleProvider(env) {
@@ -36,15 +36,15 @@ func InitSocialProviders(env *conf.Env) {
 	}
 
 	if len(registered) == 0 {
-		log.Printf("Social login: no provider configured (skipped)")
+		log.Printf("Identity login: no provider configured (skipped)")
 		return
 	}
-	log.Printf("Social login: providers enabled = %s", strings.Join(registered, ", "))
+	log.Printf("Identity login: providers enabled = %s", strings.Join(registered, ", "))
 }
 
 func initGothicStore(secret string) *sessions.CookieStore {
 	if len(secret) == 0 {
-		secret = "shadmin-social-default-session-secret"
+		secret = "shadmin-identity-default-session-secret"
 	}
 
 	store := sessions.NewCookieStore([]byte(secret))
@@ -60,7 +60,7 @@ func registerGoogleProvider(env *conf.Env) bool {
 	}
 
 	goth.UseProviders(
-		google.New(env.GoogleClientID, env.GoogleClientSecret, callbackURL(env.SocialBaseURL, "google"), "profile", "email"),
+		google.New(env.GoogleClientID, env.GoogleClientSecret, callbackURL(env.IdentityBaseURL, "google"), "profile", "email"),
 	)
 	return true
 }
@@ -71,12 +71,12 @@ func registerGitHubProvider(env *conf.Env) bool {
 	}
 
 	goth.UseProviders(
-		github.New(env.GitHubClientID, env.GitHubClientSecret, callbackURL(env.SocialBaseURL, "github"), "user:email"),
+		github.New(env.GitHubClientID, env.GitHubClientSecret, callbackURL(env.IdentityBaseURL, "github"), "user:email"),
 	)
 	return true
 }
 
-// callbackURL 拼接某 provider 的 OAuth 回调地址：<baseURL>/api/v1/auth/social/<provider>/callback
+// callbackURL 拼接某 provider 的 OAuth 回调地址：<baseURL>/api/v1/auth/identity/<provider>/callback
 func callbackURL(baseURL, provider string) string {
-	return fmt.Sprintf("%s/api/v1/auth/social/%s/callback", strings.TrimRight(baseURL, "/"), provider)
+	return fmt.Sprintf("%s/api/v1/auth/identity/%s/callback", strings.TrimRight(baseURL, "/"), provider)
 }
