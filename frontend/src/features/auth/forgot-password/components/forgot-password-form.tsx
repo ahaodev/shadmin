@@ -2,10 +2,9 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate } from '@tanstack/react-router'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { sleep, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -27,7 +26,6 @@ export function ForgotPasswordForm({
   className,
   ...props
 }: React.HTMLAttributes<HTMLFormElement>) {
-  const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -36,20 +34,10 @@ export function ForgotPasswordForm({
   })
 
   function onSubmit(data: z.infer<typeof formSchema>) {
+    void data
     setIsLoading(true)
-    // eslint-disable-next-line no-console
-    console.log(data)
-
-    toast.promise(sleep(2000), {
-      loading: '发送邮件中...',
-      success: () => {
-        setIsLoading(false)
-        form.reset()
-        navigate({ to: '/otp' })
-        return `邮件已发送至 ${data.email}`
-      },
-      error: '错误',
-    })
+    toast.info('找回密码功能暂未开放，请联系管理员重置密码。')
+    setIsLoading(false)
   }
 
   return (
