@@ -37,9 +37,13 @@ const defaultValues: Partial<ProfileFormValues> = {
 }
 
 export function ProfileForm() {
-  const { profile, fetchProfile, isLoadingProfile, setProfile, providerAvatar } = useAuthStore(
-    (state) => state.auth
-  )
+  const {
+    profile,
+    fetchProfile,
+    isLoadingProfile,
+    setProfile,
+    providerAvatar,
+  } = useAuthStore((state) => state.auth)
   const [isPending, setIsPending] = useState(false)
 
   const form = useForm<ProfileFormValues>({
@@ -85,7 +89,11 @@ export function ProfileForm() {
         <div className='flex items-center gap-4'>
           <Avatar className='h-20 w-20 rounded-full'>
             <AvatarImage
-              src={providerAvatar || profile?.provider_avatar_url || profile?.avatar}
+              src={
+                providerAvatar ||
+                profile?.provider_avatar_url ||
+                profile?.avatar
+              }
               alt={profile?.username}
             />
             <AvatarFallback className='rounded-full text-2xl'>
