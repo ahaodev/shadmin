@@ -77,8 +77,6 @@ export function UserAuthForm({
         typeof performance !== 'undefined' ? performance.now() : Date.now()
       sessionStorage.setItem('loginStart', String(start))
 
-      const apiCallStart =
-        typeof performance !== 'undefined' ? performance.now() : Date.now()
       try {
         const resp = await login({
           username: values.username,
@@ -87,10 +85,6 @@ export function UserAuthForm({
           captcha_x: captcha.captcha_x,
           captcha_y: captcha.captcha_y,
         })
-        const apiCallEnd =
-          typeof performance !== 'undefined' ? performance.now() : Date.now()
-        // eslint-disable-next-line no-console
-        console.log('login api latency (ms):', apiCallEnd - apiCallStart)
 
         if (!resp || resp.code !== 0) {
           toast.error(resp?.msg || '登录失败')
