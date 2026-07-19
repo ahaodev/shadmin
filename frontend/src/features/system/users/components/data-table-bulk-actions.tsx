@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { type Table } from '@tanstack/react-table'
 import { type User } from '@/types/user'
 import { Mail, Trash2, UserCheck, UserX } from 'lucide-react'
+import { toast } from 'sonner'
 import { PERMISSIONS } from '@/constants/permissions'
 import { usePermission } from '@/hooks/usePermission'
 import { Button } from '@/components/ui/button'
@@ -44,11 +45,7 @@ export function DataTableBulkActions<TData>({
   }
 
   const handleBulkInvite = () => {
-    // This would require a bulk invite API endpoint
-    // For now, keeping the mock implementation
-    const selectedUsers = selectedRows.map((row) => row.original as User)
-    console.log('Bulk invite not yet implemented for:', selectedUsers)
-    // TODO: Implement bulk invite API
+    toast.info('Bulk invite is not supported yet.')
     table.resetRowSelection()
   }
 
