@@ -15,11 +15,8 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
   const handleSignOut = async () => {
     try {
       await logout()
-    } catch (error) {
-      console.warn(
-        'Logout API failed, but continuing with local cleanup:',
-        error
-      )
+    } catch {
+      // Continue local cleanup even if the server-side logout request fails.
     } finally {
       // auth.reset() clears all tokens, cookies, localStorage, menu cache, and zustand state
       auth.reset()
