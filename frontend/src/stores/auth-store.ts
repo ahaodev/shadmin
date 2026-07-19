@@ -151,8 +151,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
           if (error && typeof error === 'object' && 'response' in error) {
             const axiosErr = error as { response?: { status?: number } }
             if (axiosErr.response?.status === 404) {
-              // eslint-disable-next-line no-console
-              console.log('User not found (404), signing out...')
               get().auth.reset()
             }
           }
@@ -207,7 +205,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
         // 清除侧边栏相关缓存的辅助方法
         try {
           menuService.clearCache()
-          console.log('Menu cache cleared via clearSidebarCache()')
         } catch (error) {
           console.warn('Failed to clear menu cache:', error)
         }
