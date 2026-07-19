@@ -15,7 +15,6 @@ function MenusContent() {
 
   const handleMenuSelect = (menu: Menu) => {
     setCurrentRow(menu)
-    console.log('Selected menu:', menu)
   }
 
   return (
