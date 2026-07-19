@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { getProfile } from '@/services/profileApi'
 import { exchangeUserIdentityCode } from '@/services/authApi'
+import { getProfile } from '@/services/profileApi'
 import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { authUserFromJwt } from '@/lib/jwt'
@@ -38,7 +38,11 @@ function OAuthCallbackComponent() {
       try {
         const response = await exchangeUserIdentityCode(code)
         if (response.code !== 0 || !response.data) {
-          navigate({ to: '/sign-in', search: { error: 'oauth' }, replace: true })
+          navigate({
+            to: '/sign-in',
+            search: { error: 'oauth' },
+            replace: true,
+          })
           return
         }
 
