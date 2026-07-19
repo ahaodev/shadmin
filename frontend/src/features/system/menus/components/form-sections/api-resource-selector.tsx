@@ -144,10 +144,7 @@ export function ApiResourceSelector({
                           key={resource.id}
                           value={`${resource.path} ${resource.method} ${module}`}
                           className='flex cursor-pointer items-start space-x-2 p-3'
-                          onSelect={(e) => {
-                            // Prevent default command item behavior
-                            console.log(e)
-                          }}
+                          onSelect={() => {}}
                         >
                           <Checkbox
                             className='h-5 w-5'
