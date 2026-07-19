@@ -1,8 +1,8 @@
-import { getRefreshToken } from '@/lib/token-storage'
 import { apiClient, getApiBaseURL } from '@/services/config.ts'
 import { type ApiResponse } from '@/types/api.ts'
 import { type Profile } from '@/types/profile.ts'
 import { type User } from '@/types/user'
+import { getRefreshToken } from '@/lib/token-storage'
 
 // 登录请求类型
 export interface LoginRequest {
