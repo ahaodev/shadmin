@@ -41,7 +41,7 @@ func NewControllerFactory(app *bootstrap.Application, timeout time.Duration, db 
 
 // CreateAuthController creates an authentication controller
 func (f *ControllerFactory) CreateAuthController(casManager casbin.Manager) *controller.AuthController {
-	ur := repository.NewUserRepository(f.db, casManager)
+	ur := repository.NewUserRepository(f.db)
 	ts := tokenservice.NewTokenService()
 
 	// 创建LoginLog相关的repository和usecase
@@ -69,13 +69,11 @@ func (f *ControllerFactory) CreateCaptchaController() *controller.CaptchaControl
 // CreateUserIdentityController creates the identity login controller (Google/GitHub OAuth).
 // 复用既有 TokenService + env 令牌密钥签发 JWT，绑定记录走 UserIdentityRepository。
 func (f *ControllerFactory) CreateUserIdentityController() *controller.UserIdentityController {
-	userRepo := repository.NewUserRepository(f.db, f.app.CasManager)
-	userIdentityRepo := repository.NewUserIdentityRepository(f.db)
 	tokenService := tokenservice.NewTokenService()
+	identityRepository := repository.NewUserIdentityRepository(f.db)
 	return &controller.UserIdentityController{
 		UserIdentityUsecase: usecase.NewUserIdentityUsecase(
-			userRepo,
-			userIdentityRepo,
+			identityRepository,
 			tokenService,
 			f.app.Env.AccessTokenSecret,
 			f.app.Env.RefreshTokenSecret,
@@ -94,7 +92,7 @@ func (f *ControllerFactory) CreateDeviceAuthController() *controller.DeviceAuthC
 		return f.deviceAuthController
 	}
 	deviceAuthRepository := repository.NewDeviceAuthRepository(f.db)
-	userRepository := repository.NewUserRepository(f.db, f.app.CasManager)
+	userRepository := repository.NewUserRepository(f.db)
 	tokenService := tokenservice.NewTokenService()
 
 	f.deviceAuthController = controller.NewDeviceAuthController(
@@ -126,7 +124,7 @@ func (f *ControllerFactory) CreateProfileController() *controller.ProfileControl
 func (f *ControllerFactory) CreateResourceController() *controller.ResourceController {
 	menuRepository := repository.NewMenuRepository(f.db)
 	roleRepository := repository.NewRoleRepository(f.db)
-	userRepository := repository.NewUserRepository(f.db, f.app.CasManager)
+	userRepository := repository.NewUserRepository(f.db)
 
 	return &controller.ResourceController{
 		MenuRepository: menuRepository,
@@ -138,11 +136,11 @@ func (f *ControllerFactory) CreateResourceController() *controller.ResourceContr
 
 // CreateUserController creates a user controller
 func (f *ControllerFactory) CreateUserController() *controller.UserController {
-	ur := repository.NewUserRepository(f.db, f.app.CasManager)
+	ur := repository.NewUserRepository(f.db)
 	rr := repository.NewRoleRepository(f.db)
 
 	return &controller.UserController{
-		UserUsecase: usecase.NewUserUsecase(f.db, ur, rr, f.timeout),
+		UserUsecase: usecase.NewUserUsecase(ur, rr, f.timeout),
 		Env:         f.app.Env,
 	}
 }
@@ -150,9 +148,9 @@ func (f *ControllerFactory) CreateUserController() *controller.UserController {
 // CreateRoleController creates a role controller
 func (f *ControllerFactory) CreateRoleController() *controller.RoleController {
 	roleRepository := repository.NewRoleRepository(f.db)
-	userRepository := repository.NewUserRepository(f.db, f.app.CasManager)
+	userRepository := repository.NewUserRepository(f.db)
 	menuRepository := repository.NewMenuRepository(f.db)
-	roleUseCase := usecase.NewRoleUsecase(f.db, roleRepository, f.timeout)
+	roleUseCase := usecase.NewRoleUsecase(roleRepository, f.timeout)
 
 	return &controller.RoleController{
 		CasManager:     f.app.CasManager,
@@ -167,7 +165,7 @@ func (f *ControllerFactory) CreateRoleController() *controller.RoleController {
 // CreateMenuController creates a menu controller
 func (f *ControllerFactory) CreateMenuController() *controller.MenuController {
 	menuRepository := repository.NewMenuRepository(f.db)
-	menuUsecase := usecase.NewMenuUsecase(f.db, menuRepository, f.timeout)
+	menuUsecase := usecase.NewMenuUsecase(menuRepository, f.timeout)
 
 	return &controller.MenuController{
 		MenuUseCase: menuUsecase,
@@ -204,7 +202,7 @@ func (f *ControllerFactory) CreateHealthController() *controller.HealthControlle
 // CreateDictController creates a dictionary controller
 func (f *ControllerFactory) CreateDictController() *controller.DictController {
 	dictRepository := repository.NewDictRepository(f.db)
-	dictUseCase := usecase.NewDictUsecase(f.db, dictRepository, f.timeout)
+	dictUseCase := usecase.NewDictUsecase(dictRepository, f.timeout)
 
 	return &controller.DictController{
 		DictUseCase: dictUseCase,

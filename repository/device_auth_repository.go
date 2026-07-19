@@ -77,6 +77,9 @@ func (r *entDeviceAuthRepository) Create(ctx context.Context, session *domain.De
 
 	created, err := create.Save(ctx)
 	if err != nil {
+		if ent.IsConstraintError(err) {
+			return domain.ErrDeviceCodeConflict
+		}
 		return err
 	}
 	*session = *entDeviceAuthSessionToDomain(created)
@@ -89,6 +92,9 @@ func (r *entDeviceAuthRepository) GetByDeviceCode(ctx context.Context, deviceCod
 		Where(deviceauthsession.DeviceCode(deviceCode)).
 		First(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrDeviceInvalidCode
+		}
 		return nil, err
 	}
 	return entDeviceAuthSessionToDomain(session), nil
@@ -100,6 +106,9 @@ func (r *entDeviceAuthRepository) GetByUserCode(ctx context.Context, userCode st
 		Where(deviceauthsession.UserCode(userCode)).
 		First(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrDeviceInvalidCode
+		}
 		return nil, err
 	}
 	return entDeviceAuthSessionToDomain(session), nil

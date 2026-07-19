@@ -186,6 +186,37 @@ func (rr *entRoleRepository) Delete(c context.Context, id string) error {
 	return nil
 }
 
+func (rr *entRoleRepository) DeleteIfUnused(c context.Context, id, name string) error {
+	tx, err := rr.client.Tx(c)
+	if err != nil {
+		return fmt.Errorf("failed to begin role deletion transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	userCount, err := tx.Role.
+		Query().
+		Where(role.IDEQ(id)).
+		QueryUsers().
+		Count(c)
+	if err != nil {
+		return fmt.Errorf("failed to check role usage: %w", err)
+	}
+	if userCount > 0 {
+		return fmt.Errorf("cannot delete role %s: still assigned to %d users", name, userCount)
+	}
+
+	if err := tx.Role.DeleteOneID(id).Exec(c); err != nil {
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("role not found")
+		}
+		return fmt.Errorf("failed to delete role: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit role deletion transaction: %w", err)
+	}
+	return nil
+}
+
 // GetAllRoleNames returns active role names for downstream consumers.
 func (rr *entRoleRepository) GetAllRoleNames(c context.Context) ([]string, error) {
 	entRoles, err := rr.client.Role.Query().

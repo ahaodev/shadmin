@@ -15,8 +15,7 @@ import (
 )
 
 type userIdentityUsecase struct {
-	userRepo           domain.UserRepository
-	userIdentityRepo   domain.UserIdentityRepository
+	identityRepository domain.UserIdentityRepository
 	tokenService       *tokenservice.TokenService
 	accessTokenSecret  string
 	refreshTokenSecret string
@@ -29,16 +28,14 @@ type userIdentityUsecase struct {
 // token 相关参数与 device_auth_usecase 保持一致：复用同一套 TokenService + env secrets，
 // 不引入独立的令牌签发流程。
 func NewUserIdentityUsecase(
-	userRepo domain.UserRepository,
-	userIdentityRepo domain.UserIdentityRepository,
+	identityRepository domain.UserIdentityRepository,
 	tokenService *tokenservice.TokenService,
 	accessTokenSecret, refreshTokenSecret string,
 	accessTokenExpiry, refreshTokenExpiry int,
 	timeout time.Duration,
 ) domain.UserIdentityUsecase {
 	return &userIdentityUsecase{
-		userRepo:           userRepo,
-		userIdentityRepo:   userIdentityRepo,
+		identityRepository: identityRepository,
 		tokenService:       tokenService,
 		accessTokenSecret:  accessTokenSecret,
 		refreshTokenSecret: refreshTokenSecret,
@@ -63,58 +60,12 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 		return nil, fmt.Errorf("provider %s returned empty subject: %w", provider, domain.ErrUserIdentityAuthFailed)
 	}
 
-	// 1. 先查该 (provider, provider_subject) 是否已绑定
-	account, err := u.userIdentityRepo.FindByProviderAndSubject(ctx, provider, profile.UserID)
+	user, err := u.findOrCreateAndBindUser(ctx, provider, profile)
 	if err != nil {
-		return nil, fmt.Errorf("find identity account: %w", err)
+		return nil, err
 	}
 
-	var user *domain.User
-	if account != nil {
-		// 2a. 已绑定 → 直接取出对应 shadmin 用户
-		user, err = u.userRepo.GetByID(ctx, account.UserID)
-		if err != nil {
-			return nil, fmt.Errorf("get bound user: %w", err)
-		}
-	} else {
-		// 2b. 未绑定 → 检查相同 email 的用户是否已存在
-		// 如果存在，则绑定到同一用户；如果不存在，创建新用户
-		email := strings.TrimSpace(profile.Email)
-		if email != "" {
-			user, err = u.userRepo.GetByEmail(ctx, email)
-			if err != nil && !isNotFound(err) {
-				return nil, fmt.Errorf("find user by email: %w", err)
-			}
-		}
-
-		// 3. 用户不存在 → 基于第三方 profile 创建新用户
-		if user == nil {
-			user, err = u.createUserFromUserIdentity(ctx, provider, profile)
-			if err != nil {
-				return nil, fmt.Errorf("create user from user identity profile: %w", err)
-			}
-		}
-	}
-
-	// 被禁用的账户不允许通过第三方登录继续进入系统
-	if user.Status != domain.UserStatusActive {
-		return nil, fmt.Errorf("user account is disabled: %w", domain.ErrUserDisabled)
-	}
-
-	// 4. 绑定（或更新）第三方账号
-	err = u.userIdentityRepo.Upsert(ctx, &domain.UserIdentity{
-		UserID:          user.ID,
-		Provider:        provider,
-		ProviderSubject: profile.UserID,
-		Email:           strings.TrimSpace(profile.Email),
-		Name:            strings.TrimSpace(profile.Name),
-		AvatarURL:       strings.TrimSpace(profile.AvatarURL),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("upsert identity account: %w", err)
-	}
-
-	// 5. 复用既有 TokenService 签发 JWT 令牌对
+	// 复用既有 TokenService 签发 JWT 令牌对
 	accessToken, err := u.tokenService.CreateAccessToken(user, u.accessTokenSecret, u.accessTokenExpiry)
 	if err != nil {
 		return nil, fmt.Errorf("create access token: %w", err)
@@ -135,9 +86,91 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 	}, nil
 }
 
+func (u *userIdentityUsecase) findOrCreateAndBindUser(ctx context.Context, provider string, profile *domain.UserIdentityProfile) (*domain.User, error) {
+	var lastErr error
+	for attempt := 0; attempt < 2; attempt++ {
+		user, err := u.findOrCreateAndBindUserOnce(ctx, provider, profile)
+		if err == nil {
+			return user, nil
+		}
+		lastErr = err
+		if !isUniqueViolation(err) {
+			return nil, err
+		}
+	}
+	return nil, lastErr
+}
+
+func (u *userIdentityUsecase) findOrCreateAndBindUserOnce(ctx context.Context, provider string, profile *domain.UserIdentityProfile) (*domain.User, error) {
+	return u.identityRepository.WithUserBindingTx(ctx, func(txCtx context.Context, userRepo domain.UserRepository, identityRepo domain.UserIdentityRepository) (*domain.User, error) {
+		return u.findOrCreateUserForIdentity(txCtx, userRepo, identityRepo, provider, profile)
+	})
+}
+
+func (u *userIdentityUsecase) findOrCreateUserForIdentity(
+	ctx context.Context,
+	userRepo domain.UserRepository,
+	identityRepo domain.UserIdentityRepository,
+	provider string,
+	profile *domain.UserIdentityProfile,
+) (*domain.User, error) {
+	// 1. 先查该 (provider, provider_subject) 是否已绑定
+	account, err := identityRepo.FindByProviderAndSubject(ctx, provider, profile.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("find identity account: %w", err)
+	}
+
+	var user *domain.User
+	if account != nil {
+		// 2a. 已绑定 → 直接取出对应 shadmin 用户
+		user, err = userRepo.GetByID(ctx, account.UserID)
+		if err != nil {
+			return nil, fmt.Errorf("get bound user: %w", err)
+		}
+	} else {
+		// 2b. 未绑定 → 检查相同 email 的用户是否已存在
+		// 如果存在，则绑定到同一用户；如果不存在，创建新用户
+		email := strings.TrimSpace(profile.Email)
+		if email != "" {
+			user, err = userRepo.GetByEmail(ctx, email)
+			if err != nil && !isNotFound(err) {
+				return nil, fmt.Errorf("find user by email: %w", err)
+			}
+		}
+
+		// 3. 用户不存在 → 基于第三方 profile 创建新用户
+		if user == nil {
+			user, err = u.createUserFromUserIdentity(ctx, userRepo, provider, profile)
+			if err != nil {
+				return nil, fmt.Errorf("create user from user identity profile: %w", err)
+			}
+		}
+	}
+
+	// 被禁用的账户不允许通过第三方登录继续进入系统
+	if user.Status != domain.UserStatusActive {
+		return nil, fmt.Errorf("user account is disabled: %w", domain.ErrUserDisabled)
+	}
+
+	// 4. 绑定（或更新）第三方账号
+	err = identityRepo.Upsert(ctx, &domain.UserIdentity{
+		UserID:          user.ID,
+		Provider:        provider,
+		ProviderSubject: profile.UserID,
+		Email:           strings.TrimSpace(profile.Email),
+		Name:            strings.TrimSpace(profile.Name),
+		AvatarURL:       strings.TrimSpace(profile.AvatarURL),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("upsert identity account: %w", err)
+	}
+	return user, nil
+}
+
 // createUserFromUserIdentity 基于第三方 profile 创建新 shadmin 用户。
-func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, provider string, profile *domain.UserIdentityProfile) (*domain.User, error) {
+func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, userRepo domain.UserRepository, provider string, profile *domain.UserIdentityProfile) (*domain.User, error) {
 	email := strings.TrimSpace(profile.Email)
+	hasProviderEmail := email != ""
 	name := strings.TrimSpace(profile.Name)
 	if name == "" {
 		name = strings.TrimSpace(profile.NickName)
@@ -155,27 +188,17 @@ func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, pr
 		email = fmt.Sprintf("%s_%s@id.local", provider, profile.UserID)
 	}
 
-	// 碰撞重试：username 或 email 唯一约束冲突时
-	//  - username 改为追加随机后缀
-	//  - email 若为真实邮箱（可能与其他 provider 的同邮箱用户冲突），
-	//    换用 <provider>_<subject>@id.local 占位，确保跨 provider 同邮箱各自独立
-	user, err := u.tryCreateUser(ctx, username, email, name)
-	if err != nil && isUniqueViolation(err) {
-		suffix, suffixErr := randomSuffix(6)
-		if suffixErr != nil {
-			return nil, fmt.Errorf("generate username suffix: %w", suffixErr)
-		}
-		username = truncate(username, 32-len(suffix)-1) + "_" + suffix
-		placeholderEmail := fmt.Sprintf("%s_%s@id.local", provider, profile.UserID)
-		user, err = u.tryCreateUser(ctx, username, placeholderEmail, name)
-	}
+	user, err := u.tryCreateUser(ctx, userRepo, username, email, name)
 	if err != nil {
+		if hasProviderEmail && isUniqueViolation(err) {
+			return nil, fmt.Errorf("retry user identity transaction after user unique conflict: %w", err)
+		}
 		return nil, err
 	}
 	return user, nil
 }
 
-func (u *userIdentityUsecase) tryCreateUser(ctx context.Context, username, email, name string) (*domain.User, error) {
+func (u *userIdentityUsecase) tryCreateUser(ctx context.Context, userRepo domain.UserRepository, username, email, name string) (*domain.User, error) {
 	rawPwd, err := randomSuffix(32)
 	if err != nil {
 		return nil, fmt.Errorf("generate random password: %w", err)
@@ -193,7 +216,7 @@ func (u *userIdentityUsecase) tryCreateUser(ctx context.Context, username, email
 	}
 	_ = name // 当前 User 实体无独立 displayName 字段，name 暂不落库
 
-	if err := u.userRepo.Create(ctx, user); err != nil {
+	if err := userRepo.Create(ctx, user); err != nil {
 		return nil, fmt.Errorf("create user identity user: %w", err)
 	}
 	return user, nil
@@ -206,17 +229,6 @@ func randomSuffix(n int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
-}
-
-func truncate(s string, max int) string {
-	if max <= 0 || len(s) <= max {
-		return s
-	}
-	runes := []rune(s)
-	if len(runes) <= max {
-		return s
-	}
-	return string(runes[:max])
 }
 
 // isUniqueViolation 粗略判定唯一约束冲突（跨 sqlite/postgres/mysql 文案差异）

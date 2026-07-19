@@ -72,6 +72,7 @@ type RoleRepository interface {
 	GetByName(c context.Context, name string) (*Role, error)
 	Update(c context.Context, role *Role) error
 	Delete(c context.Context, id string) error
+	DeleteIfUnused(c context.Context, id, name string) error
 	Assign(c context.Context, uid, rid string) error
 	Revoke(c context.Context, uid, rid string) error
 }

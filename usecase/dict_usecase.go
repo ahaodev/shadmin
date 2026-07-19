@@ -5,19 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"shadmin/domain"
-	"shadmin/ent"
 	"time"
 )
 
 type dictUsecase struct {
-	client         *ent.Client
 	dictRepository domain.DictRepository
 	contextTimeout time.Duration
 }
 
-func NewDictUsecase(client *ent.Client, dictRepository domain.DictRepository, timeout time.Duration) domain.DictUseCase {
+func NewDictUsecase(dictRepository domain.DictRepository, timeout time.Duration) domain.DictUseCase {
 	return &dictUsecase{
-		client:         client,
 		dictRepository: dictRepository,
 		contextTimeout: timeout,
 	}

@@ -175,6 +175,7 @@ type MenuRepository interface {
 	CreateMenu(ctx context.Context, menu *CreateMenuRequest) (*Menu, error)
 	UpdateMenu(ctx context.Context, id string, menu *UpdateMenuRequest) (*Menu, error)
 	DeleteMenu(ctx context.Context, id string) error
+	DeleteMenuTree(ctx context.Context, id string) error
 }
 
 // MenuUseCase defines the interface for menu business logic

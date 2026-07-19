@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"shadmin/domain"
 	"shadmin/ent"
@@ -107,9 +108,8 @@ func (r *entUserIdentityRepository) Upsert(ctx context.Context, account *domain.
 			SetAvatarURL(account.AvatarURL).
 			Save(ctx)
 		if createErr != nil {
-			// 并发场景下另一个请求可能已经创建，再次查询后走更新分支
 			if ent.IsConstraintError(createErr) {
-				return r.updateExisting(ctx, account)
+				return fmt.Errorf("create user identity: %w", createErr)
 			}
 			return fmt.Errorf("create user identity: %w", createErr)
 		}
@@ -122,17 +122,37 @@ func (r *entUserIdentityRepository) Upsert(ctx context.Context, account *domain.
 	return r.updateOne(ctx, existing.ID, account)
 }
 
-func (r *entUserIdentityRepository) updateExisting(ctx context.Context, account *domain.UserIdentity) error {
-	existing, err := r.client.UserIdentity.Query().
-		Where(
-			useridentity.Provider(account.Provider),
-			useridentity.ProviderSubject(account.ProviderSubject),
-		).
-		Only(ctx)
-	if err != nil {
-		return fmt.Errorf("re-query user identity for update: %w", err)
+func (r *entUserIdentityRepository) WithUserBindingTx(ctx context.Context, fn domain.UserIdentityBindingTxFunc) (*domain.User, error) {
+	if fn == nil {
+		return nil, fmt.Errorf("user identity transaction function is nil")
 	}
-	return r.updateOne(ctx, existing.ID, account)
+
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("start user identity transaction: %w", err)
+	}
+
+	txClient := tx.Client()
+	userRepo := NewUserRepository(txClient)
+	identityRepo := &entUserIdentityRepository{
+		client: txClient,
+	}
+
+	user, err := fn(ctx, userRepo, identityRepo)
+	if err != nil {
+		return nil, rollbackUserIdentityTx(tx, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit user identity transaction: %w", err)
+	}
+	return user, nil
+}
+
+func rollbackUserIdentityTx(tx *ent.Tx, err error) error {
+	if rollbackErr := tx.Rollback(); rollbackErr != nil && !errors.Is(rollbackErr, context.Canceled) {
+		return fmt.Errorf("%w: rollback user identity transaction: %v", err, rollbackErr)
+	}
+	return err
 }
 
 func (r *entUserIdentityRepository) updateOne(ctx context.Context, id string, account *domain.UserIdentity) error {

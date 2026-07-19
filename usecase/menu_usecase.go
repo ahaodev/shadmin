@@ -5,19 +5,16 @@ import (
 	"fmt"
 	"log"
 	"shadmin/domain"
-	"shadmin/ent"
 	"time"
 )
 
 type menuUsecase struct {
-	client         *ent.Client
 	menuRepository domain.MenuRepository
 	contextTimeout time.Duration
 }
 
-func NewMenuUsecase(client *ent.Client, menuRepository domain.MenuRepository, timeout time.Duration) domain.MenuUseCase {
+func NewMenuUsecase(menuRepository domain.MenuRepository, timeout time.Duration) domain.MenuUseCase {
 	return &menuUsecase{
-		client:         client,
 		menuRepository: menuRepository,
 		contextTimeout: timeout,
 	}
@@ -135,61 +132,11 @@ func (mu *menuUsecase) DeleteMenu(ctx context.Context, id string) error {
 	log.Printf(" Starting deletion process for menu %s (ID: %s, Type: %s)",
 		menu.Name, id, menu.Type)
 
-	// 2. 在事务中递归删除菜单及其子菜单
-	tx, err := mu.client.Tx(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// 递归删除菜单及其所有子菜单
-	if err := mu.deleteMenuRecursively(ctx, id); err != nil {
+	// 2. 递归删除菜单及其所有子菜单；事务由 repository 处理
+	if err := mu.menuRepository.DeleteMenuTree(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete menu recursively: %w", err)
 	}
 
-	// 提交事务
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
 	log.Printf(" Successfully deleted menu %s and all its children", menu.Name)
-	return nil
-}
-
-// deleteMenuRecursively 递归删除菜单及其所有子菜单
-func (mu *menuUsecase) deleteMenuRecursively(ctx context.Context, menuID string) error {
-	// 1. 获取当前菜单信息
-	menu, err := mu.menuRepository.GetMenuByID(ctx, menuID)
-	if err != nil {
-		// 菜单不存在，可能已被删除，直接返回
-		log.Printf("WARN: Menu %s not found during recursive deletion", menuID)
-		return nil
-	}
-
-	// 2. 获取所有直接子菜单
-	children, err := mu.menuRepository.GetChildrenMenus(ctx, menuID)
-	if err != nil {
-		return fmt.Errorf("failed to get children of menu %s: %w", menuID, err)
-	}
-
-	// 3. 递归删除所有子菜单
-	for _, child := range children {
-		log.Printf(" Recursively deleting child menu %s (ID: %s) of parent %s",
-			child.Name, child.ID, menu.Name)
-
-		if err := mu.deleteMenuRecursively(ctx, child.ID); err != nil {
-			return fmt.Errorf("failed to delete child menu %s: %w", child.ID, err)
-		}
-	}
-
-	// 4. 删除当前菜单
-	log.Printf(" Deleting menu %s (ID: %s)", menu.Name, menuID)
-	if err := mu.menuRepository.DeleteMenu(ctx, menuID); err != nil {
-		return fmt.Errorf("failed to delete menu %s from database: %w", menuID, err)
-	}
-
-	// 注意: casbin权限同步由定时任务自动处理，无需在此手动清理
-	log.Printf(" Successfully deleted menu %s from database", menu.Name)
-
 	return nil
 }

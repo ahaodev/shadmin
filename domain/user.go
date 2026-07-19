@@ -90,6 +90,7 @@ type UserRepository interface {
 	// GetStatusByID returns only the status string for the user.
 	// Returns ErrUserNotFound-style not-found if the user does not exist.
 	GetStatusByID(c context.Context, id string) (string, error)
+	GetRoleIDs(c context.Context, id string) ([]string, error)
 }
 
 type UserUseCase interface {

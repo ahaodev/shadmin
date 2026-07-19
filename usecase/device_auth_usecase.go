@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"shadmin/domain"
-	"shadmin/ent"
 	"shadmin/internal/tokenservice"
 )
 
@@ -88,7 +87,7 @@ func (u *deviceAuthUsecase) RequestCode(ctx context.Context, req domain.DeviceCo
 			ExpiresAt:       time.Now().Add(deviceAuthExpiresIn * time.Second),
 		}
 		if err := u.repo.Create(ctx, session); err != nil {
-			if ent.IsConstraintError(err) {
+			if errors.Is(err, domain.ErrDeviceCodeConflict) {
 				continue
 			}
 			return nil, fmt.Errorf("create device auth session: %w", err)
@@ -113,7 +112,7 @@ func (u *deviceAuthUsecase) PollToken(ctx context.Context, req domain.DeviceToke
 	now := time.Now()
 	session, err := u.repo.GetByDeviceCode(ctx, req.DeviceCode)
 	if err != nil {
-		if ent.IsNotFound(err) {
+		if errors.Is(err, domain.ErrDeviceInvalidCode) {
 			return nil, domain.ErrDeviceInvalidCode
 		}
 		return nil, fmt.Errorf("get device auth session: %w", err)
@@ -186,7 +185,7 @@ func (u *deviceAuthUsecase) Activate(ctx context.Context, userID string, req dom
 	userCode := normalizeUserCode(req.UserCode)
 	session, err := u.repo.GetByUserCode(ctx, userCode)
 	if err != nil {
-		if ent.IsNotFound(err) {
+		if errors.Is(err, domain.ErrDeviceInvalidCode) {
 			return nil, domain.ErrDeviceInvalidCode
 		}
 		return nil, fmt.Errorf("get device auth session by user code: %w", err)

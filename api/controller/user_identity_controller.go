@@ -29,9 +29,10 @@ type UserIdentityController struct {
 
 // UserIdentityStore 存储短期 OAuth 回调 code，线程安全。
 type UserIdentityStore struct {
-	mu      sync.RWMutex
-	ttl     time.Duration
-	entries map[string]userIdentityCodeEntry
+	mu          sync.RWMutex
+	ttl         time.Duration
+	lastCleanup time.Time
+	entries     map[string]userIdentityCodeEntry
 }
 
 type userIdentityCodeEntry struct {
@@ -62,6 +63,7 @@ func (s *UserIdentityStore) Put(result *domain.UserIdentityResult) (string, erro
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.cleanupExpiredLocked(time.Now())
 	s.entries[code] = userIdentityCodeEntry{
 		result:    result,
 		expiresAt: time.Now().Add(s.ttl),
@@ -76,6 +78,7 @@ func (s *UserIdentityStore) Consume(code string) *domain.UserIdentityResult {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.cleanupExpiredLocked(time.Now())
 
 	entry, ok := s.entries[code]
 	if !ok {
@@ -87,6 +90,18 @@ func (s *UserIdentityStore) Consume(code string) *domain.UserIdentityResult {
 	}
 	delete(s.entries, code)
 	return entry.result
+}
+
+func (s *UserIdentityStore) cleanupExpiredLocked(now time.Time) {
+	if now.Sub(s.lastCleanup) < s.ttl {
+		return
+	}
+	for code, entry := range s.entries {
+		if now.After(entry.expiresAt) {
+			delete(s.entries, code)
+		}
+	}
+	s.lastCleanup = now
 }
 
 func (sc *UserIdentityController) getCodeStore() *UserIdentityStore {

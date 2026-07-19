@@ -19,6 +19,7 @@ var (
 	ErrDeviceSlowDown             = errors.New("slow_down")
 	ErrDeviceExpired              = errors.New("expired_token")
 	ErrDeviceInvalidCode          = errors.New("invalid_device_code")
+	ErrDeviceCodeConflict         = errors.New("device_code_conflict")
 	ErrDeviceConsumed             = errors.New("device_code_consumed")
 	ErrDeviceAccessDenied         = errors.New("access_denied")
 )

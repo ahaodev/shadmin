@@ -65,7 +65,10 @@ type UserIdentityRepository interface {
 	FindByProviderAndSubject(ctx context.Context, provider, subject string) (*UserIdentity, error)
 	FindByUserID(ctx context.Context, userID string) ([]*UserIdentity, error)
 	Upsert(ctx context.Context, account *UserIdentity) error
+	WithUserBindingTx(ctx context.Context, fn UserIdentityBindingTxFunc) (*User, error)
 }
+
+type UserIdentityBindingTxFunc func(ctx context.Context, userRepo UserRepository, identityRepo UserIdentityRepository) (*User, error)
 
 // UserIdentityUsecase 第三方登录用例接口
 type UserIdentityUsecase interface {

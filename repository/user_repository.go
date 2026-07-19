@@ -6,7 +6,6 @@ import (
 	"shadmin/ent"
 	"shadmin/ent/predicate"
 	"shadmin/ent/user"
-	"shadmin/internal/casbin"
 )
 
 // Helper function to convert domain status string to ent status enum
@@ -67,14 +66,12 @@ func entUserToDomainUser(u *ent.User) *domain.User {
 }
 
 type entUserRepository struct {
-	client     *ent.Client
-	casManager casbin.Manager
+	client *ent.Client
 }
 
-func NewUserRepository(client *ent.Client, casManager casbin.Manager) domain.UserRepository {
+func NewUserRepository(client *ent.Client) domain.UserRepository {
 	return &entUserRepository{
-		client:     client,
-		casManager: casManager,
+		client: client,
 	}
 }
 
@@ -281,25 +278,6 @@ func (ur *entUserRepository) Update(c context.Context, u *domain.User) error {
 }
 
 func (ur *entUserRepository) Delete(c context.Context, id string) error {
-	// 1. 获取用户当前的角色，以便清理 casbin 规则
-	u, err := ur.client.User.
-		Query().
-		Where(user.ID(id)).
-		WithRoles().
-		First(c)
-	if err != nil {
-		return err
-	}
-
-	// 2. 清理 casbin 中的用户-角色映射 (g 类型规则)
-	if u.Edges.Roles != nil {
-		for _, role := range u.Edges.Roles {
-			// 删除 casbin 中 "g, userID, roleID" 的记录
-			_, _ = ur.casManager.DeleteRoleForUser(id, role.ID)
-		}
-	}
-
-	// 3. 删除用户记录 (ent 会自动清理 user_roles 中间表)
 	return ur.client.User.
 		DeleteOneID(id).
 		Exec(c)
@@ -317,4 +295,21 @@ func (ur *entUserRepository) GetStatusByID(c context.Context, id string) (string
 		return "", err
 	}
 	return status, nil
+}
+
+func (ur *entUserRepository) GetRoleIDs(c context.Context, id string) ([]string, error) {
+	u, err := ur.client.User.
+		Query().
+		Where(user.ID(id)).
+		WithRoles().
+		First(c)
+	if err != nil {
+		return nil, err
+	}
+
+	roleIDs := make([]string, 0, len(u.Edges.Roles))
+	for _, role := range u.Edges.Roles {
+		roleIDs = append(roleIDs, role.ID)
+	}
+	return roleIDs, nil
 }

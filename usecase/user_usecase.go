@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"shadmin/ent"
-	"shadmin/ent/user"
 	"time"
 
 	"shadmin/domain"
@@ -14,15 +12,13 @@ import (
 )
 
 type userUsecase struct {
-	client         *ent.Client
 	userRepository domain.UserRepository
 	roleRepository domain.RoleRepository
 	contextTimeout time.Duration
 }
 
-func NewUserUsecase(client *ent.Client, userRepository domain.UserRepository, roleRepository domain.RoleRepository, timeout time.Duration) domain.UserUseCase {
+func NewUserUsecase(userRepository domain.UserRepository, roleRepository domain.RoleRepository, timeout time.Duration) domain.UserUseCase {
 	return &userUsecase{
-		client:         client,
 		userRepository: userRepository,
 		roleRepository: roleRepository,
 		contextTimeout: timeout,
@@ -271,20 +267,9 @@ func (uu *userUsecase) GetUserRoles(c context.Context, userID string) ([]string,
 	ctx, cancel := context.WithTimeout(c, uu.contextTimeout)
 	defer cancel()
 
-	// 直接从数据库查询用户的角色关系
-	user, err := uu.client.User.
-		Query().
-		Where(user.ID(userID)).
-		WithRoles().
-		First(ctx)
+	roleIDs, err := uu.userRepository.GetRoleIDs(ctx, userID)
 	if err != nil {
 		return nil, err
-	}
-
-	// 提取角色ID
-	var roleIDs []string
-	for _, role := range user.Edges.Roles {
-		roleIDs = append(roleIDs, role.ID)
 	}
 
 	log.Printf("DEBUG: GetUserRoles - userID: %s, roles: %v", userID, roleIDs)

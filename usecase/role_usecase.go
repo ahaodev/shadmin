@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"log"
 	"shadmin/domain"
-	"shadmin/ent"
-	entRole "shadmin/ent/role"
 	"time"
 )
 
 type roleUsecase struct {
-	client         *ent.Client
 	roleRepository domain.RoleRepository
 	contextTimeout time.Duration
 }
@@ -144,39 +141,12 @@ func (ru *roleUsecase) Delete(c context.Context, id string) error {
 
 	log.Printf(" Starting deletion process for role %s (ID: %s)", role.Name, id)
 
-	// 2. 检查角色是否被用户使用（通过数据库查询）
-	userCount, err := ru.client.Role.
-		Query().
-		Where(entRole.IDEQ(id)).
-		QueryUsers().
-		Count(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to check role usage: %w", err)
-	}
-	if userCount > 0 {
-		log.Printf("WARN: Attempted to delete role %s but it is assigned to %d users",
-			role.Name, userCount)
-		return fmt.Errorf("cannot delete role %s: still assigned to %d users", role.Name, userCount)
-	}
-
-	// 3. 在事务中删除角色
-	tx, err := ru.client.Tx(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// 删除角色记录
-	if err := ru.roleRepository.Delete(ctx, id); err != nil {
+	// 2. 删除角色记录；使用情况检查和删除在 repository 事务内完成
+	if err := ru.roleRepository.DeleteIfUnused(ctx, id, role.Name); err != nil {
 		return fmt.Errorf("failed to delete role from database: %w", err)
 	}
 
-	// 提交事务
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	// 4. 清理Casbin中的角色策略
+	// 3. 清理Casbin中的角色策略
 	if err := ru.cleanupRolePermissions(role.Name); err != nil {
 		// 策略清理失败，记录错误但不回滚角色删除
 		log.Printf("ERROR: Failed to clean up permissions for deleted role %s: %v", role.Name, err)
@@ -214,9 +184,8 @@ func (ru *roleUsecase) hasMenuAssignmentsChanged(oldMenuIDs, newMenuIDs []string
 	return false
 }
 
-func NewRoleUsecase(client *ent.Client, roleRepository domain.RoleRepository, timeout time.Duration) domain.RoleUseCase {
+func NewRoleUsecase(roleRepository domain.RoleRepository, timeout time.Duration) domain.RoleUseCase {
 	return &roleUsecase{
-		client:         client,
 		roleRepository: roleRepository,
 		contextTimeout: timeout,
 	}

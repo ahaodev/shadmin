@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/menu"
@@ -320,6 +321,46 @@ func (mr *entMenuRepository) DeleteMenu(ctx context.Context, id string) error {
 	return mr.client.Menu.
 		DeleteOneID(id).
 		Exec(ctx)
+}
+
+func (mr *entMenuRepository) DeleteMenuTree(ctx context.Context, id string) error {
+	tx, err := mr.client.Tx(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin menu deletion transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if err := deleteMenuTree(ctx, tx.Client(), id); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit menu deletion transaction: %w", err)
+	}
+	return nil
+}
+
+func deleteMenuTree(ctx context.Context, client *ent.Client, id string) error {
+	children, err := client.Menu.
+		Query().
+		Where(menu.ParentID(id)).
+		All(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get children of menu %s: %w", id, err)
+	}
+
+	for _, child := range children {
+		if err := deleteMenuTree(ctx, client, child.ID); err != nil {
+			return fmt.Errorf("failed to delete child menu %s: %w", child.ID, err)
+		}
+	}
+
+	if err := client.Menu.DeleteOneID(id).Exec(ctx); err != nil {
+		if ent.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to delete menu %s from database: %w", id, err)
+	}
+	return nil
 }
 
 // stringToPtr converts a string to *string, returning nil for empty strings
