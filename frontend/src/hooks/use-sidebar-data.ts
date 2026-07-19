@@ -30,10 +30,11 @@ function resolveUserInfo() {
     return {
       name: auth.profile.username || auth.profile.email || 'User',
       email: auth.profile.email || '',
-      avatar: auth.profile.avatar || auth.providerAvatar || '/avatars/shadcn.jpg',
+      avatar:
+        auth.profile.avatar || auth.providerAvatar || '/avatars/shadcn.jpg',
     }
   }
- 
+
   if (auth.user) {
     return {
       name: auth.user.email || auth.user.accountNo || 'User',
