@@ -63,7 +63,7 @@ func App() *Application {
 
 	// 用户状态缓存：直接复用共享 Cacher，Cache 层做 DB 回源与 TTL 协调。
 	app.UserStatusCache = auth.NewUserStatusCacher(
-		repository.NewUserRepository(app.DB, app.CasManager),
+		repository.NewUserRepository(app.DB),
 		app.Cacher,
 		auth.DefaultTTL,
 	)
