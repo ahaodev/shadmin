@@ -37,9 +37,7 @@ export function authUserFromJwt(token: string): {
   if (!payload) return null
 
   return {
-    accountNo: String(
-      payload.name ?? payload.username ?? payload.id ?? ''
-    ),
+    accountNo: String(payload.name ?? payload.username ?? payload.id ?? ''),
     email: String(payload.email ?? ''),
     role: Array.isArray(payload.role)
       ? (payload.role as string[])
