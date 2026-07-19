@@ -170,13 +170,6 @@ export class MenuService {
    * Clear cached menu data
    */
   clearCache(): void {
-    const hadCache = this.cachedMenuData !== null
-    console.log(
-      'Clearing menu cache - had cache:',
-      hadCache,
-      'cached groups:',
-      this.cachedMenuData?.length || 0
-    )
     this.cachedMenuData = null
     this.cachedRawMenus = null
     this.menuLoadFailed = false
