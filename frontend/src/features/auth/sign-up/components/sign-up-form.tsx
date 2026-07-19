@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -47,13 +48,10 @@ export function SignUpForm({
   })
 
   function onSubmit(data: z.infer<typeof formSchema>) {
+    void data
     setIsLoading(true)
-    // eslint-disable-next-line no-console
-    console.log(data)
-
-    setTimeout(() => {
-      setIsLoading(false)
-    }, 3000)
+    toast.info('注册功能暂未开放，请联系管理员创建账号。')
+    setIsLoading(false)
   }
 
   return (
