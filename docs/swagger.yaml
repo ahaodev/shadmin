@@ -570,6 +570,8 @@ definitions:
         type: string
       phone:
         type: string
+      providerAvatarUrl:
+        type: string
       status:
         type: string
       updated_at:
