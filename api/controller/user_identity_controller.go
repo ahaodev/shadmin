@@ -21,7 +21,7 @@ import (
 type UserIdentityController struct {
 	UserIdentityUsecase domain.UserIdentityUsecase
 	RedirectURL         string // 登录成功后将短期 code 重定向的前端地址
-	CodeStore           auth.UserIdentityCodeStore
+	CodeStore           *auth.UserIdentityCodeStore
 }
 
 const providerCtxKey = "provider"
@@ -138,12 +138,9 @@ func (sc *UserIdentityController) Exchange(c *gin.Context) {
 // @Router       /auth/identity/providers [get]
 func (sc *UserIdentityController) ListProviders(c *gin.Context) {
 	providers := goth.GetProviders()
-	list := make([]domain.UserIdentityProviderInfo, 0, len(providers))
+	list := make([]string, 0, len(providers))
 	for _, p := range providers {
-		list = append(list, domain.UserIdentityProviderInfo{
-			Provider: p.Name(),
-			Name:     providerDisplayName(p.Name()),
-		})
+		list = append(list, providerDisplayName(p.Name()))
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(list))
 }
