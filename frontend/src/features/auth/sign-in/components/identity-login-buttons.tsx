@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   getIdentityLoginHref,
   getIdentityProviders,
@@ -27,8 +27,12 @@ function providerIcon(provider: IdentityProvider['provider']) {
 export function IdentityLoginButtons() {
   const [providers, setProviders] = useState<IdentityProvider[] | null>(null)
   const [isError, setIsError] = useState(false)
+  const hasFetchedRef = useRef(false)
 
   useEffect(() => {
+    if (hasFetchedRef.current) return
+
+    hasFetchedRef.current = true
     let cancelled = false
 
     void (async () => {
