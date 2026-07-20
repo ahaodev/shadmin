@@ -1,7 +1,4 @@
-import {
-  getIdentityLoginHref,
-  type IdentityProvider,
-} from '@/services/authApi'
+import { getIdentityLoginHref } from '@/services/authApi'
 import { Loader2 } from 'lucide-react'
 import { IconGithub } from '@/assets/brand-icons/icon-github'
 import { IconGmail } from '@/assets/brand-icons/icon-gmail'
@@ -10,7 +7,7 @@ import { useIdentityProviders } from '../hooks/use-identity-providers'
 
 const PROVIDER_ICON_CLASS_NAME = 'size-4 shrink-0'
 
-function providerIcon(provider: IdentityProvider['provider']) {
+function providerIcon(provider: string) {
   switch (provider) {
     case 'github':
       return <IconGithub className={PROVIDER_ICON_CLASS_NAME} />
@@ -18,6 +15,17 @@ function providerIcon(provider: IdentityProvider['provider']) {
       return <IconGmail className={PROVIDER_ICON_CLASS_NAME} />
     default:
       return null
+  }
+}
+
+function providerLabel(provider: string) {
+  switch (provider) {
+    case 'github':
+      return 'GitHub'
+    case 'google':
+      return 'Google'
+    default:
+      return provider
   }
 }
 
@@ -49,7 +57,7 @@ export function IdentityLoginButtons() {
       <div className='flex flex-wrap justify-center gap-2'>
         {providers.map((provider) => (
           <Button
-            key={provider.provider}
+            key={provider}
             type='button'
             variant='outline'
             className='flex min-w-35 flex-1 justify-center gap-2'
@@ -57,13 +65,13 @@ export function IdentityLoginButtons() {
             asChild
           >
             <a
-              href={getIdentityLoginHref(provider.provider)}
+              href={getIdentityLoginHref(provider)}
               className='flex w-full items-center justify-center gap-2'
-              aria-label={`Continue with ${provider.name}`}
+              aria-label={`Continue with ${providerLabel(provider)}`}
             >
               <span className='flex items-center gap-2'>
-                {providerIcon(provider.provider)}
-                <span>{provider.name}</span>
+                {providerIcon(provider)}
+                <span>{providerLabel(provider)}</span>
               </span>
             </a>
           </Button>
