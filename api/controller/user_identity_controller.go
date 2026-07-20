@@ -2,13 +2,10 @@ package controller
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"net/http"
 	"net/url"
-	"sync"
-	"time"
+	"shadmin/internal/auth"
 
 	"shadmin/domain"
 
@@ -24,102 +21,7 @@ import (
 type UserIdentityController struct {
 	UserIdentityUsecase domain.UserIdentityUsecase
 	RedirectURL         string // 登录成功后将短期 code 重定向的前端地址
-	CodeStore           *UserIdentityStore
-}
-
-// UserIdentityStore 存储短期 OAuth 回调 code，线程安全。
-type UserIdentityStore struct {
-	mu          sync.RWMutex
-	ttl         time.Duration
-	lastCleanup time.Time
-	entries     map[string]userIdentityCodeEntry
-}
-
-type userIdentityCodeEntry struct {
-	result    *domain.UserIdentityResult
-	expiresAt time.Time
-}
-
-// NewUserIdentityStore 创建一个新的 code store，ttl 为 code 有效期。
-func NewUserIdentityStore(ttl time.Duration) *UserIdentityStore {
-	if ttl <= 0 {
-		ttl = 5 * time.Minute
-	}
-	return &UserIdentityStore{
-		ttl:     ttl,
-		entries: make(map[string]userIdentityCodeEntry),
-	}
-}
-
-func (s *UserIdentityStore) Put(result *domain.UserIdentityResult) (string, error) {
-	if result == nil {
-		return "", errors.New("identity login result is nil")
-	}
-
-	code, err := randomCode(24)
-	if err != nil {
-		return "", err
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.cleanupExpiredLocked(time.Now())
-	s.entries[code] = userIdentityCodeEntry{
-		result:    result,
-		expiresAt: time.Now().Add(s.ttl),
-	}
-	return code, nil
-}
-
-func (s *UserIdentityStore) Consume(code string) *domain.UserIdentityResult {
-	if code == "" {
-		return nil
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.cleanupExpiredLocked(time.Now())
-
-	entry, ok := s.entries[code]
-	if !ok {
-		return nil
-	}
-	if time.Now().After(entry.expiresAt) {
-		delete(s.entries, code)
-		return nil
-	}
-	delete(s.entries, code)
-	return entry.result
-}
-
-func (s *UserIdentityStore) cleanupExpiredLocked(now time.Time) {
-	if now.Sub(s.lastCleanup) < s.ttl {
-		return
-	}
-	for code, entry := range s.entries {
-		if now.After(entry.expiresAt) {
-			delete(s.entries, code)
-		}
-	}
-	s.lastCleanup = now
-}
-
-func (sc *UserIdentityController) getCodeStore() *UserIdentityStore {
-	if sc.CodeStore == nil {
-		sc.CodeStore = NewUserIdentityStore(5 * time.Minute)
-	}
-	return sc.CodeStore
-}
-
-func randomCode(n int) (string, error) {
-	if n <= 0 {
-		return "", nil
-	}
-	buf := make([]byte, n)
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(buf), nil
+	CodeStore           auth.UserIdentityCodeStore
 }
 
 const providerCtxKey = "provider"
@@ -158,12 +60,14 @@ func (sc *UserIdentityController) BeginLogin(c *gin.Context) {
 func (sc *UserIdentityController) Callback(c *gin.Context) {
 	injectProvider(c)
 
+	// 1) 在后端回调中完成 provider 身份校验并拿到第三方用户资料。
 	profile, err := gothic.CompleteUserAuth(c.Writer, c.Request)
 	if err != nil {
 		sc.redirectError(c)
 		return
 	}
 
+	// 2) 绑定/创建本地用户并生成 JWT 结果（access/refresh + provider avatar）。
 	result, err := sc.UserIdentityUsecase.HandleCallback(c.Request.Context(), c.Param("provider"), toUserIdentityProfile(profile))
 	if err != nil {
 		if errors.Is(err, domain.ErrUserDisabled) {
@@ -174,8 +78,8 @@ func (sc *UserIdentityController) Callback(c *gin.Context) {
 		return
 	}
 
-	codeStore := sc.getCodeStore()
-	code, err := codeStore.Put(result)
+	// 3) 不把 JWT 放进 URL；改为生成一次性短码，供前端随后 POST /exchange 换取 token。
+	code, err := sc.CodeStore.Put(c.Request.Context(), result)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError("failed to prepare identity login callback"))
 		return
@@ -210,13 +114,18 @@ func (sc *UserIdentityController) Exchange(c *gin.Context) {
 		return
 	}
 
-	codeStore := sc.getCodeStore()
-	result := codeStore.Consume(req.Code)
+	// 一次性消费短码：成功即删除，避免重放；过期/无效返回 404。
+	result, err := sc.CodeStore.Consume(c.Request.Context(), req.Code)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, domain.RespError("failed to exchange identity login code"))
+		return
+	}
 	if result == nil {
 		c.JSON(http.StatusNotFound, domain.RespError("identity login code expired or invalid"))
 		return
 	}
 
+	// 前端在自身上下文中拿到 token 并建立登录态，避免 token 暴露在重定向 URL 中。
 	c.JSON(http.StatusOK, domain.RespSuccess(result))
 }
 
