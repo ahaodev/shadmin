@@ -74,8 +74,14 @@ func connectSQLite() (*ent.Client, error) {
 		log.Printf("✅ Database directory ensured: %s", dir)
 	}
 
-	// 启用 SQLite 外键约束
-	dsn := fmt.Sprintf("file:%s?_fk=1", dbPath)
+	// SQLite 单写者特性下，并发写会触发 "database is locked"。
+	// 通过 DSN 参数缓解：
+	//   _fk=1              启用外键约束
+	//   _journal_mode=WAL  开启 WAL，读写不互相阻塞（读者不再阻塞唯一写者）
+	//   _busy_timeout=5000 遇锁时等待重试最多 5s，而不是立即失败
+	//   _txlock=immediate  事务开始即以 BEGIN IMMEDIATE 抢占写锁，串行化写事务，
+	//                      避免两个事务各自升级写锁导致的死锁式 locked。
+	dsn := fmt.Sprintf("file:%s?_fk=1&_journal_mode=WAL&_busy_timeout=5000&_txlock=immediate", dbPath)
 	log.Printf("📡 Connecting to SQLite database...")
 	return ent.Open("sqlite3", dsn)
 }
