@@ -20,11 +20,11 @@ func NewProfileUsecase(profileRepo domain.ProfileRepository, timeout time.Durati
 	}
 }
 
-func (pu *profileUsecase) GetProfile(c context.Context, userID string) (*domain.Profile, error) {
+func (pu *profileUsecase) GetProfile(c context.Context, userID, subject string) (*domain.Profile, error) {
 	ctx, cancel := context.WithTimeout(c, pu.timeout)
 	defer cancel()
 
-	profile, err := pu.profileRepo.GetByID(ctx, userID)
+	profile, err := pu.profileRepo.GetByID(ctx, userID, subject)
 	if err != nil {
 		return nil, err
 	}

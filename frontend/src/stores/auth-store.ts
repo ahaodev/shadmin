@@ -16,7 +16,6 @@ export interface AuthUser {
   email: string
   role: string[]
   exp: number
-  providerAvatar?: string
 }
 
 export interface UserPermissions {
@@ -32,8 +31,6 @@ interface AuthState {
     setUser: (user: AuthUser | null) => void
     profile: User | null
     setProfile: (profile: User | null) => void
-    providerAvatar: string | null
-    setProviderAvatar: (providerAvatar: string | null) => void
     isLoadingProfile: boolean
     fetchProfile: () => Promise<void>
     accessToken: string
@@ -105,9 +102,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       profile: null,
       setProfile: (profile) =>
         set((state) => ({ ...state, auth: { ...state.auth, profile } })),
-      providerAvatar: null,
-      setProviderAvatar: (providerAvatar) =>
-        set((state) => ({ ...state, auth: { ...state.auth, providerAvatar } })),
       isLoadingProfile: false,
       fetchProfile: async () => {
         const currentState = get()
@@ -133,10 +127,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
               ...state.auth,
               profile,
               isLoadingProfile: false,
-              // Sync provider avatar from profile when not already set in memory
-              ...(profile.providerAvatarUrl && !state.auth.providerAvatar
-                ? { providerAvatar: profile.providerAvatarUrl }
-                : {}),
             },
           }))
         } catch (error: unknown) {
@@ -193,7 +183,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
               ...state.auth,
               user: null,
               profile: null,
-              providerAvatar: null,
               isLoadingProfile: false,
               accessToken: '',
               refreshToken: '',

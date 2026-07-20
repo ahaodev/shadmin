@@ -28,7 +28,8 @@ type ProfileController struct {
 // @Router       /profile [get]
 func (pc *ProfileController) GetProfile(c *gin.Context) {
 	userID := c.GetString(constants.UserID)
-	profile, err := pc.ProfileUsecase.GetProfile(c, userID)
+	subject := c.GetString(constants.UserSubject)
+	profile, err := pc.ProfileUsecase.GetProfile(c, userID, subject)
 	if err != nil {
 		c.JSON(http.StatusNotFound, domain.RespError("User not found"))
 		return

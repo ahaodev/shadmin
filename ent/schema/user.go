@@ -49,7 +49,8 @@ func (User) Fields() []ent.Field {
 			Comment("邀请人ID"),
 		field.String("avatar").
 			MaxLen(255).
-			Optional(),
+			Optional().
+			Comment("系统内原生用户头像；第三方登录头像存储在 user_identity.avatar_url"),
 		field.String("department_id").
 			Optional().
 			Nillable().

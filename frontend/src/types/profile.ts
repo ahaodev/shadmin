@@ -7,7 +7,6 @@ export interface Profile {
   phone?: string
   bio?: string
   avatar?: string
-  providerAvatarUrl?: string
   status: UserStatus
   created_at: Date
   updated_at: Date

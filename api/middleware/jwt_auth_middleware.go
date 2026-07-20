@@ -57,6 +57,7 @@ func JwtAuthMiddleware(secret string, tokenBlacklist auth.JWTBlacklist) gin.Hand
 		c.Set(constants.UserEmail, claims.Email)
 		c.Set(constants.IsAdmin, claims.IsAdmin)
 		c.Set(constants.UserRoles, claims.Roles)
+		c.Set(constants.UserSubject, claims.Subject)
 
 		c.Next()
 	}

@@ -8,9 +8,14 @@ import (
 
 // 社交登录 provider 标识
 const (
-	ProviderGoogle = "google"
-	ProviderGithub = "github"
+	ProviderGoogle = "Google"
+	ProviderGithub = "GitHub"
 )
+
+type UserIdentityProvider struct {
+	Provider string `json:"provider"` // provider 标识，如 Google / GitHub
+	Subject  string `json:"subject"`  // provider 侧的唯一主体 ID（sub / id）
+}
 
 // UserIdentityExchangeRequest 前端用一次性 code 换取 JWT 的请求体
 type UserIdentityExchangeRequest struct {
@@ -33,16 +38,9 @@ type UserIdentity struct {
 
 // UserIdentityResult 第三方登录成功后返回给前端的令牌与用户信息
 type UserIdentityResult struct {
-	AccessToken       string `json:"accessToken"`
-	RefreshToken      string `json:"refreshToken"`
-	User              *User  `json:"user,omitempty"`
-	ProviderAvatarURL string `json:"providerAvatarUrl,omitempty"`
-}
-
-// UserIdentityProviderInfo 暴露给前端的已启用 provider 信息
-type UserIdentityProviderInfo struct {
-	Provider string `json:"provider"`
-	Name     string `json:"name"` // 展示名，如 Google / GitHub
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	User         *User  `json:"user,omitempty"`
 }
 
 // UserIdentityProfile 第三方 provider 返回的用户资料。以 domain 自有类型承载，

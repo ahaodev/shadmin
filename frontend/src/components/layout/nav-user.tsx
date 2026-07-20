@@ -38,13 +38,13 @@ export function NavUser({ user: propUser }: NavUserProps) {
     ? {
         name: auth.profile.username,
         email: auth.profile.email,
-        avatar: auth.profile.avatar || auth.providerAvatar || '',
+        avatar: auth.profile.avatar || '',
       }
     : auth.user
       ? {
           name: auth.user.accountNo || 'Admin',
           email: auth.user.email,
-          avatar: auth.providerAvatar || '',
+          avatar: '',
         }
       : propUser
 

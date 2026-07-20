@@ -28,9 +28,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 import {
-  SlideCaptcha,
-} from './slide-captcha'
-import {type SlideCaptchaHandle, type SlideCaptchaResult} from "@/features/auth/sign-in/hooks/use-slide-captcha.ts";
+  type SlideCaptchaHandle,
+  type SlideCaptchaResult,
+} from '@/features/auth/sign-in/hooks/use-slide-captcha.ts'
+import { SlideCaptcha } from './slide-captcha'
 
 const formSchema = z.object({
   username: z.string().min(1, '请输入用户名'),
@@ -118,7 +119,6 @@ export function UserAuthForm({
           auth.setRefreshToken(refreshTokenValue)
         }
 
-        auth.setProviderAvatar(null)
         auth.clearSidebarCache()
 
         try {

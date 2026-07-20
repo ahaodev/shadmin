@@ -60,13 +60,13 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 		return nil, fmt.Errorf("provider %s returned empty subject: %w", provider, domain.ErrUserIdentityAuthFailed)
 	}
 
-	user, err := u.findOrCreateAndBindUser(ctx, provider, profile)
+	user, _, err := u.findOrCreateAndBindUser(ctx, provider, profile)
 	if err != nil {
 		return nil, err
 	}
 
-	// 复用既有 TokenService 签发 JWT 令牌对
-	accessToken, err := u.tokenService.CreateAccessToken(user, u.accessTokenSecret, u.accessTokenExpiry)
+	// 复用既有 TokenService 签发 JWT 令牌对，并把第三方身份信息写入 access token。
+	accessToken, err := u.tokenService.CreateAccessTokenWithIdentity(user, u.accessTokenSecret, u.accessTokenExpiry, provider, profile.UserID, "oidc")
 	if err != nil {
 		return nil, fmt.Errorf("create access token: %w", err)
 	}
@@ -79,26 +79,32 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 	user.Password = ""
 
 	return &domain.UserIdentityResult{
-		AccessToken:       accessToken,
-		RefreshToken:      refreshToken,
-		User:              user,
-		ProviderAvatarURL: strings.TrimSpace(profile.AvatarURL),
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		User:         user,
 	}, nil
 }
 
-func (u *userIdentityUsecase) findOrCreateAndBindUser(ctx context.Context, provider string, profile *domain.UserIdentityProfile) (*domain.User, error) {
+func (u *userIdentityUsecase) findOrCreateAndBindUser(ctx context.Context, provider string, profile *domain.UserIdentityProfile) (*domain.User, *domain.UserIdentity, error) {
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
 		user, err := u.findOrCreateAndBindUserOnce(ctx, provider, profile)
 		if err == nil {
-			return user, nil
+			identity, err := u.identityRepository.FindByProviderAndSubject(ctx, provider, profile.UserID)
+			if err != nil {
+				return nil, nil, fmt.Errorf("find identity account after binding: %w", err)
+			}
+			if identity == nil {
+				return nil, nil, fmt.Errorf("identity account missing after binding: %w", domain.ErrUserIdentityAuthFailed)
+			}
+			return user, identity, nil
 		}
 		lastErr = err
 		if !isUniqueViolation(err) {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return nil, lastErr
+	return nil, nil, lastErr
 }
 
 func (u *userIdentityUsecase) findOrCreateAndBindUserOnce(ctx context.Context, provider string, profile *domain.UserIdentityProfile) (*domain.User, error) {

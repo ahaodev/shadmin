@@ -30,8 +30,7 @@ function resolveUserInfo() {
     return {
       name: auth.profile.username || auth.profile.email || 'User',
       email: auth.profile.email || '',
-      avatar:
-        auth.profile.avatar || auth.providerAvatar || '/avatars/shadcn.jpg',
+      avatar: auth.profile.avatar || '/avatars/shadcn.jpg',
     }
   }
 
@@ -39,7 +38,7 @@ function resolveUserInfo() {
     return {
       name: auth.user.email || auth.user.accountNo || 'User',
       email: auth.user.email || '',
-      avatar: auth.providerAvatar || '/avatars/shadcn.jpg',
+      avatar: '/avatars/shadcn.jpg',
     }
   }
 

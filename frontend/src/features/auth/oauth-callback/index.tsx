@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
-import { Loader2 } from 'lucide-react'
 import { exchangeUserIdentityCode } from '@/services/authApi'
 import { getProfile } from '@/services/profileApi'
+import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { authUserFromJwt } from '@/lib/jwt'
 
@@ -60,7 +60,6 @@ export function OAuthCallback() {
           setUser,
           setAccessToken,
           setRefreshToken,
-          setProviderAvatar,
           clearSidebarCache,
           fetchProfile,
         } = useAuthStore.getState().auth
@@ -80,7 +79,6 @@ export function OAuthCallback() {
         if (refreshToken) {
           setRefreshToken(refreshToken)
         }
-        setProviderAvatar(response.data.providerAvatarUrl ?? null)
         clearSidebarCache()
 
         try {

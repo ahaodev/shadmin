@@ -37,13 +37,9 @@ const defaultValues: Partial<ProfileFormValues> = {
 }
 
 export function ProfileForm() {
-  const {
-    profile,
-    fetchProfile,
-    isLoadingProfile,
-    setProfile,
-    providerAvatar,
-  } = useAuthStore((state) => state.auth)
+  const { profile, fetchProfile, isLoadingProfile, setProfile } = useAuthStore(
+    (state) => state.auth
+  )
   const [isPending, setIsPending] = useState(false)
 
   const form = useForm<ProfileFormValues>({
@@ -89,7 +85,7 @@ export function ProfileForm() {
         <div className='flex items-center gap-4'>
           <Avatar className='h-20 w-20 rounded-full'>
             <AvatarImage
-              src={providerAvatar || profile?.avatar}
+              src={profile?.avatar || undefined}
               alt={profile?.username}
             />
             <AvatarFallback className='rounded-full text-2xl'>
@@ -101,11 +97,9 @@ export function ProfileForm() {
           <div className='space-y-1'>
             <p className='text-sm font-medium'>头像</p>
             <p className='text-muted-foreground text-xs'>
-              {providerAvatar
-                ? '当前显示第三方登录账号的头像。'
-                : profile?.avatar
-                  ? '当前显示自定义头像。'
-                  : '暂未设置头像，绑定第三方账号后将自动显示。'}
+              {profile?.avatar
+                ? '当前显示账号头像。'
+                : '暂未设置头像，绑定第三方账号后将自动显示。'}
             </p>
           </div>
         </div>

@@ -18,6 +18,11 @@ func (ts *TokenService) CreateAccessToken(user *domain.User, secret string, expi
 	return tokenutil.CreateAccessToken(user, secret, expiry)
 }
 
+// CreateAccessTokenWithIdentity 创建携带第三方身份信息的访问令牌。
+func (ts *TokenService) CreateAccessTokenWithIdentity(user *domain.User, secret string, expiry int, provider, providerSubject, source string) (string, error) {
+	return tokenutil.CreateAccessTokenWithIdentity(user, secret, expiry, provider, providerSubject)
+}
+
 // CreateRefreshToken 创建刷新令牌
 func (ts *TokenService) CreateRefreshToken(user *domain.User, secret string, expiry int) (string, error) {
 	return tokenutil.CreateRefreshToken(user, secret, expiry)

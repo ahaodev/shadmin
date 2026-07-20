@@ -33,7 +33,7 @@ export function ProfileDropdown() {
           <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
             <Avatar className='h-8 w-8'>
               <AvatarImage
-                src={profile?.avatar}
+                src={profile?.avatar || undefined}
                 alt={`@${profile?.username}`}
               />
               <AvatarFallback>

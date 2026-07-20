@@ -32,7 +32,6 @@ export interface LoginResponse {
   user: User
   accessToken: string
   refreshToken: string
-  providerAvatarUrl?: string
 }
 
 // 刷新令牌响应类型
@@ -107,9 +106,7 @@ export async function activateDevice(
 
 const USER_IDENTITY_LOGIN_BASE_PATH = '/api/v1/auth/identity'
 
-export function getIdentityLoginHref(
-  provider: string
-): string {
+export function getIdentityLoginHref(provider: string): string {
   return new URL(
     `${USER_IDENTITY_LOGIN_BASE_PATH}/${provider}`,
     getApiBaseURL()
@@ -117,9 +114,7 @@ export function getIdentityLoginHref(
 }
 
 // 获取后端当前已启用的第三方登录 provider 列表
-export async function getIdentityProviders(): Promise<
-  ApiResponse<string[]>
-> {
+export async function getIdentityProviders(): Promise<ApiResponse<string[]>> {
   const resp = await apiClient.get('/api/v1/auth/identity/providers')
   return resp.data
 }
