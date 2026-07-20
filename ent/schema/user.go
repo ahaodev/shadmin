@@ -28,11 +28,19 @@ func (User) Fields() []ent.Field {
 			Unique(),
 		field.String("email").
 			MaxLen(100).
-			Unique(),
+			Unique().
+			Optional().
+			Nillable().
+			Comment("邮箱；第三方来源用户可能为空，空值存 NULL 以兼容唯一约束"),
+		field.Enum("source").
+			Values("local", "oauth").
+			Default("local").
+			Comment("用户来源：local-本地原生用户，oauth-第三方登录来源用户"),
 		field.String("phone").
 			MaxLen(20).
 			Unique().
 			Optional().
+			Nillable().
 			Comment("用户手机号码"),
 		field.Bool("is_admin").
 			Default(false).
@@ -57,7 +65,10 @@ func (User) Fields() []ent.Field {
 			Comment("所属部门ID"),
 		field.String("password").
 			Sensitive().
-			MaxLen(128),
+			Optional().
+			Nillable().
+			MaxLen(128).
+			Comment("密码哈希；第三方来源用户无本地密码，存 NULL"),
 		field.String("bio").
 			Optional().
 			MaxLen(160),

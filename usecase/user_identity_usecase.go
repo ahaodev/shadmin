@@ -2,16 +2,14 @@ package usecase
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
 
 	"shadmin/domain"
 	"shadmin/internal/tokenservice"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 type userIdentityUsecase struct {
@@ -174,53 +172,26 @@ func (u *userIdentityUsecase) findOrCreateUserForIdentity(
 }
 
 // createUserFromUserIdentity 基于第三方 profile 创建新 shadmin 用户。
+// 第三方来源用户（provider:user）与本地用户（shadmin:user）的区别：
+//   - source = oauth
+//   - 无本地密码（password = NULL），不可用密码登录
+//   - email 直接采用 provider 返回值，可能为空（存 NULL），不再伪造 @id.local
+//   - username 由 provider + subject 稳定派生，保证全局唯一且可读
 func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, userRepo domain.UserRepository, provider string, profile *domain.UserIdentityProfile) (*domain.User, error) {
 	email := strings.TrimSpace(profile.Email)
-	hasProviderEmail := email != ""
 	name := strings.TrimSpace(profile.Name)
 	if name == "" {
 		name = strings.TrimSpace(profile.NickName)
 	}
 
-	username := email
-	if username == "" {
-		sub := profile.UserID
-		if len(sub) > 16 {
-			sub = sub[:16]
-		}
-		username = fmt.Sprintf("%s_%s", provider, sub)
-	}
-	if email == "" {
-		email = fmt.Sprintf("%s_%s@id.local", provider, profile.UserID)
-	}
-
-	user, err := u.tryCreateUser(ctx, userRepo, username, email, name)
-	if err != nil {
-		if hasProviderEmail && isUniqueViolation(err) {
-			return nil, fmt.Errorf("retry user identity transaction after user unique conflict: %w", err)
-		}
-		return nil, err
-	}
-	return user, nil
-}
-
-func (u *userIdentityUsecase) tryCreateUser(ctx context.Context, userRepo domain.UserRepository, username, email, name string) (*domain.User, error) {
-	rawPwd, err := randomSuffix(32)
-	if err != nil {
-		return nil, fmt.Errorf("generate random password: %w", err)
-	}
-	hashed, err := bcrypt.GenerateFromPassword([]byte(rawPwd), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, fmt.Errorf("hash random password: %w", err)
-	}
+	username := buildOAuthUsername(provider, profile.UserID, name)
 
 	user := &domain.User{
 		Username: username,
-		Email:    email,
-		Password: string(hashed),
+		Email:    email, // 可能为空 → 仓储层写入 NULL
+		Source:   domain.UserSourceOAuth,
 		Status:   domain.UserStatusActive,
 	}
-	_ = name // 当前 User 实体无独立 displayName 字段，name 暂不落库
 
 	if err := userRepo.Create(ctx, user); err != nil {
 		return nil, fmt.Errorf("create user identity user: %w", err)
@@ -228,13 +199,35 @@ func (u *userIdentityUsecase) tryCreateUser(ctx context.Context, userRepo domain
 	return user, nil
 }
 
-// randomSuffix 生成 url-safe 随机字符串
-func randomSuffix(n int) (string, error) {
-	b := make([]byte, n)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
+// buildOAuthUsername 基于 provider + subject 稳定派生唯一且可读的用户名。
+// subject 在 provider 内唯一，叠加 provider 前缀后全局唯一，无需依赖唯一冲突重试。
+func buildOAuthUsername(provider, subject, name string) string {
+	base := slugifyUsername(name)
+	if base == "" {
+		base = strings.ToLower(provider)
 	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
+	if len(base) > 16 {
+		base = base[:16]
+	}
+	suffix := usernameSuffix(provider, subject)
+	return fmt.Sprintf("%s_%s", base, suffix)
+}
+
+// slugifyUsername 保留字母/数字，其余转为空，用于生成安全的用户名基段。
+func slugifyUsername(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// usernameSuffix 由 provider+subject 生成稳定的短哈希后缀，保证用户名唯一。
+func usernameSuffix(provider, subject string) string {
+	sum := sha256.Sum256([]byte(strings.ToLower(provider) + ":" + subject))
+	return hex.EncodeToString(sum[:])[:10]
 }
 
 // isUniqueViolation 粗略判定唯一约束冲突（跨 sqlite/postgres/mysql 文案差异）

@@ -165,6 +165,14 @@ func (lc *AuthController) Login(c *gin.Context) {
 		return
 	}
 
+	// 第三方来源用户没有本地密码：拒绝其走密码登录，避免被撞库。
+	// 保持与“用户名或密码错误”一致的模糊提示，不暴露账户来源。
+	if user.Source == domain.UserSourceOAuth || user.Password == "" {
+		recordLoginLog("failed", "第三方账户不支持密码登录")
+		c.JSON(http.StatusUnauthorized, domain.RespError("用户名或密码错误"))
+		return
+	}
+
 	// 验证密码
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password))
 	if err != nil {

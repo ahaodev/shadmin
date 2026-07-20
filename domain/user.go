@@ -21,6 +21,7 @@ type User struct {
 	Email          string     `json:"email"`
 	Phone          string     `json:"phone,omitempty"`
 	Password       string     `json:"password,omitempty"`
+	Source         string     `json:"source,omitempty"` // local-本地用户，oauth-第三方来源用户
 	Avatar         string     `json:"avatar,omitempty"`
 	IsAdmin        bool       `json:"is_admin,omitempty"`
 	Status         string     `json:"status"`              // active, inactive, invited, suspended

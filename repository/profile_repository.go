@@ -43,8 +43,8 @@ func (pr *entProfileRepository) GetByID(c context.Context, id, subject string) (
 	profile := &domain.Profile{
 		ID:        u.ID,
 		Username:  u.Username,
-		Email:     u.Email,
-		Phone:     u.Phone,
+		Email:     derefString(u.Email),
+		Phone:     derefString(u.Phone),
 		Bio:       u.Bio,
 		Avatar:    avatar,
 		Status:    string(u.Status),
@@ -116,5 +116,5 @@ func (pr *entProfileRepository) GetPasswordHash(c context.Context, userID string
 	if err != nil {
 		return "", err
 	}
-	return u.Password, nil
+	return derefString(u.Password), nil
 }

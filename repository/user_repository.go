@@ -29,14 +29,31 @@ func entStatusToDomainStatus(status user.Status) string {
 	return string(status)
 }
 
+// derefString 安全解引用可空字符串指针，nil 返回空串。
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// emptyToNil 把空串转为 nil 指针，用于可空唯一字段写入 NULL 而非空串。
+func emptyToNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 // entUserToDomainUser converts an ent.User to domain.User and extracts role IDs from edges
 func entUserToDomainUser(u *ent.User) *domain.User {
 	domainUser := &domain.User{
 		ID:           u.ID,
 		Username:     u.Username,
-		Email:        u.Email,
-		Phone:        u.Phone,
-		Password:     u.Password,
+		Email:        derefString(u.Email),
+		Phone:        derefString(u.Phone),
+		Password:     derefString(u.Password),
+		Source:       string(u.Source),
 		Avatar:       u.Avatar,
 		IsAdmin:      u.IsAdmin,
 		Status:       entStatusToDomainStatus(u.Status),
@@ -81,14 +98,19 @@ func (ur *entUserRepository) Create(c context.Context, u *domain.User) error {
 	createQuery := ur.client.User.
 		Create().
 		SetUsername(u.Username).
-		SetEmail(u.Email).
-		SetPhone(u.Phone).
-		SetPassword(u.Password).
+		SetNillableEmail(emptyToNil(u.Email)).
+		SetNillablePhone(emptyToNil(u.Phone)).
+		SetNillablePassword(emptyToNil(u.Password)).
 		SetAvatar(u.Avatar).
 		SetStatus(status).
 		SetNillableInvitedAt(u.InvitedAt).
 		SetNillableInvitedBy(&u.InvitedBy).
 		SetNillableDepartmentID(u.DepartmentID)
+
+	// 来源：默认 local，第三方登录用户由 usecase 显式置为 oauth
+	if u.Source != "" {
+		createQuery = createQuery.SetSource(user.Source(u.Source))
+	}
 
 	created, err := createQuery.Save(c)
 
@@ -160,8 +182,9 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 		domainUser := &domain.User{
 			ID:           u.ID,
 			Username:     u.Username,
-			Email:        u.Email,
-			Phone:        u.Phone,
+			Email:        derefString(u.Email),
+			Phone:        derefString(u.Phone),
+			Source:       string(u.Source),
 			Avatar:       u.Avatar,
 			IsAdmin:      u.IsAdmin,
 			Status:       entStatusToDomainStatus(u.Status),
@@ -250,10 +273,22 @@ func (ur *entUserRepository) Update(c context.Context, u *domain.User) error {
 	updateQuery := ur.client.User.
 		UpdateOneID(u.ID).
 		SetUsername(u.Username).
-		SetEmail(u.Email).
-		SetPhone(u.Phone).
 		SetAvatar(u.Avatar).
 		SetStatus(domainStatusToEntStatus(u.Status))
+
+	// email 唯一且可空：空值写 NULL（第三方来源用户可能无邮箱），非空则更新
+	if u.Email == "" {
+		updateQuery = updateQuery.ClearEmail()
+	} else {
+		updateQuery = updateQuery.SetEmail(u.Email)
+	}
+
+	// phone 唯一且可空：空值写入 NULL（避免空串触发唯一冲突），非空则更新
+	if u.Phone == "" {
+		updateQuery = updateQuery.ClearPhone()
+	} else {
+		updateQuery = updateQuery.SetPhone(u.Phone)
+	}
 
 	// Handle department_id
 	if u.DepartmentID != nil && *u.DepartmentID != "" {
