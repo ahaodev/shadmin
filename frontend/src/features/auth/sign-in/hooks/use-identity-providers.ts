@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { getIdentityProviders, type IdentityProvider } from '@/services/authApi'
+import { getIdentityProviders } from '@/services/authApi'
 
 const IDENTITY_PROVIDERS_QUERY_KEY = 'identity-providers'
 
 export function useIdentityProviders() {
-  return useQuery<IdentityProvider[]>({
+  return useQuery<string[]>({
     queryKey: [IDENTITY_PROVIDERS_QUERY_KEY],
     queryFn: async () => {
       const response = await getIdentityProviders()
