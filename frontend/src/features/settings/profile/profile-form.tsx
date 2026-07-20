@@ -89,11 +89,7 @@ export function ProfileForm() {
         <div className='flex items-center gap-4'>
           <Avatar className='h-20 w-20 rounded-full'>
             <AvatarImage
-              src={
-                providerAvatar ||
-                profile?.provider_avatar_url ||
-                profile?.avatar
-              }
+              src={providerAvatar || profile?.avatar}
               alt={profile?.username}
             />
             <AvatarFallback className='rounded-full text-2xl'>
@@ -105,7 +101,7 @@ export function ProfileForm() {
           <div className='space-y-1'>
             <p className='text-sm font-medium'>头像</p>
             <p className='text-muted-foreground text-xs'>
-              {providerAvatar || profile?.provider_avatar_url
+              {providerAvatar
                 ? '当前显示第三方登录账号的头像。'
                 : profile?.avatar
                   ? '当前显示自定义头像。'
