@@ -82,7 +82,7 @@ func (f *ControllerFactory) CreateUserIdentityController() *controller.UserIdent
 			f.timeout,
 		),
 		RedirectURL: f.app.Env.IdentityRedirectURL,
-		CodeStore:   controller.NewUserIdentityStore(5 * time.Minute),
+		CodeStore:   auth.NewUserIdentityCodeStore(f.app.Cacher, 3*time.Minute),
 	}
 }
 
