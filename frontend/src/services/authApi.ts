@@ -105,16 +105,10 @@ export async function activateDevice(
   return resp.data
 }
 
-// 已启用的第三方登录 provider
-export interface IdentityProvider {
-  provider: string
-  name: string
-}
-
 const USER_IDENTITY_LOGIN_BASE_PATH = '/api/v1/auth/identity'
 
 export function getIdentityLoginHref(
-  provider: IdentityProvider['provider']
+  provider: string
 ): string {
   return new URL(
     `${USER_IDENTITY_LOGIN_BASE_PATH}/${provider}`,
@@ -124,7 +118,7 @@ export function getIdentityLoginHref(
 
 // 获取后端当前已启用的第三方登录 provider 列表
 export async function getIdentityProviders(): Promise<
-  ApiResponse<IdentityProvider[]>
+  ApiResponse<string[]>
 > {
   const resp = await apiClient.get('/api/v1/auth/identity/providers')
   return resp.data
