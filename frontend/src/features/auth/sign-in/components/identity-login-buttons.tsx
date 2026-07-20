@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
 import {
   getIdentityLoginHref,
-  getIdentityProviders,
   type IdentityProvider,
 } from '@/services/authApi'
 import { Loader2 } from 'lucide-react'
 import { IconGithub } from '@/assets/brand-icons/icon-github'
 import { IconGmail } from '@/assets/brand-icons/icon-gmail'
 import { Button } from '@/components/ui/button'
+import { useIdentityProviders } from '../hooks/use-identity-providers'
 
 const PROVIDER_ICON_CLASS_NAME = 'size-4 shrink-0'
 
@@ -25,42 +24,11 @@ function providerIcon(provider: IdentityProvider['provider']) {
 // IdentityProvider 拉取后端已启用的第三方登录 provider 列表，
 // 仅在后端启用至少一个 provider 时显示对应按钮；未启用时整组不显示。
 export function IdentityLoginButtons() {
-  const [providers, setProviders] = useState<IdentityProvider[] | null>(null)
-  const [isError, setIsError] = useState(false)
-  const hasFetchedRef = useRef(false)
-
-  useEffect(() => {
-    if (hasFetchedRef.current) return
-
-    hasFetchedRef.current = true
-    let cancelled = false
-
-    void (async () => {
-      try {
-        const response = await getIdentityProviders()
-        if (cancelled) return
-
-        if (response?.code === 0 && Array.isArray(response.data)) {
-          setProviders(response.data)
-          return
-        }
-
-        setIsError(true)
-      } catch {
-        if (cancelled) return
-        // 接口不可用或未配置：静默隐藏整组按钮
-        setIsError(true)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const { data: providers = [], isError, isLoading } = useIdentityProviders()
 
   if (isError) return null
 
-  if (providers === null) {
+  if (isLoading) {
     // 拉取中：占位避免布局抖动
     return (
       <div className='flex items-center justify-center'>
