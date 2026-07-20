@@ -12,7 +12,15 @@ import (
 )
 
 func CreateAccessToken(user *domain.User, secret string, expiry int) (accessToken string, err error) {
+	return CreateAccessTokenWithIdentity(user, secret, expiry, "shadmin", user.ID)
+}
+
+func CreateAccessTokenWithIdentity(user *domain.User, secret string, expiry int, provider, providerSubject string) (accessToken string, err error) {
 	exp := jwt.NewNumericDate(time.Now().Add(time.Minute * time.Duration(expiry)))
+
+	// shamdin users    shadmin:user_id
+	// OIDC Provider    provider:provider_subject
+	subject := provider + ":" + providerSubject
 
 	claims := &domain.JwtCustomClaims{
 		Name:    user.Username,
@@ -21,8 +29,10 @@ func CreateAccessToken(user *domain.User, secret string, expiry int) (accessToke
 		IsAdmin: user.IsAdmin,
 		Roles:   user.Roles,
 		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "shadmin",
 			ExpiresAt: exp,
 			ID:        xid.New().String(), // JTI，用于服务端登出黑名单
+			Subject:   subject,
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -253,5 +263,12 @@ func ExtractAllClaimsFromToken(requestToken string, secret string) (*domain.JwtC
 			}
 		}
 	}
+
+	if subject, exists := claims["sub"]; exists {
+		if subjectStr, ok := subject.(string); ok {
+			customClaims.Subject = subjectStr
+		}
+	}
+
 	return customClaims, nil
 }
