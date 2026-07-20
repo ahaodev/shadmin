@@ -4119,6 +4119,9 @@ const docTemplate = `{
                 "phone": {
                     "type": "string"
                 },
+                "providerAvatarUrl": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string"
                 },
