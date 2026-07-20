@@ -1,26 +1,15 @@
 import {
   forwardRef,
   useCallback,
-  useEffect,
   useImperativeHandle,
   useRef,
-  useState,
 } from 'react'
-import { getSlideCaptcha, type SlideCaptchaChallenge } from '@/services/authApi'
 import GoCaptcha from 'go-captcha-react'
-import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
-
-export interface SlideCaptchaResult {
-  captcha_id: string
-  captcha_x: number
-  captcha_y: number
-}
-
-export interface SlideCaptchaHandle {
-  reset: () => void
-  refresh: () => Promise<void>
-}
+import {
+    type SlideCaptchaHandle, type SlideCaptchaResult,
+    useSlideCaptcha,
+} from '../hooks/use-slide-captcha'
 
 interface SlideCaptchaProps {
   onVerified: (result: SlideCaptchaResult) => void
@@ -29,60 +18,12 @@ interface SlideCaptchaProps {
 
 export const SlideCaptcha = forwardRef<SlideCaptchaHandle, SlideCaptchaProps>(
   function SlideCaptcha({ onVerified, submitting }, ref) {
-    const [challenge, setChallenge] = useState<SlideCaptchaChallenge | null>(
-      null
-    )
-    const [remaining, setRemaining] = useState(0)
-    const [verified, setVerified] = useState(false)
+    const { challenge, verified, setVerified, fetchChallenge } = useSlideCaptcha()
     const slideRef = useRef<{
       reset: () => void
       clear: () => void
       refresh: () => void
     } | null>(null)
-    const lastIdRef = useRef<string>('')
-    const mountedRef = useRef(true)
-
-    useEffect(() => {
-      mountedRef.current = true
-      return () => {
-        mountedRef.current = false
-      }
-    }, [])
-
-    const fetchChallenge = useCallback(async () => {
-      try {
-        const resp = await getSlideCaptcha(lastIdRef.current || undefined)
-        if (!mountedRef.current) return
-        if (resp?.code !== 0 || !resp.data) {
-          toast.error(resp?.msg || '获取验证码失败')
-          return
-        }
-        lastIdRef.current = resp.data.captcha_id
-        setChallenge(resp.data)
-        setRemaining(resp.data.expires_in)
-        setVerified(false)
-        slideRef.current?.reset()
-      } catch (err) {
-        if (!mountedRef.current) return
-        // eslint-disable-next-line no-console
-        console.error('Failed to load slide captcha', err)
-        toast.error('获取验证码失败，请重试')
-      }
-    }, [])
-
-    useEffect(() => {
-      fetchChallenge()
-    }, [fetchChallenge])
-
-    useEffect(() => {
-      if (!challenge || verified) return
-      if (remaining <= 0) {
-        fetchChallenge()
-        return
-      }
-      const t = window.setTimeout(() => setRemaining((r) => r - 1), 1000)
-      return () => window.clearTimeout(t)
-    }, [remaining, challenge, verified, fetchChallenge])
 
     useImperativeHandle(
       ref,
@@ -91,9 +32,12 @@ export const SlideCaptcha = forwardRef<SlideCaptchaHandle, SlideCaptchaProps>(
           setVerified(false)
           slideRef.current?.reset()
         },
-        refresh: fetchChallenge,
+        refresh: async () => {
+          await fetchChallenge()
+          slideRef.current?.reset()
+        },
       }),
-      [fetchChallenge]
+      [fetchChallenge, setVerified]
     )
 
     const handleConfirm = useCallback(
@@ -109,7 +53,7 @@ export const SlideCaptcha = forwardRef<SlideCaptchaHandle, SlideCaptchaProps>(
           captcha_y: Math.round(point.y),
         })
       },
-      [challenge, verified, submitting, onVerified]
+      [challenge, verified, submitting, onVerified, setVerified]
     )
     return (
       <div className='flex flex-col gap-3'>
