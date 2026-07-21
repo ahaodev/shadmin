@@ -429,7 +429,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/domain.UserIdentityProviderInfo"
+                                                "type": "string"
                                             }
                                         }
                                     }
@@ -4119,9 +4119,6 @@ const docTemplate = `{
                 "phone": {
                     "type": "string"
                 },
-                "providerAvatarUrl": {
-                    "type": "string"
-                },
                 "status": {
                     "type": "string"
                 },
@@ -4452,6 +4449,10 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "source": {
+                    "description": "local-本地用户，oauth-第三方来源用户",
+                    "type": "string"
+                },
                 "status": {
                     "description": "active, inactive, invited, suspended",
                     "type": "string"
@@ -4475,25 +4476,10 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.UserIdentityProviderInfo": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "description": "展示名，如 Google / GitHub",
-                    "type": "string"
-                },
-                "provider": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.UserIdentityResult": {
             "type": "object",
             "properties": {
                 "accessToken": {
-                    "type": "string"
-                },
-                "providerAvatarUrl": {
                     "type": "string"
                 },
                 "refreshToken": {

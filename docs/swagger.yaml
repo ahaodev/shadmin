@@ -570,8 +570,6 @@ definitions:
         type: string
       phone:
         type: string
-      providerAvatarUrl:
-        type: string
       status:
         type: string
       updated_at:
@@ -792,6 +790,9 @@ definitions:
         items:
           type: string
         type: array
+      source:
+        description: local-本地用户，oauth-第三方来源用户
+        type: string
       status:
         description: active, inactive, invited, suspended
         type: string
@@ -807,19 +808,9 @@ definitions:
     required:
     - code
     type: object
-  domain.UserIdentityProviderInfo:
-    properties:
-      name:
-        description: 展示名，如 Google / GitHub
-        type: string
-      provider:
-        type: string
-    type: object
   domain.UserIdentityResult:
     properties:
       accessToken:
-        type: string
-      providerAvatarUrl:
         type: string
       refreshToken:
         type: string
@@ -1140,7 +1131,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/domain.UserIdentityProviderInfo'
+                    type: string
                   type: array
               type: object
       summary: List enabled identity providers

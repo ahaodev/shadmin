@@ -134,7 +134,7 @@ func (sc *UserIdentityController) Exchange(c *gin.Context) {
 // @Description  Returns the list of OAuth providers enabled by the backend
 // @Tags         Authentication
 // @Produce      json
-// @Success      200  {object}  domain.Response{data=[]domain.UserIdentityProviderInfo}
+// @Success      200  {object}  domain.Response{data=[]string}
 // @Router       /auth/identity/providers [get]
 func (sc *UserIdentityController) ListProviders(c *gin.Context) {
 	providers := goth.GetProviders()
