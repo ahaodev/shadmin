@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"shadmin/domain"
+	"shadmin/internal/constants"
 	"time"
 )
 
@@ -28,7 +29,7 @@ func (du *dictUsecase) CreateDictType(ctx context.Context, request *domain.Creat
 
 	// 设置默认状态
 	if request.Status == "" {
-		request.Status = domain.StatusActive
+		request.Status = constants.StatusActive
 	}
 
 	// 创建域模型
@@ -94,7 +95,7 @@ func (du *dictUsecase) CreateDictItem(ctx context.Context, request *domain.Creat
 
 	// 设置默认状态
 	if request.Status == "" {
-		request.Status = domain.StatusActive
+		request.Status = constants.StatusActive
 	}
 
 	// 验证字典类型是否存在
@@ -164,5 +165,5 @@ func (du *dictUsecase) GetActiveItemsByTypeCode(ctx context.Context, typeCode st
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
 
-	return du.dictRepository.GetItemsByTypeCode(ctx, typeCode, domain.StatusActive)
+	return du.dictRepository.GetItemsByTypeCode(ctx, typeCode, constants.StatusActive)
 }

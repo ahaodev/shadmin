@@ -7,15 +7,16 @@ import (
 	"shadmin/ent"
 	"shadmin/ent/dictitem"
 	"shadmin/ent/dicttype"
+	"shadmin/internal/constants"
 	"time"
 )
 
 // Helper functions for status conversion
 func domainStatusToDictTypeStatus(status string) dicttype.Status {
 	switch status {
-	case domain.StatusActive:
+	case constants.StatusActive:
 		return dicttype.StatusActive
-	case domain.StatusInactive:
+	case constants.StatusInactive:
 		return dicttype.StatusInactive
 	default:
 		return dicttype.StatusActive
@@ -24,9 +25,9 @@ func domainStatusToDictTypeStatus(status string) dicttype.Status {
 
 func domainStatusToDictItemStatus(status string) dictitem.Status {
 	switch status {
-	case domain.StatusActive:
+	case constants.StatusActive:
 		return dictitem.StatusActive
-	case domain.StatusInactive:
+	case constants.StatusInactive:
 		return dictitem.StatusInactive
 	default:
 		return dictitem.StatusActive
@@ -579,7 +580,7 @@ func (dr *entDictRepository) GetItemsByTypeCode(ctx context.Context, typeCode st
 
 	// 应用状态过滤（默认只返回active状态）
 	if status == "" {
-		status = domain.StatusActive
+		status = constants.StatusActive
 	}
 	query = query.Where(dictitem.StatusEQ(domainStatusToDictItemStatus(status)))
 

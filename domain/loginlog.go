@@ -14,7 +14,8 @@ type LoginLog struct {
 	Browser       string    `json:"browser,omitempty"`
 	OS            string    `json:"os,omitempty"`
 	Device        string    `json:"device,omitempty"`
-	Status        string    `json:"status"` // success, failed
+	Status        string    `json:"status"`           // success, failed
+	Source        string    `json:"source,omitempty"` // local / oauth
 	FailureReason string    `json:"failure_reason,omitempty"`
 	LoginTime     time.Time `json:"login_time"`
 }
@@ -28,6 +29,7 @@ type CreateLoginLogRequest struct {
 	OS            string `json:"os,omitempty"`
 	Device        string `json:"device,omitempty"`
 	Status        string `json:"status" binding:"required"` // success, failed
+	Source        string `json:"source,omitempty"`          // local / oauth
 	FailureReason string `json:"failure_reason,omitempty"`
 }
 
@@ -39,6 +41,7 @@ type LoginLogQueryFilter struct {
 	Username  string     `json:"username,omitempty"`
 	LoginIP   string     `json:"login_ip,omitempty"`
 	Status    string     `json:"status,omitempty"`
+	Source    string     `json:"source,omitempty"`
 	Browser   string     `json:"browser,omitempty"`
 	OS        string     `json:"os,omitempty"`
 	StartTime *time.Time `json:"start_time,omitempty"`

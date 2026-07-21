@@ -8,6 +8,7 @@ import (
 type Profile struct {
 	ID        string    `json:"id"`
 	Username  string    `json:"username"`
+	Nickname  string    `json:"nickname"`
 	Email     string    `json:"email"`
 	Phone     string    `json:"phone"`
 	Bio       string    `json:"bio"`
@@ -17,8 +18,7 @@ type Profile struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// subject 为 JWT 的 sub 声明，格式为 shadmin:<user_id> 或 <provider>:<provider_subject>，
-// 用于决定头像来源：shadmin 用户取 user.avatar，第三方身份取对应 user_identity.avatar_url。
+// ProfileUsecase subject 为 JWT 的 sub 声明，格式为 shadmin:<user_id> 或 <provider>:<provider_subject>，
 type ProfileUsecase interface {
 	GetProfile(c context.Context, userID, subject string) (*Profile, error)
 	UpdateProfile(c context.Context, userID string, updateData ProfileUpdate) error

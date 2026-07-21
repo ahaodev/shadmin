@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"shadmin/internal/constants"
 	"strings"
 	"time"
 
@@ -152,7 +153,7 @@ func (u *userIdentityUsecase) findOrCreateUserForIdentity(
 	}
 
 	// 被禁用的账户不允许通过第三方登录继续进入系统
-	if user.Status != domain.UserStatusActive {
+	if user.Status != constants.UserStatusActive {
 		return nil, fmt.Errorf("user account is disabled: %w", domain.ErrUserDisabled)
 	}
 
@@ -188,9 +189,10 @@ func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, us
 
 	user := &domain.User{
 		Username: username,
+		Nickname: name,
 		Email:    email, // 可能为空 → 仓储层写入 NULL
-		Source:   domain.UserSourceOAuth,
-		Status:   domain.UserStatusActive,
+		Source:   constants.UserSourceOAuth,
+		Status:   constants.UserStatusActive,
 	}
 
 	if err := userRepo.Create(ctx, user); err != nil {

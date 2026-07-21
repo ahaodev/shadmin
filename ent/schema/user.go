@@ -26,6 +26,10 @@ func (User) Fields() []ent.Field {
 		field.String("username").
 			MaxLen(32).
 			Unique(),
+		field.String("nickname").
+			MaxLen(100).
+			Optional().
+			Comment("用户昵称"),
 		field.String("email").
 			MaxLen(100).
 			Unique().

@@ -71,6 +71,7 @@ func (f *ControllerFactory) CreateCaptchaController() *controller.CaptchaControl
 func (f *ControllerFactory) CreateUserIdentityController() *controller.UserIdentityController {
 	tokenService := tokenservice.NewTokenService()
 	identityRepository := repository.NewUserIdentityRepository(f.db)
+	loginLogUseCase := usecase.NewLoginLogUsecase(repository.NewLoginLogRepository(f.db), f.timeout)
 	return &controller.UserIdentityController{
 		UserIdentityUsecase: usecase.NewUserIdentityUsecase(
 			identityRepository,
@@ -81,8 +82,9 @@ func (f *ControllerFactory) CreateUserIdentityController() *controller.UserIdent
 			f.app.Env.RefreshTokenExpiryMinute,
 			f.timeout,
 		),
-		RedirectURL: f.app.Env.IdentityRedirectURL,
-		CodeStore:   auth.NewUserIdentityCodeStore(f.app.Cacher, 3*time.Minute),
+		LoginLogUsecase: loginLogUseCase,
+		RedirectURL:     f.app.Env.IdentityRedirectURL,
+		CodeStore:       auth.NewUserIdentityCodeStore(f.app.Cacher, 3*time.Minute),
 	}
 }
 

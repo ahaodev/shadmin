@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"shadmin/domain"
+	"shadmin/internal/constants"
 	"strings"
 	"time"
 )
@@ -94,6 +95,11 @@ func (luc *loginLogUsecase) CreateLoginLog(c context.Context, request *domain.Cr
 		request.Device = device
 	}
 
+	// 未指定来源时默认本地密码登录
+	if request.Source == "" {
+		request.Source = constants.UserSourceLocal
+	}
+
 	loginLog := &domain.LoginLog{
 		Username:      request.Username,
 		LoginIP:       request.LoginIP,
@@ -102,6 +108,7 @@ func (luc *loginLogUsecase) CreateLoginLog(c context.Context, request *domain.Cr
 		OS:            request.OS,
 		Device:        request.Device,
 		Status:        request.Status,
+		Source:        request.Source,
 		FailureReason: request.FailureReason,
 		LoginTime:     time.Now(),
 	}

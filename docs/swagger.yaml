@@ -387,6 +387,9 @@ definitions:
         type: string
       os:
         type: string
+      source:
+        description: local / oauth
+        type: string
       status:
         description: success, failed
         type: string
@@ -567,6 +570,8 @@ definitions:
       email:
         type: string
       id:
+        type: string
+      nickname:
         type: string
       phone:
         type: string
@@ -781,6 +786,8 @@ definitions:
         type: boolean
       is_admin:
         type: boolean
+      nickname:
+        type: string
       password:
         type: string
       phone:

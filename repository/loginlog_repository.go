@@ -6,14 +6,15 @@ import (
 	"shadmin/ent"
 	"shadmin/ent/loginlog"
 	"shadmin/ent/predicate"
+	"shadmin/internal/constants"
 )
 
 // Helper function to convert domain status string to ent status enum
 func domainStatusToEntLoginLogStatus(status string) loginlog.Status {
 	switch status {
-	case "success":
+	case constants.StatusSuccess:
 		return loginlog.StatusSuccess
-	case "failed":
+	case constants.StatusFailed:
 		return loginlog.StatusFailed
 	default:
 		return loginlog.StatusFailed
@@ -47,6 +48,7 @@ func (lr *entLoginLogRepository) Create(c context.Context, log *domain.LoginLog)
 		SetNillableOs(&log.OS).
 		SetNillableDevice(&log.Device).
 		SetStatus(status).
+		SetNillableSource(emptyToNil(log.Source)).
 		SetNillableFailureReason(&log.FailureReason).
 		SetLoginTime(log.LoginTime).
 		Save(c)
@@ -73,6 +75,9 @@ func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLog
 	}
 	if filter.Status != "" {
 		predicates = append(predicates, loginlog.StatusEQ(domainStatusToEntLoginLogStatus(filter.Status)))
+	}
+	if filter.Source != "" {
+		predicates = append(predicates, loginlog.SourceEQ(filter.Source))
 	}
 	if filter.Browser != "" {
 		predicates = append(predicates, loginlog.BrowserContains(filter.Browser))
@@ -127,6 +132,7 @@ func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLog
 			OS:            log.Os,
 			Device:        log.Device,
 			Status:        entLoginLogStatusToDomainStatus(log.Status),
+			Source:        log.Source,
 			FailureReason: log.FailureReason,
 			LoginTime:     log.LoginTime,
 		}

@@ -31,7 +31,7 @@ func UserStateMiddleware(userStatusCache *auth.Cache) gin.HandlerFunc {
 				c.Abort()
 				return
 			}
-			if status != domain.UserStatusActive {
+			if status != constants.UserStatusActive {
 				c.JSON(http.StatusUnauthorized, domain.RespError("账户未启用或已停用"))
 				c.Abort()
 				return

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"shadmin/internal/auth"
+	"shadmin/internal/constants"
+	"strings"
 
 	"shadmin/domain"
 
@@ -20,7 +22,8 @@ import (
 // - 列表接口 GET /auth/identity/providers         → 返回当前已启用的 provider
 type UserIdentityController struct {
 	UserIdentityUsecase domain.UserIdentityUsecase
-	RedirectURL         string // 登录成功后将短期 code 重定向的前端地址
+	LoginLogUsecase     domain.LoginLogUseCase // 记录第三方登录日志，与本地登录保持一致
+	RedirectURL         string                 // 登录成功后将短期 code 重定向的前端地址
 	CodeStore           *auth.UserIdentityCodeStore
 }
 
@@ -60,23 +63,41 @@ func (sc *UserIdentityController) BeginLogin(c *gin.Context) {
 func (sc *UserIdentityController) Callback(c *gin.Context) {
 	injectProvider(c)
 
+	provider := c.Param("provider")
+
 	// 1) 在后端回调中完成 provider 身份校验并拿到第三方用户资料。
 	profile, err := gothic.CompleteUserAuth(c.Writer, c.Request)
 	if err != nil {
+		sc.recordIdentityLoginLog(c, provider, provider, "failed", "第三方身份认证失败")
 		sc.redirectError(c)
 		return
 	}
 
 	// 2) 绑定/创建本地用户并生成 JWT 结果（access/refresh + provider avatar）。
-	result, err := sc.UserIdentityUsecase.HandleCallback(c.Request.Context(), c.Param("provider"), toUserIdentityProfile(profile))
+	logUsername := identityLogUsername(profile.Email, profile.Name, provider)
+	result, err := sc.UserIdentityUsecase.HandleCallback(c.Request.Context(), provider, &domain.UserIdentityProfile{
+		UserID:    profile.UserID,
+		Email:     profile.Email,
+		Name:      profile.Name,
+		NickName:  profile.NickName,
+		AvatarURL: profile.AvatarURL,
+	})
 	if err != nil {
 		if errors.Is(err, domain.ErrUserDisabled) {
+			sc.recordIdentityLoginLog(c, provider, logUsername, "failed", "账户已停用或未启用")
 			sc.redirectTo(c, sc.errorRedirectURL("disabled"))
 			return
 		}
+		sc.recordIdentityLoginLog(c, provider, logUsername, "failed", "第三方登录处理失败")
 		sc.redirectError(c)
 		return
 	}
+
+	// 登录成功：优先记录绑定后的 shadmin 用户名，保持与本地登录日志一致。
+	if result.User != nil && result.User.Username != "" {
+		logUsername = result.User.Username
+	}
+	sc.recordIdentityLoginLog(c, provider, logUsername, constants.StatusSuccess, "")
 
 	// 3) 不把 JWT 放进 URL；改为生成一次性短码，供前端随后 POST /exchange 换取 token。
 	code, err := sc.CodeStore.Put(c.Request.Context(), result)
@@ -94,6 +115,43 @@ func (sc *UserIdentityController) Callback(c *gin.Context) {
 	q.Set("code", code)
 	target.RawQuery = q.Encode()
 	c.Redirect(http.StatusFound, target.String())
+}
+
+// recordIdentityLoginLog 异步记录第三方登录日志，来源固定为 oauth（按登录渠道判定，
+// 不依赖可能滞后的 users.source），不阻塞回调主流程；未配置 LoginLogUsecase 时静默跳过。
+func (sc *UserIdentityController) recordIdentityLoginLog(c *gin.Context, provider, username, status, failureReason string) {
+	if sc.LoginLogUsecase == nil {
+		return
+	}
+	_ = provider // provider 仅用于用户名回退，来源统一记为 oauth
+	logRequest := &domain.CreateLoginLogRequest{
+		Username:      username,
+		LoginIP:       getClientIP(c),
+		UserAgent:     c.Request.Header.Get("User-Agent"),
+		Status:        status,
+		Source:        constants.UserSourceOAuth,
+		FailureReason: failureReason,
+	}
+	// 回调随后会 Redirect，请求 context 会被取消；用 WithoutCancel 保留取值但脱离取消，
+	// 避免异步写日志因 "context canceled" 失败。
+	ctx := context.WithoutCancel(c.Request.Context())
+	go func() {
+		if _, err := sc.LoginLogUsecase.CreateLoginLog(ctx, logRequest); err != nil {
+			// 日志失败不影响登录流程，仅忽略。
+			_ = err
+		}
+	}()
+}
+
+// identityLogUsername 选择第三方登录日志中最可读的账号标识：邮箱 > 名称 > provider。
+func identityLogUsername(email, name, provider string) string {
+	if v := strings.TrimSpace(email); v != "" {
+		return v
+	}
+	if v := strings.TrimSpace(name); v != "" {
+		return v
+	}
+	return provider
 }
 
 // Exchange godoc
@@ -140,7 +198,7 @@ func (sc *UserIdentityController) ListProviders(c *gin.Context) {
 	providers := goth.GetProviders()
 	list := make([]string, 0, len(providers))
 	for _, p := range providers {
-		list = append(list, providerDisplayName(p.Name()))
+		list = append(list, p.Name())
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(list))
 }
@@ -167,28 +225,4 @@ func (sc *UserIdentityController) errorRedirectURL(code string) string {
 		return "/sign-in?error=" + code
 	}
 	return u.Scheme + "://" + u.Host + "/sign-in?error=" + code
-}
-
-func toUserIdentityProfile(p goth.User) *domain.UserIdentityProfile {
-	return &domain.UserIdentityProfile{
-		UserID:    p.UserID,
-		Email:     p.Email,
-		Name:      p.Name,
-		NickName:  p.NickName,
-		AvatarURL: p.AvatarURL,
-	}
-}
-
-func providerDisplayName(name string) string {
-	switch name {
-	case domain.ProviderGoogle:
-		return "Google"
-	case domain.ProviderGithub:
-		return "GitHub"
-	default:
-		if name == "" {
-			return ""
-		}
-		return name[:1] + name[1:]
-	}
 }

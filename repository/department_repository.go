@@ -5,6 +5,7 @@ import (
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/department"
+	"shadmin/internal/constants"
 )
 
 type entDepartmentRepository struct {
@@ -186,7 +187,7 @@ func (r *entDepartmentRepository) HasActiveChildren(ctx context.Context, id stri
 	var walk func(parentID string)
 	walk = func(parentID string) {
 		for _, cid := range childMap[parentID] {
-			if statusMap[cid] == domain.StatusActive {
+			if statusMap[cid] == constants.StatusActive {
 				hasActive = true
 				return
 			}

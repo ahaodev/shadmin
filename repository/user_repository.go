@@ -6,18 +6,19 @@ import (
 	"shadmin/ent"
 	"shadmin/ent/predicate"
 	"shadmin/ent/user"
+	"shadmin/internal/constants"
 )
 
 // Helper function to convert domain status string to ent status enum
 func domainStatusToEntStatus(status string) user.Status {
 	switch status {
-	case domain.StatusActive:
+	case constants.StatusActive:
 		return user.StatusActive
-	case domain.StatusInactive:
+	case constants.StatusInactive:
 		return user.StatusInactive
-	case domain.UserStatusInvited:
+	case constants.UserStatusInvited:
 		return user.StatusInvited
-	case domain.UserStatusSuspended:
+	case constants.UserStatusSuspended:
 		return user.StatusSuspended
 	default:
 		return user.StatusActive

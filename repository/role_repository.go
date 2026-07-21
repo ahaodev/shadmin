@@ -6,6 +6,7 @@ import (
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/role"
+	"shadmin/internal/constants"
 	"time"
 )
 
@@ -220,7 +221,7 @@ func (rr *entRoleRepository) DeleteIfUnused(c context.Context, id, name string) 
 // GetAllRoleNames returns active role names for downstream consumers.
 func (rr *entRoleRepository) GetAllRoleNames(c context.Context) ([]string, error) {
 	entRoles, err := rr.client.Role.Query().
-		Where(role.Status(domain.StatusActive)).
+		Where(role.Status(constants.StatusActive)).
 		Select(role.FieldName).
 		All(c)
 	if err != nil {

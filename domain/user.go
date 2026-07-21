@@ -18,6 +18,7 @@ var (
 type User struct {
 	ID             string     `json:"id"`
 	Username       string     `json:"username"`
+	Nickname       string     `json:"nickname"`
 	Email          string     `json:"email"`
 	Phone          string     `json:"phone,omitempty"`
 	Password       string     `json:"password,omitempty"`
@@ -89,7 +90,6 @@ type UserRepository interface {
 	Update(c context.Context, user *User) error
 	Delete(c context.Context, id string) error
 	// GetStatusByID returns only the status string for the user.
-	// Returns ErrUserNotFound-style not-found if the user does not exist.
 	GetStatusByID(c context.Context, id string) (string, error)
 	GetRoleIDs(c context.Context, id string) ([]string, error)
 }

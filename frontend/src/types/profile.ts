@@ -3,6 +3,7 @@ import { type UserStatus } from './user'
 export interface Profile {
   id: string
   username: string
+  nickname:string
   email: string
   phone?: string
   bio?: string

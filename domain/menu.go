@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"shadmin/internal/constants"
 	"time"
 )
 
@@ -138,7 +139,7 @@ func ValidateMenuQueryParams(params *MenuQueryParams) error {
 		params.Type = "menu"
 	}
 	if params.Status == "" {
-		params.Status = StatusActive
+		params.Status = constants.StatusSuccess
 	}
 
 	return nil
@@ -146,8 +147,8 @@ func ValidateMenuQueryParams(params *MenuQueryParams) error {
 
 // Menu status constants
 const (
-	MenuStatusActive   = StatusActive
-	MenuStatusInactive = StatusInactive
+	MenuStatusActive   = constants.StatusActive
+	MenuStatusInactive = constants.StatusInactive
 )
 
 // Menu type constants

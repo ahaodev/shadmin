@@ -1,4 +1,7 @@
-package domain
+package constants
+
+const StatusSuccess = "success"
+const StatusFailed = "failed"
 
 const (
 	// StatusActive and StatusInactive are the shared enabled/disabled values used across entities.

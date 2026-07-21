@@ -43,6 +43,7 @@ func (pr *entProfileRepository) GetByID(c context.Context, id, subject string) (
 	profile := &domain.Profile{
 		ID:        u.ID,
 		Username:  u.Username,
+		Nickname:  u.Nickname,
 		Email:     derefString(u.Email),
 		Phone:     derefString(u.Phone),
 		Bio:       u.Bio,

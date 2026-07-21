@@ -14,6 +14,7 @@ const loginLogSchema = z.object({
   os: z.string().optional(),
   device: z.string().optional(),
   status: loginLogStatusSchema,
+  source: z.string().optional(),
   failure_reason: z.string().optional(),
   login_time: z.coerce.date(),
 })
@@ -37,6 +38,7 @@ export const loginLogFilterSchema = z.object({
   username: z.string().optional(),
   login_ip: z.string().optional(),
   status: loginLogStatusSchema.optional(),
+  source: z.string().optional(),
   browser: z.string().optional(),
   os: z.string().optional(),
   start_time: z.string().optional(),

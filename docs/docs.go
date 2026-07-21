@@ -3844,6 +3844,10 @@ const docTemplate = `{
                 "os": {
                     "type": "string"
                 },
+                "source": {
+                    "description": "local / oauth",
+                    "type": "string"
+                },
                 "status": {
                     "description": "success, failed",
                     "type": "string"
@@ -4114,6 +4118,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "nickname": {
                     "type": "string"
                 },
                 "phone": {
@@ -4435,6 +4442,9 @@ const docTemplate = `{
                 },
                 "is_admin": {
                     "type": "boolean"
+                },
+                "nickname": {
+                    "type": "string"
                 },
                 "password": {
                     "type": "string"

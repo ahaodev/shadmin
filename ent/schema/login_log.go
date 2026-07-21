@@ -46,6 +46,11 @@ func (LoginLog) Fields() []ent.Field {
 		field.Enum("status").
 			Values("success", "failed").
 			Comment("登录状态：success-成功，failed-失败"),
+		field.String("source").
+			MaxLen(32).
+			Optional().
+			Default("local").
+			Comment("登录来源：local-本地密码登录，oauth-第三方登录"),
 		field.String("failure_reason").
 			MaxLen(255).
 			Optional().

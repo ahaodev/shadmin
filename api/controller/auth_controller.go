@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"shadmin/internal/auth"
 	"shadmin/internal/conf"
+	"shadmin/internal/constants"
 	"strings"
 	"time"
 
@@ -114,6 +115,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 				LoginIP:       clientIP,
 				UserAgent:     userAgent,
 				Status:        status,
+				Source:        constants.UserSourceLocal,
 				FailureReason: failureReason,
 			}
 
@@ -159,7 +161,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 
 	// 账户状态检查：未启用 / 邀请中 / 已停用 的用户不能登录。
 	// 错误消息保持与“用户名或密码错误”一致，避免暴露账户是否存在。
-	if user.Status != domain.UserStatusActive {
+	if user.Status != constants.UserStatusActive {
 		recordLoginLog("failed", "账户未启用或已停用")
 		c.JSON(http.StatusForbidden, domain.RespError("账户未启用或已停用，请联系管理员"))
 		return
@@ -167,7 +169,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 
 	// 第三方来源用户没有本地密码：拒绝其走密码登录，避免被撞库。
 	// 保持与“用户名或密码错误”一致的模糊提示，不暴露账户来源。
-	if user.Source == domain.UserSourceOAuth || user.Password == "" {
+	if user.Source == constants.UserSourceOAuth || user.Password == "" {
 		recordLoginLog("failed", "第三方账户不支持密码登录")
 		c.JSON(http.StatusUnauthorized, domain.RespError("用户名或密码错误"))
 		return
@@ -227,7 +229,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 	}
 
 	// 记录登录成功日志
-	recordLoginLog("success", "")
+	recordLoginLog(constants.StatusSuccess, "")
 
 	c.JSON(http.StatusOK, domain.RespSuccess(loginResponse))
 }
@@ -291,7 +293,7 @@ func (lc *AuthController) RefreshToken(c *gin.Context) {
 
 	// 刷新令牌前再检查一次状态：admin 可能在 access token 签发后禁用该用户，
 	// 这里不能直接放行新令牌，否则被禁用的账户会一直续命。
-	if user.Status != domain.UserStatusActive {
+	if user.Status != constants.UserStatusActive {
 		c.JSON(http.StatusForbidden, domain.RespError("账户未启用或已停用，请联系管理员"))
 		return
 	}
