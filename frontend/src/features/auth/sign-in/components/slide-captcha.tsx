@@ -1,14 +1,10 @@
-import {
-  forwardRef,
-  useCallback,
-  useImperativeHandle,
-  useRef,
-} from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react'
 import GoCaptcha from 'go-captcha-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-    type SlideCaptchaHandle, type SlideCaptchaResult,
-    useSlideCaptcha,
+  type SlideCaptchaHandle,
+  type SlideCaptchaResult,
+  useSlideCaptcha,
 } from '../hooks/use-slide-captcha'
 
 interface SlideCaptchaProps {
@@ -18,7 +14,8 @@ interface SlideCaptchaProps {
 
 export const SlideCaptcha = forwardRef<SlideCaptchaHandle, SlideCaptchaProps>(
   function SlideCaptcha({ onVerified, submitting }, ref) {
-    const { challenge, verified, setVerified, fetchChallenge } = useSlideCaptcha()
+    const { challenge, verified, setVerified, fetchChallenge } =
+      useSlideCaptcha()
     const slideRef = useRef<{
       reset: () => void
       clear: () => void
