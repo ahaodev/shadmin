@@ -88,9 +88,9 @@ type MenuTreeNode struct {
 	Properties   *string        `json:"properties,omitempty"`
 	Status       string         `json:"status"`
 	ParentID     *string        `json:"parent_id,omitempty"`
-	Children     []MenuTreeNode `json:"children,omitempty"`
 	ApiResources []string       `json:"apiResources,omitempty"`
 	Roles        []string       `json:"roles,omitempty"`
+	Children     []MenuTreeNode `json:"children,omitempty"`
 }
 
 // AssignMenuRoleRequest represents the request to assign roles to a menu
