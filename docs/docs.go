@@ -3328,7 +3328,7 @@ const docTemplate = `{
         "domain.ApiResourcePagedResult": {
             "type": "object",
             "properties": {
-                "items": {
+                "list": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.ApiResource"

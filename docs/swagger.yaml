@@ -34,7 +34,7 @@ definitions:
     type: object
   domain.ApiResourcePagedResult:
     properties:
-      items:
+      list:
         items:
           $ref: '#/definitions/domain.ApiResource'
         type: array

@@ -93,7 +93,7 @@ export function ApiResources() {
               </div>
             )}
             <ApiResourcesTable
-              data={apiResourcesData?.data || []}
+              data={apiResourcesData?.list || []}
               search={search}
               navigate={navigateWrapper}
               totalCount={apiResourcesData?.total || 0}
