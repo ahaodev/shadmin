@@ -223,10 +223,14 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	return domain.NewPagedResult(result, total, filter.Page, filter.PageSize), nil
 }
 
-func (ur *entUserRepository) GetByUsername(c context.Context, userName string) (*domain.User, error) {
+func (ur *entUserRepository) GetByIdentifier(c context.Context, identifier string) (*domain.User, error) {
 	u, err := ur.client.User.
 		Query().
-		Where(user.Username(userName)).
+		Where(user.Or(
+			user.Username(identifier),
+			user.Email(identifier),
+			user.Phone(identifier),
+		)).
 		WithRoles().
 		WithDepartment().
 		First(c)

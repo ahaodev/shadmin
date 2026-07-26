@@ -111,7 +111,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 	recordLoginLog := func(status, failureReason string) {
 		if lc.LoginLogUsecase != nil {
 			logRequest := &domain.CreateLoginLogRequest{
-				Username:      request.UserName,
+				Username:      request.Identifier,
 				LoginIP:       clientIP,
 				UserAgent:     userAgent,
 				Status:        status,
@@ -137,20 +137,20 @@ func (lc *AuthController) Login(c *gin.Context) {
 	}
 
 	// 检查账号是否被锁定
-	fmt.Printf("Checking if user %s is locked...\n", request.UserName)
-	if lc.SecurityManager.IsLocked(request.UserName) {
-		remainingTime := lc.SecurityManager.GetRemainingLockTime(request.UserName)
+	fmt.Printf("Checking if user %s is locked...\n", request.Identifier)
+	if lc.SecurityManager.IsLocked(request.Identifier) {
+		remainingTime := lc.SecurityManager.GetRemainingLockTime(request.Identifier)
 		lockMessage := fmt.Sprintf("账户已被锁定，请在 %d 秒后重试", int(remainingTime.Seconds()))
-		fmt.Printf("User %s is locked for %d seconds\n", request.UserName, int(remainingTime.Seconds()))
+		fmt.Printf("User %s is locked for %d seconds\n", request.Identifier, int(remainingTime.Seconds()))
 		c.JSON(http.StatusLocked, domain.RespError(lockMessage))
 		return
 	}
 
-	user, err := lc.LoginUsecase.GetUserByUserName(c, request.UserName)
+	user, err := lc.LoginUsecase.GetUserByIdentifier(c, request.Identifier)
 	if err != nil || user == nil {
 		// 记录失败尝试（用户不存在也算失败尝试）
-		fmt.Printf("User %s not found, recording failed attempt\n", request.UserName)
-		lc.SecurityManager.RecordFailedAttempt(request.UserName)
+		fmt.Printf("User %s not found, recording failed attempt\n", request.Identifier)
+		lc.SecurityManager.RecordFailedAttempt(request.Identifier)
 
 		// 记录登录失败日志
 		recordLoginLog("failed", "用户不存在")
@@ -169,7 +169,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 
 	// 第三方来源用户没有本地密码：拒绝其走密码登录，避免被撞库。
 	// 保持与“用户名或密码错误”一致的模糊提示，不暴露账户来源。
-	if user.Source != constants.UserSourceLocal || user.Password == "" {
+	if user.Password == "" {
 		recordLoginLog("failed", "第三方账户不支持密码登录")
 		c.JSON(http.StatusUnauthorized, domain.RespError("用户名或密码错误"))
 		return
@@ -179,26 +179,26 @@ func (lc *AuthController) Login(c *gin.Context) {
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password))
 	if err != nil {
 		// 记录失败尝试
-		fmt.Printf("Password incorrect for user %s, recording failed attempt\n", request.UserName)
-		lc.SecurityManager.RecordFailedAttempt(request.UserName)
+		fmt.Printf("Password incorrect for user %s, recording failed attempt\n", request.Identifier)
+		lc.SecurityManager.RecordFailedAttempt(request.Identifier)
 
 		// 记录登录失败日志
 		recordLoginLog("failed", "密码错误")
 
 		// 检查是否刚被锁定
-		fmt.Printf("Checking if user %s is now locked after failed attempt\n", request.UserName)
-		if lc.SecurityManager.IsLocked(request.UserName) {
-			remainingTime := lc.SecurityManager.GetRemainingLockTime(request.UserName)
+		fmt.Printf("Checking if user %s is now locked after failed attempt\n", request.Identifier)
+		if lc.SecurityManager.IsLocked(request.Identifier) {
+			remainingTime := lc.SecurityManager.GetRemainingLockTime(request.Identifier)
 			lockMessage := fmt.Sprintf("密码错误次数过多，账户已被锁定 %d 秒", int(remainingTime.Seconds()))
-			fmt.Printf("User %s is now locked for %d seconds\n", request.UserName, int(remainingTime.Seconds()))
+			fmt.Printf("User %s is now locked for %d seconds\n", request.Identifier, int(remainingTime.Seconds()))
 			c.JSON(http.StatusLocked, domain.RespError(lockMessage))
 			return
 		}
 
 		// 显示剩余尝试次数
-		failedAttempts := lc.SecurityManager.GetFailedAttempts(request.UserName)
+		failedAttempts := lc.SecurityManager.GetFailedAttempts(request.Identifier)
 		remainingAttempts := lc.SecurityManager.MaxFailures - failedAttempts
-		fmt.Printf("User %s has %d failed attempts, %d remaining\n", request.UserName, failedAttempts, remainingAttempts)
+		fmt.Printf("User %s has %d failed attempts, %d remaining\n", request.Identifier, failedAttempts, remainingAttempts)
 		if remainingAttempts > 0 {
 			errorMessage := fmt.Sprintf("用户名或密码错误，还可尝试 %d 次", remainingAttempts)
 			c.JSON(http.StatusUnauthorized, domain.RespError(errorMessage))
@@ -209,7 +209,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 	}
 
 	// 登录成功，清除失败记录
-	lc.SecurityManager.RecordSuccessfulLogin(request.UserName)
+	lc.SecurityManager.RecordSuccessfulLogin(request.Identifier)
 
 	accessToken, err := lc.TokenService.CreateAccessToken(user, lc.Env.AccessTokenSecret, lc.Env.AccessTokenExpiryMinute)
 	if err != nil {

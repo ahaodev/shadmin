@@ -5,7 +5,7 @@ import { getRefreshToken } from '@/lib/token-storage'
 
 // 登录请求类型
 export interface LoginRequest {
-  username: string
+  identifier: string
   password: string
   captcha_id: string
   captcha_x: number

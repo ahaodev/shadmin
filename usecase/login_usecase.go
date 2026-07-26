@@ -19,10 +19,10 @@ func NewLoginUsecase(userRepository domain.UserRepository, timeout time.Duration
 	}
 }
 
-func (lu *loginUsecase) GetUserByUserName(c context.Context, name string) (*domain.User, error) {
+func (lu *loginUsecase) GetUserByIdentifier(c context.Context, identifier string) (*domain.User, error) {
 	ctx, cancel := context.WithTimeout(c, lu.contextTimeout)
 	defer cancel()
-	return lu.userRepository.GetByUsername(ctx, name)
+	return lu.userRepository.GetByIdentifier(ctx, identifier)
 }
 
 func (lu *loginUsecase) GetUserByID(c context.Context, id string) (*domain.User, error) {

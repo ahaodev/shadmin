@@ -38,11 +38,11 @@ func NewLoginSecurityManager() *LoginSecurityManager {
 }
 
 // IsLocked 检查用户是否被锁定
-func (lsm *LoginSecurityManager) IsLocked(username string) bool {
+func (lsm *LoginSecurityManager) IsLocked(identifier string) bool {
 	lsm.mutex.RLock()
 	defer lsm.mutex.RUnlock()
 
-	attempt, exists := lsm.attempts[username]
+	attempt, exists := lsm.attempts[identifier]
 	if !exists {
 		return false
 	}
@@ -52,11 +52,11 @@ func (lsm *LoginSecurityManager) IsLocked(username string) bool {
 }
 
 // GetRemainingLockTime 获取剩余锁定时间
-func (lsm *LoginSecurityManager) GetRemainingLockTime(username string) time.Duration {
+func (lsm *LoginSecurityManager) GetRemainingLockTime(identifier string) time.Duration {
 	lsm.mutex.RLock()
 	defer lsm.mutex.RUnlock()
 
-	attempt, exists := lsm.attempts[username]
+	attempt, exists := lsm.attempts[identifier]
 	if !exists {
 		return 0
 	}
@@ -70,16 +70,16 @@ func (lsm *LoginSecurityManager) GetRemainingLockTime(username string) time.Dura
 }
 
 // RecordFailedAttempt 记录失败的登录尝试
-func (lsm *LoginSecurityManager) RecordFailedAttempt(username string) {
+func (lsm *LoginSecurityManager) RecordFailedAttempt(identifier string) {
 	lsm.mutex.Lock()
 	defer lsm.mutex.Unlock()
 
 	now := time.Now()
 
-	attempt, exists := lsm.attempts[username]
+	attempt, exists := lsm.attempts[identifier]
 	if !exists {
 		attempt = &LoginAttempt{}
-		lsm.attempts[username] = attempt
+		lsm.attempts[identifier] = attempt
 	}
 
 	// 如果上次失败超过锁定时间且曾经被锁定过，重置计数
@@ -98,19 +98,19 @@ func (lsm *LoginSecurityManager) RecordFailedAttempt(username string) {
 }
 
 // RecordSuccessfulLogin 记录成功的登录，清除失败记录
-func (lsm *LoginSecurityManager) RecordSuccessfulLogin(username string) {
+func (lsm *LoginSecurityManager) RecordSuccessfulLogin(identifier string) {
 	lsm.mutex.Lock()
 	defer lsm.mutex.Unlock()
 
-	delete(lsm.attempts, username)
+	delete(lsm.attempts, identifier)
 }
 
 // GetFailedAttempts 获取失败尝试次数
-func (lsm *LoginSecurityManager) GetFailedAttempts(username string) int {
+func (lsm *LoginSecurityManager) GetFailedAttempts(identifier string) int {
 	lsm.mutex.RLock()
 	defer lsm.mutex.RUnlock()
 
-	attempt, exists := lsm.attempts[username]
+	attempt, exists := lsm.attempts[identifier]
 	if !exists {
 		return 0
 	}
@@ -139,10 +139,10 @@ func (lsm *LoginSecurityManager) cleanupExpiredRecords() {
 	defer lsm.mutex.Unlock()
 
 	now := time.Now()
-	for username, attempt := range lsm.attempts {
+	for identifier, attempt := range lsm.attempts {
 		// 如果锁定时间已过且最后尝试时间超过清理间隔，删除记录
 		if now.After(attempt.LockedUntil) && now.Sub(attempt.LastAttempt) > lsm.CleanInterval {
-			delete(lsm.attempts, username)
+			delete(lsm.attempts, identifier)
 		}
 	}
 }

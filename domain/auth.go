@@ -6,11 +6,11 @@ import (
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	UserName  string `form:"username" json:"username" binding:"required"`
-	Password  string `form:"password" json:"password" binding:"required"`
-	CaptchaID string `form:"captcha_id" json:"captcha_id" binding:"required"`
-	CaptchaX  int    `form:"captcha_x" json:"captcha_x"`
-	CaptchaY  int    `form:"captcha_y" json:"captcha_y"`
+	Identifier string `form:"username" json:"username" binding:"required"`
+	Password   string `form:"password" json:"password" binding:"required"`
+	CaptchaID  string `form:"captcha_id" json:"captcha_id" binding:"required"`
+	CaptchaX   int    `form:"captcha_x" json:"captcha_x"`
+	CaptchaY   int    `form:"captcha_y" json:"captcha_y"`
 }
 
 // LoginResponse 登录响应
@@ -46,6 +46,6 @@ type LogoutRequest struct {
 }
 
 type LoginUsecase interface {
-	GetUserByUserName(c context.Context, name string) (*User, error)
+	GetUserByIdentifier(c context.Context, identifier string) (*User, error)
 	GetUserByID(c context.Context, id string) (*User, error)
 }

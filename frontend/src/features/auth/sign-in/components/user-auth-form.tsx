@@ -34,7 +34,7 @@ import {
 import { SlideCaptcha } from './slide-captcha'
 
 const formSchema = z.object({
-  username: z.string().min(1, '请输入用户名'),
+  identifier: z.string().min(1, '请输入用户名'),
   password: z.string().min(1, '请输入密码'),
 })
 
@@ -59,7 +59,7 @@ export function UserAuthForm({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: '',
+      identifier: '',
       password: '',
     },
   })
@@ -79,7 +79,7 @@ export function UserAuthForm({
 
       try {
         const resp = await login({
-          username: values.username,
+          identifier: values.identifier,
           password: values.password,
           captcha_id: captcha.captcha_id,
           captcha_x: captcha.captcha_x,
@@ -137,7 +137,7 @@ export function UserAuthForm({
         }
 
         toast.success(
-          `欢迎回来，${user?.accountNo ?? values.username ?? '用户'}！`
+          `欢迎回来，${user?.accountNo ?? values.identifier ?? '用户'}！`
         )
 
         setCaptchaOpen(false)
@@ -203,7 +203,7 @@ export function UserAuthForm({
         >
           <FormField
             control={form.control}
-            name='username'
+            name='identifier'
             render={({ field }) => (
               <FormItem>
                 <FormLabel>用户名</FormLabel>
