@@ -518,16 +518,8 @@ type ProjectController struct {
 func (pc *ProjectController) List(c *gin.Context) {
 	var params domain.ProjectQueryParams
 
-	if p := c.Query("page"); p != "" {
-		if v, err := strconv.Atoi(p); err == nil {
-			params.Page = v
-		}
-	}
-	if ps := c.Query("page_size"); ps != "" {
-		if v, err := strconv.Atoi(ps); err == nil {
-			params.PageSize = v
-		}
-	}
+	filter.QueryParams = BindQueryParams(c)
+	
 	params.Name = c.Query("name")
 	params.Code = c.Query("code")
 	params.Status = c.Query("status")
