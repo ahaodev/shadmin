@@ -40,7 +40,7 @@ export function MenuApiResources({
     page: 1,
     page_size: 1000,
   })
-  const apiResources = apiResourcesResult?.data || []
+  const apiResources = apiResourcesResult?.list || []
 
   const writeSelection = (next: string[]) => {
     form.setValue('apiResources', next, {

@@ -84,5 +84,5 @@ func (arr *entApiResourceRepository) FetchPaged(ctx context.Context, params doma
 		apiResources[i] = arr.convertEntApiResourceToDomain(entApiResource)
 	}
 
-	return domain.NewApiResourcePagedResult(apiResources, total, params.GetPage(), params.GetPageSize()), nil
+	return domain.NewPagedResult(apiResources, total, params.GetPage(), params.GetPageSize()), nil
 }

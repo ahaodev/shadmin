@@ -13,7 +13,7 @@ export interface ApiResourceQueryParams {
 }
 
 export interface ApiResourcePagedResult {
-  data: ApiResource[]
+  list: ApiResource[]
   total: number
   page: number
   page_size: number
@@ -21,7 +21,7 @@ export interface ApiResourcePagedResult {
 }
 
 interface ApiResourceApiResponse {
-  items: ApiResource[]
+  list: ApiResource[]
   total: number
   page: number
   page_size: number
@@ -39,9 +39,8 @@ export async function getApiResources(
   )
   const apiData: ApiResourceApiResponse = response.data.data
 
-  // Transform API response to expected format
   return {
-    data: apiData.items || [],
+    list: apiData.list || [],
     total: apiData.total || 0,
     page: apiData.page || 1,
     page_size: apiData.page_size || 10,
