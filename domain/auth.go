@@ -25,10 +25,7 @@ type RefreshTokenRequest struct {
 }
 
 // RefreshTokenResponse 刷新令牌响应
-type RefreshTokenResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-}
+type RefreshTokenResponse = LoginResponse
 
 // ProfileUpdate 个人资料更新请求
 type ProfileUpdate struct {
