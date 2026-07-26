@@ -74,13 +74,9 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 		return nil, fmt.Errorf("create refresh token: %w", err)
 	}
 
-	// 不再把密码哈希回传给前端
-	user.Password = ""
-
 	return &domain.UserIdentityResult{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		User:         user,
 	}, nil
 }
 

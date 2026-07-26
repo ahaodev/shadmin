@@ -39,11 +39,7 @@ type UserIdentity struct {
 }
 
 // UserIdentityResult 第三方登录成功后返回给前端的令牌与用户信息
-type UserIdentityResult struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-	User         *User  `json:"user,omitempty"`
-}
+type UserIdentityResult = LoginResponse
 
 // UserIdentityProfile 第三方 provider 返回的用户资料。以 domain 自有类型承载，
 // 避免 domain 层直接耦合 goth 库；由 controller 从 goth.User 转换而来。
