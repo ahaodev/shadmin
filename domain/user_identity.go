@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/markbates/goth"
 )
 
 // 社交登录 provider 标识
@@ -45,13 +47,7 @@ type UserIdentityResult struct {
 
 // UserIdentityProfile 第三方 provider 返回的用户资料。以 domain 自有类型承载，
 // 避免 domain 层直接耦合 goth 库；由 controller 从 goth.User 转换而来。
-type UserIdentityProfile struct {
-	UserID    string // provider 侧的唯一主体 ID（sub / id）
-	Email     string
-	Name      string
-	NickName  string
-	AvatarURL string
-}
+type UserIdentityProfile = goth.User
 
 var (
 	ErrUserIdentityProviderDisabled = errors.New("user identity provider is not enabled")
@@ -70,5 +66,5 @@ type UserIdentityBindingTxFunc func(ctx context.Context, userRepo UserRepository
 
 // UserIdentityUsecase 第三方登录用例接口
 type UserIdentityUsecase interface {
-	HandleCallback(ctx context.Context, provider string, profile *UserIdentityProfile) (*UserIdentityResult, error)
+	HandleCallback(ctx context.Context, provider string, profile UserIdentityProfile) (*UserIdentityResult, error)
 }

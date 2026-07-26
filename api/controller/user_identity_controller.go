@@ -65,41 +65,29 @@ func (sc *UserIdentityController) Callback(c *gin.Context) {
 
 	provider := c.Param("provider")
 
-	// 1) 在后端回调中完成 provider 身份校验并拿到第三方用户资料。
-	profile, err := gothic.CompleteUserAuth(c.Writer, c.Request)
+	// 在后端回调中完成 provider 身份校验并拿到第三方用户资料。
+	oidcUser, err := gothic.CompleteUserAuth(c.Writer, c.Request)
 	if err != nil {
 		sc.recordIdentityLoginLog(c, provider, provider, "failed", "第三方身份认证失败")
 		sc.redirectError(c)
 		return
 	}
 
-	// 2) 绑定/创建本地用户并生成 JWT 结果（access/refresh + provider avatar）。
-	logUsername := identityLogUsername(profile.Email, profile.Name, provider)
-	result, err := sc.UserIdentityUsecase.HandleCallback(c.Request.Context(), provider, &domain.UserIdentityProfile{
-		UserID:    profile.UserID,
-		Email:     profile.Email,
-		Name:      profile.Name,
-		NickName:  profile.NickName,
-		AvatarURL: profile.AvatarURL,
-	})
+	result, err := sc.UserIdentityUsecase.HandleCallback(c.Request.Context(), provider, oidcUser)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserDisabled) {
-			sc.recordIdentityLoginLog(c, provider, logUsername, "failed", "账户已停用或未启用")
+			sc.recordIdentityLoginLog(c, provider, oidcUser.Name, "failed", "账户已停用或未启用")
 			sc.redirectTo(c, sc.errorRedirectURL("disabled"))
 			return
 		}
-		sc.recordIdentityLoginLog(c, provider, logUsername, "failed", "第三方登录处理失败")
+		sc.recordIdentityLoginLog(c, provider, oidcUser.Name, "failed", "第三方登录处理失败")
 		sc.redirectError(c)
 		return
 	}
 
-	// 登录成功：优先记录绑定后的 shadmin 用户名，保持与本地登录日志一致。
-	if result.User != nil && result.User.Username != "" {
-		logUsername = result.User.Username
-	}
-	sc.recordIdentityLoginLog(c, provider, logUsername, constants.StatusSuccess, "")
+	sc.recordIdentityLoginLog(c, provider, oidcUser.Name, constants.StatusSuccess, "")
 
-	// 3) 不把 JWT 放进 URL；改为生成一次性短码，供前端随后 POST /exchange 换取 token。
+	//  避免 JWT 放进 URL；改为生成一次性短码，供前端随后 POST /exchange 换取 token。
 	code, err := sc.CodeStore.Put(c.Request.Context(), result)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError("failed to prepare identity login callback"))

@@ -47,7 +47,7 @@ func NewUserIdentityUsecase(
 // HandleCallback 处理 provider 回调：解析第三方 profile，查找/创建用户，
 // 绑定第三方账号，复用既有 JWT 体系签发令牌对。
 // 支持多 provider 绑定到同一用户：相同 email 的不同 provider 自动合并到同一用户。
-func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider string, profile *domain.UserIdentityProfile) (*domain.UserIdentityResult, error) {
+func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.UserIdentityResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
 
@@ -84,7 +84,7 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 	}, nil
 }
 
-func (u *userIdentityUsecase) findOrCreateAndBindUser(ctx context.Context, provider string, profile *domain.UserIdentityProfile) (*domain.User, *domain.UserIdentity, error) {
+func (u *userIdentityUsecase) findOrCreateAndBindUser(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, *domain.UserIdentity, error) {
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
 		user, err := u.findOrCreateAndBindUserOnce(ctx, provider, profile)
@@ -106,7 +106,7 @@ func (u *userIdentityUsecase) findOrCreateAndBindUser(ctx context.Context, provi
 	return nil, nil, lastErr
 }
 
-func (u *userIdentityUsecase) findOrCreateAndBindUserOnce(ctx context.Context, provider string, profile *domain.UserIdentityProfile) (*domain.User, error) {
+func (u *userIdentityUsecase) findOrCreateAndBindUserOnce(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
 	return u.identityRepository.WithUserBindingTx(ctx, func(txCtx context.Context, userRepo domain.UserRepository, identityRepo domain.UserIdentityRepository) (*domain.User, error) {
 		return u.findOrCreateUserForIdentity(txCtx, userRepo, identityRepo, provider, profile)
 	})
@@ -117,7 +117,7 @@ func (u *userIdentityUsecase) findOrCreateUserForIdentity(
 	userRepo domain.UserRepository,
 	identityRepo domain.UserIdentityRepository,
 	provider string,
-	profile *domain.UserIdentityProfile,
+	profile domain.UserIdentityProfile,
 ) (*domain.User, error) {
 	// 1. 先查该 (provider, provider_subject) 是否已绑定
 	account, err := identityRepo.FindByProviderAndSubject(ctx, provider, profile.UserID)
@@ -178,7 +178,7 @@ func (u *userIdentityUsecase) findOrCreateUserForIdentity(
 //   - 无本地密码（password = NULL），不可用密码登录
 //   - email 直接采用 provider 返回值，可能为空（存 NULL），不再伪造 @id.local
 //   - username 由 provider + subject 稳定派生，保证全局唯一且可读
-func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, userRepo domain.UserRepository, provider string, profile *domain.UserIdentityProfile) (*domain.User, error) {
+func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, userRepo domain.UserRepository, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
 	email := strings.TrimSpace(profile.Email)
 	name := strings.TrimSpace(profile.Name)
 	if name == "" {
