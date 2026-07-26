@@ -37,9 +37,9 @@ func (User) Fields() []ent.Field {
 			Nillable().
 			Comment("邮箱；第三方来源用户可能为空，空值存 NULL 以兼容唯一约束"),
 		field.Enum("source").
-			Values("local", "oauth").
-			Default("local").
-			Comment("用户来源：local-本地原生用户，oauth-第三方登录来源用户"),
+			Values("shadmin", "github", "google").
+			Default("shadmin").
+			Comment("用户来源：shadmin-本地原生用户，github-第三方登录来源用户，google-第三方登录来源用户"),
 		field.String("phone").
 			MaxLen(20).
 			Unique().

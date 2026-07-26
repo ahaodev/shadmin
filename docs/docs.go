@@ -4494,9 +4494,6 @@ const docTemplate = `{
                 },
                 "refreshToken": {
                     "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/domain.User"
                 }
             }
         },

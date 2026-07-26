@@ -170,7 +170,7 @@ func (u *userIdentityUsecase) findOrCreateUserForIdentity(
 
 // createUserFromUserIdentity 基于第三方 profile 创建新 shadmin 用户。
 // 第三方来源用户（provider:user）与本地用户（shadmin:user）的区别：
-//   - source = oauth
+//   - source = provider
 //   - 无本地密码（password = NULL），不可用密码登录
 //   - email 直接采用 provider 返回值，可能为空（存 NULL），不再伪造 @id.local
 //   - username 由 provider + subject 稳定派生，保证全局唯一且可读
@@ -187,7 +187,7 @@ func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, us
 		Username: username,
 		Nickname: name,
 		Email:    email, // 可能为空 → 仓储层写入 NULL
-		Source:   constants.UserSourceOAuth,
+		Source:   provider,
 		Status:   constants.UserStatusActive,
 	}
 

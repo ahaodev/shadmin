@@ -55,17 +55,12 @@ export const loginLogsColumns: ColumnDef<LoginLog>[] = [
     },
     cell: ({ row }) => {
       const source = (row.getValue('source') as string) || 'local'
-      const labels: Record<string, string> = {
-        local: '本地',
-        oauth: '第三方',
-      }
-      const label = labels[source] ?? source
       return (
         <Badge
-          variant={source === 'local' ? 'secondary' : 'outline'}
+          variant={source === 'shadmin' ? 'secondary' : 'outline'}
           className='text-xs'
         >
-          {label}
+          {source}
         </Badge>
       )
     },

@@ -117,7 +117,7 @@ func (sc *UserIdentityController) recordIdentityLoginLog(c *gin.Context, provide
 		LoginIP:       getClientIP(c),
 		UserAgent:     c.Request.Header.Get("User-Agent"),
 		Status:        status,
-		Source:        constants.UserSourceOAuth,
+		Source:        provider,
 		FailureReason: failureReason,
 	}
 	// 回调随后会 Redirect，请求 context 会被取消；用 WithoutCancel 保留取值但脱离取消，

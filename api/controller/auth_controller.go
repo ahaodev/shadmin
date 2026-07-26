@@ -169,7 +169,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 
 	// 第三方来源用户没有本地密码：拒绝其走密码登录，避免被撞库。
 	// 保持与“用户名或密码错误”一致的模糊提示，不暴露账户来源。
-	if user.Source == constants.UserSourceOAuth || user.Password == "" {
+	if user.Source != constants.UserSourceLocal || user.Password == "" {
 		recordLoginLog("failed", "第三方账户不支持密码登录")
 		c.JSON(http.StatusUnauthorized, domain.RespError("用户名或密码错误"))
 		return

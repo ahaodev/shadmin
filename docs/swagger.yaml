@@ -821,8 +821,6 @@ definitions:
         type: string
       refreshToken:
         type: string
-      user:
-        $ref: '#/definitions/domain.User'
     type: object
   domain.UserUpdateRequest:
     properties:
