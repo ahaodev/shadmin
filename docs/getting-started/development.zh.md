@@ -524,8 +524,6 @@ func (pc *ProjectController) List(c *gin.Context) {
 	params.Code = c.Query("code")
 	params.Status = c.Query("status")
 	params.Search = c.Query("search")
-	params.SortBy = c.Query("sort_by")
-	params.Order = c.Query("order")
 
 	result, err := pc.ProjectUseCase.List(c, params)
 	if err != nil {
