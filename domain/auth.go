@@ -6,7 +6,7 @@ import (
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	Identifier string `form:"username" json:"username" binding:"required"`
+	Identifier string `form:"Identifier" json:"identifier" binding:"required"`
 	Password   string `form:"password" json:"password" binding:"required"`
 	CaptchaID  string `form:"captcha_id" json:"captcha_id" binding:"required"`
 	CaptchaX   int    `form:"captcha_x" json:"captcha_x"`

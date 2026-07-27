@@ -5,7 +5,7 @@ import { getRefreshToken } from '@/lib/token-storage'
 
 // 登录请求类型
 export interface LoginRequest {
-  identifier: string
+  identifier?: string
   password: string
   captcha_id: string
   captcha_x: number
@@ -68,7 +68,17 @@ export interface DeviceActivateResponse {
 export async function login(
   credentials: LoginRequest
 ): Promise<ApiResponse<LoginResponse>> {
-  const resp = await apiClient.post('/api/v1/auth/login', credentials)
+  const identifier = credentials.identifier ?? ''
+
+  const payload = {
+    Identifier: identifier,
+    password: credentials.password,
+    captcha_id: credentials.captcha_id,
+    captcha_x: credentials.captcha_x,
+    captcha_y: credentials.captcha_y,
+  }
+
+  const resp = await apiClient.post('/api/v1/auth/login', payload)
   return resp.data
 }
 
