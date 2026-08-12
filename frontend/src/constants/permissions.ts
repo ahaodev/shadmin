@@ -34,7 +34,3 @@ export const PERMISSIONS = {
     },
   },
 } as const
-
-// 权限标识类型
-export type PermissionKey =
-  (typeof PERMISSIONS)[keyof typeof PERMISSIONS][keyof (typeof PERMISSIONS)[keyof typeof PERMISSIONS]][keyof (typeof PERMISSIONS)[keyof typeof PERMISSIONS][keyof (typeof PERMISSIONS)[keyof typeof PERMISSIONS]]]

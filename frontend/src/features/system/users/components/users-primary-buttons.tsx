@@ -2,10 +2,10 @@ import { MailPlus, UserPlus } from 'lucide-react'
 import { PERMISSIONS } from '@/constants/permissions'
 import { usePermission } from '@/hooks/usePermission'
 import { Button } from '@/components/ui/button'
-import { useUsers } from './users-provider'
+import { useUsersDialog } from './users-provider'
 
 export function UsersPrimaryButtons() {
-  const { setOpen } = useUsers()
+  const { setOpen } = useUsersDialog()
   const { hasPermission } = usePermission()
 
   return (

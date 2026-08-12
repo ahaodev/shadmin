@@ -1,4 +1,4 @@
-import { CreateRoleDialog } from './create-role-dialog'
+import { RolesCreateDialog } from './roles-create-dialog'
 import { RolesDeleteDialog } from './roles-delete-dialog'
 import { useRoles } from './roles-provider'
 
@@ -15,12 +15,12 @@ export function RolesDialogs() {
 
   return (
     <>
-      <CreateRoleDialog
+      <RolesCreateDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
       />
 
-      <CreateRoleDialog
+      <RolesCreateDialog
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
         role={currentRow}

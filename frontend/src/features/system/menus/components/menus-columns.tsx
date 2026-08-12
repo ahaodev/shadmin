@@ -30,7 +30,7 @@ interface MenuTableColumnsProps {
   hasPermission: (permission: string) => boolean
 }
 
-export function createMenuTableColumns({
+export function createMenusColumns({
   expanded,
   onExpandToggle,
   onEditClick,

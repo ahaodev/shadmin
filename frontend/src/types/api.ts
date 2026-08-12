@@ -1,9 +1,3 @@
-export const HTTP_OK: number = 200
-export const SUCCESS: number = 0 // 成功的状态码
-export const ERROR: number = 1 // 通用错误状态码
-export const NOT_FOUND: number = 404
-export const UNAUTHORIZED: number = 401
-
 // 后端统一返回类型
 export interface ApiResponse<T> {
   code: number // 响应码，例如 0 表示成功

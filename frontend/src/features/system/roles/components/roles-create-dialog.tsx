@@ -38,9 +38,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { useMenuSelection } from '../hooks/useMenuSelection'
-import { type RoleFormData, useRoleForm } from '../hooks/useRoleForm'
-import { MenuTreeSection } from './MenuTreeSection'
+import { useMenuSelection } from '../hooks/use-menu-selection'
+import { type RoleFormData, useRoleForm } from '../hooks/use-role-form'
+import { MenuTreeSection } from './menu-tree-section'
 
 interface CreateRoleDialogProps {
   open: boolean
@@ -48,7 +48,7 @@ interface CreateRoleDialogProps {
   role?: Role | null // Optional role for edit mode
 }
 
-export function CreateRoleDialog({
+export function RolesCreateDialog({
   open,
   onOpenChange,
   role,

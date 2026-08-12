@@ -44,12 +44,6 @@ export const getDictTypes = async (
   }
 }
 
-// GET /system/dict/types/{id} - Get dictionary type by ID
-export const getDictType = async (id: string): Promise<DictType> => {
-  const response = await apiClient.get(`/api/v1/system/dict/types/${id}`)
-  return parseDictType(response.data.data)
-}
-
 // POST /system/dict/types - Create a new dictionary type
 export const createDictType = async (
   data: CreateDictTypeRequest
@@ -89,12 +83,6 @@ export const getDictItems = async (
   }
 }
 
-// GET /system/dict/items/{id} - Get dictionary item by ID
-export const getDictItem = async (id: string): Promise<DictItem> => {
-  const response = await apiClient.get(`/api/v1/system/dict/items/${id}`)
-  return parseDictItem(response.data.data)
-}
-
 // POST /system/dict/items - Create a new dictionary item
 export const createDictItem = async (
   data: CreateDictItemRequest
@@ -116,25 +104,7 @@ export const deleteDictItem = async (id: string): Promise<void> => {
   await apiClient.delete(`/api/v1/system/dict/items/${id}`)
 }
 
-// Convenience API
-
-// GET /system/dict/types/code/{code}/items - Get active dictionary items by type code
-export const getDictItemsByTypeCode = async (
-  typeCode: string
-): Promise<DictItem[]> => {
-  const response = await apiClient.get(
-    `/api/v1/system/dict/types/code/${typeCode}/items`
-  )
-  return (response.data.data as DictItem[]).map(parseDictItem)
-}
-
 // Utility functions for common operations
-
-// Get all active dictionary types
-export const getActiveDictTypes = async (): Promise<DictType[]> => {
-  const result = await getDictTypes({ status: 'active', page_size: 1000 })
-  return result.list
-}
 
 // Get dictionary items for a specific type (by type ID)
 export const getDictItemsByTypeId = async (
@@ -142,15 +112,6 @@ export const getDictItemsByTypeId = async (
   params?: Omit<DictItemQueryParams, 'type_id'>
 ): Promise<DictItemPagedResult> => {
   return getDictItems({ ...params, type_id: typeId })
-}
-
-// Toggle dictionary type status
-export const toggleDictTypeStatus = async (
-  id: string,
-  currentStatus: 'active' | 'inactive'
-): Promise<void> => {
-  const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
-  await updateDictType(id, { status: newStatus })
 }
 
 // Toggle dictionary item status

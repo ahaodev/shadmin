@@ -200,6 +200,3 @@ apiClient.interceptors.response.use(
     }
   }
 )
-
-// Export as api for consistency with other service files
-export const api = apiClient

@@ -53,7 +53,7 @@ async function fetchResourcesWithPermissions(): Promise<ResourcesResponse> {
 /**
  * Menu service for loading and caching menu data from backend API
  */
-export class MenuService {
+class MenuService {
   private cachedMenuData: NavGroup[] | null = null
   private cachedRawMenus: MenuTreeNode[] | null = null
   private menuLoadFailed: boolean = false

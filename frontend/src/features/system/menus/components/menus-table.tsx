@@ -28,7 +28,7 @@ import {
 import { useMenuDrag } from '../hooks/use-menu-drag'
 import { useMenuTableState } from '../hooks/use-menu-table-state'
 import { tableMenuItemToMenu } from '../utils/menu-converter'
-import { createMenuTableColumns } from './menu-table-columns'
+import { createMenusColumns } from './menus-columns'
 import { useMenus } from './menus-provider'
 
 interface MenusTableProps {
@@ -122,7 +122,7 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
   }
 
   // Create table columns
-  const columns = createMenuTableColumns({
+  const columns = createMenusColumns({
     expanded,
     onExpandToggle: handleExpandToggle,
     onEditClick: handleEditClick,

@@ -13,14 +13,14 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useUsers } from './users-provider'
+import { useUsersDialog } from './users-provider'
 
 type DataTableRowActionsProps = {
   row: Row<User>
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
-  const { setOpen, setCurrentRow } = useUsers()
+  const { setOpen, setCurrentRow } = useUsersDialog()
   const { hasPermission } = usePermission()
 
   // 管理员账户锁定：UI 上禁止编辑/删除，避免和后端 403 冲突。

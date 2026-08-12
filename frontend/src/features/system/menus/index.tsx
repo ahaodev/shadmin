@@ -1,10 +1,6 @@
 import type { Menu } from '@/types/menu'
-import { ConfigDrawer } from '@/components/config-drawer'
-import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
+import { PageHeader } from '@/components/layout/page-header'
 import { MenusDialogs } from './components/menus-dialogs'
 import { MenusPrimaryButtons } from './components/menus-primary-buttons'
 import { MenusProvider, useMenus } from './components/menus-provider'
@@ -41,14 +37,7 @@ function MenusContent() {
 export function Menus() {
   return (
     <MenusProvider>
-      <Header fixed>
-        <Search />
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
-      </Header>
+      <PageHeader fixed />
 
       <MenusContent />
     </MenusProvider>

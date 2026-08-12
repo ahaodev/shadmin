@@ -43,8 +43,3 @@ export interface RolePagedResult {
   page_size: number
   total_pages: number
 }
-
-export interface AssignRoleRequest {
-  user_id: string
-  role_id: string
-}

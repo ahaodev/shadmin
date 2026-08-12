@@ -1,6 +1,5 @@
 import { apiClient, getApiBaseURL } from '@/services/config.ts'
 import { type ApiResponse } from '@/types/api.ts'
-import { type Profile } from '@/types/profile.ts'
 import { getRefreshToken } from '@/lib/token-storage'
 
 // 登录请求类型
@@ -30,30 +29,6 @@ export interface SlideCaptchaChallenge {
 export interface LoginResponse {
   accessToken: string
   refreshToken: string
-}
-
-// 刷新令牌响应类型
-export interface RefreshTokenResponse {
-  accessToken: string
-  refreshToken: string
-}
-
-export interface DeviceCodeRequest {
-  client_id: string
-  client_name?: string
-}
-
-export interface DeviceCodeResponse {
-  device_code: string
-  user_code: string
-  verification_uri: string
-  expires_in: number
-  interval: number
-}
-
-export interface DeviceTokenRequest {
-  client_id: string
-  device_code: string
 }
 
 export interface DeviceActivateRequest {
@@ -91,20 +66,6 @@ export async function getSlideCaptcha(
   return resp.data
 }
 
-export async function requestDeviceCode(
-  request: DeviceCodeRequest
-): Promise<ApiResponse<DeviceCodeResponse>> {
-  const resp = await apiClient.post('/api/v1/auth/device/code', request)
-  return resp.data
-}
-
-export async function pollDeviceToken(
-  request: DeviceTokenRequest
-): Promise<ApiResponse<LoginResponse>> {
-  const resp = await apiClient.post('/api/v1/auth/device/token', request)
-  return resp.data
-}
-
 export async function activateDevice(
   request: DeviceActivateRequest
 ): Promise<ApiResponse<DeviceActivateResponse>> {
@@ -135,16 +96,6 @@ export async function exchangeUserIdentityCode(
   return resp.data
 }
 
-// 刷新访问令牌
-export async function refreshToken(
-  refreshToken: string
-): Promise<ApiResponse<RefreshTokenResponse>> {
-  const resp = await apiClient.post('/api/v1/auth/refresh', {
-    refreshToken: refreshToken,
-  })
-  return resp.data
-}
-
 // 登出
 export async function logout(): Promise<ApiResponse<void>> {
   // 使用 token-storage 获取 refresh token，保持存储策略一致性
@@ -153,11 +104,5 @@ export async function logout(): Promise<ApiResponse<void>> {
   const requestBody = refreshToken ? { refresh_token: refreshToken } : {}
 
   const resp = await apiClient.post('/api/v1/auth/logout', requestBody)
-  return resp.data
-}
-
-// 验证当前令牌是否有效
-export async function validateToken(): Promise<ApiResponse<Profile>> {
-  const resp = await apiClient.get('/api/v1/profile')
   return resp.data
 }

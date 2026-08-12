@@ -102,34 +102,3 @@ export interface DictItemPagedResult {
   page_size: number
   total_pages: number
 }
-
-// Form state
-export interface DictTypeFormData {
-  code: string
-  name: string
-  status: DictStatus
-  remark: string
-}
-
-export interface DictItemFormData {
-  type_id: string
-  label: string
-  value: string
-  sort: number
-  is_default: boolean
-  status: DictStatus
-  color: string
-  remark: string
-}
-
-// Dialog state
-export type DictAction = 'create' | 'edit' | 'view'
-export interface DictDialogState {
-  open: boolean
-  action: DictAction
-  data?: DictType | DictItem
-}
-export interface DictTableSelection {
-  selectedTypeId?: string
-  selectedType?: DictType
-}
