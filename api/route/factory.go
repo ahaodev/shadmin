@@ -4,9 +4,9 @@ import (
 	"log"
 	"shadmin/api/controller"
 	"shadmin/bootstrap"
+	"shadmin/domain"
 	"shadmin/internal/auth"
 	captchapkg "shadmin/internal/captcha"
-	"shadmin/internal/casbin"
 	"shadmin/internal/tokenservice"
 	"shadmin/repository"
 	"shadmin/usecase"
@@ -19,11 +19,13 @@ import (
 
 // ControllerFactory creates and manages controller instances
 type ControllerFactory struct {
-	app                  *bootstrap.Application
-	timeout              time.Duration
-	db                   *ent.Client
-	captchaManager       *captchapkg.SlideManager
-	deviceAuthController *controller.DeviceAuthController
+	app                   *bootstrap.Application
+	timeout               time.Duration
+	db                    *ent.Client
+	captchaManager        *captchapkg.SlideManager
+	deviceAuthController  *controller.DeviceAuthController
+	sharedLoginLogUsecase domain.LoginLogUseCase     // 共享的无状态 login-log usecase
+	sharedTokenService    *tokenservice.TokenService // 共享的无状态 token 服务
 }
 
 // NewControllerFactory creates a new controller factory
@@ -39,18 +41,30 @@ func NewControllerFactory(app *bootstrap.Application, timeout time.Duration, db 
 	}
 }
 
-// CreateAuthController creates an authentication controller
-func (f *ControllerFactory) CreateAuthController(casManager casbin.Manager) *controller.AuthController {
-	ur := repository.NewUserRepository(f.db)
-	ts := tokenservice.NewTokenService()
+// loginLogUsecase lazily creates a shared login-log usecase (repository + timeout are safe to reuse).
+func (f *ControllerFactory) loginLogUsecase() domain.LoginLogUseCase {
+	if f.sharedLoginLogUsecase == nil {
+		f.sharedLoginLogUsecase = usecase.NewLoginLogUsecase(repository.NewLoginLogRepository(f.db), f.timeout)
+	}
+	return f.sharedLoginLogUsecase
+}
 
-	// 创建LoginLog相关的repository和usecase
-	loginLogRepository := repository.NewLoginLogRepository(f.db)
-	loginLogUseCase := usecase.NewLoginLogUsecase(loginLogRepository, f.timeout)
+// tokenService lazily creates a shared stateless token service.
+func (f *ControllerFactory) tokenService() *tokenservice.TokenService {
+	if f.sharedTokenService == nil {
+		f.sharedTokenService = tokenservice.NewTokenService()
+	}
+	return f.sharedTokenService
+}
+
+// CreateAuthController creates an authentication controller
+func (f *ControllerFactory) CreateAuthController() *controller.AuthController {
+	ur := repository.NewUserRepository(f.db)
+	ts := f.tokenService()
 
 	return &controller.AuthController{
 		LoginUsecase:    usecase.NewLoginUsecase(ur, f.timeout),
-		LoginLogUsecase: loginLogUseCase,
+		LoginLogUsecase: f.loginLogUsecase(),
 		Env:             f.app.Env,
 		SecurityManager: auth.NewLoginSecurityManager(),
 		TokenService:    ts,
@@ -69,9 +83,9 @@ func (f *ControllerFactory) CreateCaptchaController() *controller.CaptchaControl
 // CreateUserIdentityController creates the identity login controller (Google/GitHub OAuth).
 // 复用既有 TokenService + env 令牌密钥签发 JWT，绑定记录走 UserIdentityRepository。
 func (f *ControllerFactory) CreateUserIdentityController() *controller.UserIdentityController {
-	tokenService := tokenservice.NewTokenService()
+	tokenService := f.tokenService()
 	identityRepository := repository.NewUserIdentityRepository(f.db)
-	loginLogUseCase := usecase.NewLoginLogUsecase(repository.NewLoginLogRepository(f.db), f.timeout)
+	loginLogUseCase := f.loginLogUsecase()
 	return &controller.UserIdentityController{
 		UserIdentityUsecase: usecase.NewUserIdentityUsecase(
 			identityRepository,
@@ -95,7 +109,7 @@ func (f *ControllerFactory) CreateDeviceAuthController() *controller.DeviceAuthC
 	}
 	deviceAuthRepository := repository.NewDeviceAuthRepository(f.db)
 	userRepository := repository.NewUserRepository(f.db)
-	tokenService := tokenservice.NewTokenService()
+	tokenService := f.tokenService()
 
 	f.deviceAuthController = controller.NewDeviceAuthController(
 		usecase.NewDeviceAuthUsecase(
@@ -129,10 +143,7 @@ func (f *ControllerFactory) CreateResourceController() *controller.ResourceContr
 	userRepository := repository.NewUserRepository(f.db)
 
 	return &controller.ResourceController{
-		MenuRepository: menuRepository,
-		RoleRepository: roleRepository,
-		UserRepository: userRepository,
-		Env:            f.app.Env,
+		ResourceUsecase: usecase.NewResourceUsecase(menuRepository, userRepository, roleRepository, f.timeout),
 	}
 }
 
@@ -187,11 +198,8 @@ func (f *ControllerFactory) CreateApiResourceController(engine *gin.Engine) *con
 
 // CreateLoginLogController creates a login log controller
 func (f *ControllerFactory) CreateLoginLogController() *controller.LoginLogController {
-	loginLogRepository := repository.NewLoginLogRepository(f.db)
-	loginLogUseCase := usecase.NewLoginLogUsecase(loginLogRepository, f.timeout)
-
 	return &controller.LoginLogController{
-		LoginLogUsecase: loginLogUseCase,
+		LoginLogUsecase: f.loginLogUsecase(),
 		Env:             f.app.Env,
 	}
 }

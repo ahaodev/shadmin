@@ -1261,21 +1261,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "menus": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "$ref": "#/definitions/domain.MenuTreeNode"
-                                                    }
-                                                },
-                                                "permissions": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "string"
-                                                    }
-                                                }
-                                            }
+                                            "$ref": "#/definitions/domain.UserResources"
                                         }
                                     }
                                 }
@@ -3887,8 +3873,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "captcha_id",
-                "password",
-                "username"
+                "identifier",
+                "password"
             ],
             "properties": {
                 "captcha_id": {
@@ -3900,10 +3886,10 @@ const docTemplate = `{
                 "captcha_y": {
                     "type": "integer"
                 },
-                "password": {
+                "identifier": {
                     "type": "string"
                 },
-                "username": {
+                "password": {
                     "type": "string"
                 }
             }
@@ -4494,6 +4480,32 @@ const docTemplate = `{
                 },
                 "refreshToken": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.UserResources": {
+            "type": "object",
+            "properties": {
+                "is_admin": {
+                    "type": "boolean"
+                },
+                "menus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.MenuTreeNode"
+                    }
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

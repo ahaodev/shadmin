@@ -421,14 +421,14 @@ definitions:
         type: integer
       captcha_y:
         type: integer
-      password:
+      identifier:
         type: string
-      username:
+      password:
         type: string
     required:
     - captcha_id
+    - identifier
     - password
-    - username
     type: object
   domain.LoginResponse:
     properties:
@@ -821,6 +821,23 @@ definitions:
         type: string
       refreshToken:
         type: string
+    type: object
+  domain.UserResources:
+    properties:
+      is_admin:
+        type: boolean
+      menus:
+        items:
+          $ref: '#/definitions/domain.MenuTreeNode'
+        type: array
+      permissions:
+        items:
+          type: string
+        type: array
+      roles:
+        items:
+          type: string
+        type: array
     type: object
   domain.UserUpdateRequest:
     properties:
@@ -1614,16 +1631,7 @@ paths:
             - $ref: '#/definitions/domain.Response'
             - properties:
                 data:
-                  properties:
-                    menus:
-                      items:
-                        $ref: '#/definitions/domain.MenuTreeNode'
-                      type: array
-                    permissions:
-                      items:
-                        type: string
-                      type: array
-                  type: object
+                  $ref: '#/definitions/domain.UserResources'
               type: object
         "500":
           description: Internal server error

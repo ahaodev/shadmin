@@ -2,6 +2,8 @@ package route
 
 import (
 	"shadmin/bootstrap"
+	"shadmin/frontend"
+	"shadmin/internal/conf"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,9 +20,9 @@ func Setup(app *bootstrap.Application, timeout time.Duration, engine *gin.Engine
 	}
 
 	// Register static assets (skip in development — Vite dev server handles frontend)
-	//if app.Env.AppEnv != conf.AppEnvDev {
-	//frontend.Register(engine)
-	//}
+	if app.Env.AppEnv != conf.AppEnvDev {
+		frontend.Register(engine)
+	}
 	setupSwagger(engine)
 
 	// Setup API routes

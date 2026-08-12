@@ -32,7 +32,7 @@ func (pr *PublicRoutes) Setup(router *gin.RouterGroup, app *bootstrap.Applicatio
 
 	// Authentication routes
 	authGroup := router.Group("/auth")
-	pr.setupAuthRoutes(authGroup, app)
+	pr.setupAuthRoutes(authGroup)
 }
 
 // setupHealthRoutes configures health check routes
@@ -42,8 +42,8 @@ func (pr *PublicRoutes) setupHealthRoutes(group *gin.RouterGroup) {
 }
 
 // setupAuthRoutes configures authentication-related routes
-func (pr *PublicRoutes) setupAuthRoutes(group *gin.RouterGroup, app *bootstrap.Application) {
-	authController := pr.factory.CreateAuthController(app.CasManager)
+func (pr *PublicRoutes) setupAuthRoutes(group *gin.RouterGroup) {
+	authController := pr.factory.CreateAuthController()
 	captchaController := pr.factory.CreateCaptchaController()
 	deviceAuthController := pr.factory.CreateDeviceAuthController()
 	userIdentityController := pr.factory.CreateUserIdentityController()

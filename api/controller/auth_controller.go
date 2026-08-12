@@ -16,7 +16,6 @@ import (
 
 	"shadmin/domain"
 	"shadmin/internal/tokenservice"
-	"shadmin/internal/tokenutil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -264,7 +263,7 @@ func (lc *AuthController) RefreshToken(c *gin.Context) {
 
 	// 黑名单校验：refresh token 的 jti 已登出则拒绝续发。
 	if lc.TokenBlacklist != nil {
-		if jti, jErr := tokenutil.ExtractJTI(request.RefreshToken, lc.Env.RefreshTokenSecret); jErr == nil && jti != "" {
+		if jti, jErr := lc.TokenService.ExtractJTI(request.RefreshToken, lc.Env.RefreshTokenSecret); jErr == nil && jti != "" {
 			revoked, rErr := lc.TokenBlacklist.Exists(c.Request.Context(), jti)
 			if rErr != nil {
 				c.JSON(http.StatusUnauthorized, domain.RespError("令牌无法验证"))
@@ -393,7 +392,7 @@ func (lc *AuthController) Logout(c *gin.Context) {
 
 // revokeTokenJTI 提取 token 的 jti 与过期时间，将其加入黑名单。
 func (lc *AuthController) revokeTokenJTI(token, secret string) error {
-	jti, exp, ok := tokenutil.ExtractJTIAndExpiry(token, secret)
+	jti, exp, ok := lc.TokenService.ExtractJTIAndExpiry(token, secret)
 	if !ok || jti == "" {
 		return nil
 	}
