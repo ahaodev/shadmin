@@ -51,6 +51,7 @@ func entUserToDomainUser(u *ent.User) *domain.User {
 	domainUser := &domain.User{
 		ID:           u.ID,
 		Username:     u.Username,
+		Nickname:     u.Nickname,
 		Email:        derefString(u.Email),
 		Phone:        derefString(u.Phone),
 		Password:     derefString(u.Password),
@@ -99,6 +100,7 @@ func (ur *entUserRepository) Create(c context.Context, u *domain.User) error {
 	createQuery := ur.client.User.
 		Create().
 		SetUsername(u.Username).
+		SetNickname(u.Nickname).
 		SetNillableEmail(emptyToNil(u.Email)).
 		SetNillablePhone(emptyToNil(u.Phone)).
 		SetNillablePassword(emptyToNil(u.Password)).
@@ -226,26 +228,16 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 func (ur *entUserRepository) GetByIdentifier(c context.Context, identifier string) (*domain.User, error) {
 	u, err := ur.client.User.
 		Query().
-		Where(user.Or(
-			user.Username(identifier),
-			user.Email(identifier),
-			user.Phone(identifier),
+		Where(user.And(
+			user.Or(
+				user.Username(identifier),
+				user.Email(identifier),
+				user.Phone(identifier),
+			),
+			// 密码登录只匹配本地用户：oidc 用户无密码且 email 允许与本地用户重复，
+			// 限定 source=shadmin 避免同 email 双行解析歧义，也与“provider 不使用密码登录”一致。
+			user.SourceEQ(user.Source(constants.UserSourceLocal)),
 		)).
-		WithRoles().
-		WithDepartment().
-		First(c)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return entUserToDomainUser(u), nil
-}
-
-func (ur *entUserRepository) GetByEmail(c context.Context, email string) (*domain.User, error) {
-	u, err := ur.client.User.
-		Query().
-		Where(user.Email(email)).
 		WithRoles().
 		WithDepartment().
 		First(c)
@@ -278,6 +270,7 @@ func (ur *entUserRepository) Update(c context.Context, u *domain.User) error {
 	updateQuery := ur.client.User.
 		UpdateOneID(u.ID).
 		SetUsername(u.Username).
+		SetNickname(u.Nickname).
 		SetAvatar(u.Avatar).
 		SetStatus(domainStatusToEntStatus(u.Status))
 

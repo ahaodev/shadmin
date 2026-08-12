@@ -20,12 +20,6 @@ export async function createDepartment(
   return response.data.data
 }
 
-// GET /system/department/:id - Get department by ID
-export async function getDepartment(id: string): Promise<Department> {
-  const response = await apiClient.get(`/api/v1/system/department/${id}`)
-  return response.data.data
-}
-
 // PUT /system/department/:id - Update department
 export async function updateDepartment(
   id: string,

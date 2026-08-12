@@ -32,10 +32,9 @@ func (User) Fields() []ent.Field {
 			Comment("用户昵称"),
 		field.String("email").
 			MaxLen(100).
-			Unique().
 			Optional().
 			Nillable().
-			Comment("邮箱；第三方来源用户可能为空，空值存 NULL 以兼容唯一约束"),
+			Comment("邮箱；同渠道（source）内唯一，见复合唯一索引；空值存 NULL"),
 		field.Enum("source").
 			Values("shadmin", "github", "google").
 			Default("shadmin").
@@ -100,6 +99,10 @@ func (User) Edges() []ent.Edge {
 func (User) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("username"),
+		// 同渠道（source）内 email 唯一：本地用户互不重复、oidc 用户互不重复；
+		// 跨渠道（shadmin / google / github）允许相同 email（oidc 用户不参与密码登录，无歧义）。
+		index.Fields("source", "email").
+			Unique(),
 		index.Fields("email"),
 		index.Fields("phone"),
 		index.Fields("status"),

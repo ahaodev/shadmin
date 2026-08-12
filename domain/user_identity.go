@@ -24,16 +24,14 @@ type UserIdentityExchangeRequest struct {
 	Code string `json:"code" binding:"required"`
 }
 
-// UserIdentity 第三方账号绑定记录。一个用户可绑定多个不同 provider，
+// UserIdentity 第三方账号关联记录。一个用户可关联多个不同 provider，
 // 同一个 provider+provider_subject 全局唯一（对应一个第三方身份）。
+// 纯关联表：资料（nickname/avatar/email）统一存 users 表。
 type UserIdentity struct {
 	ID              string    `json:"id"`
 	UserID          string    `json:"user_id"`
 	Provider        string    `json:"provider"`
 	ProviderSubject string    `json:"provider_subject"`
-	Email           string    `json:"email,omitempty"`
-	Name            string    `json:"name,omitempty"`
-	AvatarURL       string    `json:"avatar_url,omitempty"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }

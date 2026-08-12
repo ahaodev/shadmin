@@ -28,9 +28,6 @@ func entUserIdentityToDomain(a *ent.UserIdentity) *domain.UserIdentity {
 		UserID:          a.UserID,
 		Provider:        a.Provider,
 		ProviderSubject: a.ProviderSubject,
-		Email:           a.Email,
-		Name:            a.Name,
-		AvatarURL:       a.AvatarURL,
 		CreatedAt:       a.CreatedAt,
 		UpdatedAt:       a.UpdatedAt,
 	}
@@ -103,9 +100,6 @@ func (r *entUserIdentityRepository) Upsert(ctx context.Context, account *domain.
 			SetUserID(account.UserID).
 			SetProvider(account.Provider).
 			SetProviderSubject(account.ProviderSubject).
-			SetEmail(account.Email).
-			SetName(account.Name).
-			SetAvatarURL(account.AvatarURL).
 			Save(ctx)
 		if createErr != nil {
 			if ent.IsConstraintError(createErr) {
@@ -158,9 +152,6 @@ func rollbackUserIdentityTx(tx *ent.Tx, err error) error {
 func (r *entUserIdentityRepository) updateOne(ctx context.Context, id string, account *domain.UserIdentity) error {
 	updated, err := r.client.UserIdentity.UpdateOneID(id).
 		SetUserID(account.UserID).
-		SetEmail(account.Email).
-		SetName(account.Name).
-		SetAvatarURL(account.AvatarURL).
 		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("update user identity: %w", err)

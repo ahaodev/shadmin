@@ -85,7 +85,6 @@ type UserRepository interface {
 	Create(c context.Context, user *User) error
 	GetByID(c context.Context, id string) (*User, error)
 	GetByIdentifier(c context.Context, identifier string) (*User, error)
-	GetByEmail(c context.Context, email string) (*User, error)
 	Query(c context.Context, filter UserQueryFilter) (*PagedResult[*User], error)
 	Update(c context.Context, user *User) error
 	Delete(c context.Context, id string) error

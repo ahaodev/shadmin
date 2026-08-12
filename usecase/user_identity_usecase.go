@@ -45,8 +45,9 @@ func NewUserIdentityUsecase(
 }
 
 // HandleCallback 处理 provider 回调：解析第三方 profile，查找/创建用户，
-// 绑定第三方账号，复用既有 JWT 体系签发令牌对。
-// 支持多 provider 绑定到同一用户：相同 email 的不同 provider 自动合并到同一用户。
+// 复用既有 JWT 体系签发令牌对。
+// 登录只认 (provider, provider_subject) 关联：已关联 → 登录该用户并刷新资料；
+// 未关联 → 创建独立用户（不按 email 合并，与本地用户完全隔离）。
 func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.UserIdentityResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
@@ -59,7 +60,7 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 		return nil, fmt.Errorf("provider %s returned empty subject: %w", provider, domain.ErrUserIdentityAuthFailed)
 	}
 
-	user, _, err := u.findOrCreateAndBindUser(ctx, provider, profile)
+	user, err := u.resolveOrCreateUser(ctx, provider, profile)
 	if err != nil {
 		return nil, err
 	}
@@ -80,87 +81,74 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 	}, nil
 }
 
-func (u *userIdentityUsecase) findOrCreateAndBindUser(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, *domain.UserIdentity, error) {
+// resolveOrCreateUser 解析 (provider, provider_subject) 对应的用户：
+// 已关联 → 返回关联用户并刷新资料；未关联 → 创建独立用户并建立关联记录。
+// 并发首次登录可能同时建号，唯一约束冲突时重试一次。
+func (u *userIdentityUsecase) resolveOrCreateUser(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
-		user, err := u.findOrCreateAndBindUserOnce(ctx, provider, profile)
+		user, err := u.resolveOrCreateUserOnce(ctx, provider, profile)
 		if err == nil {
-			identity, err := u.identityRepository.FindByProviderAndSubject(ctx, provider, profile.UserID)
-			if err != nil {
-				return nil, nil, fmt.Errorf("find identity account after binding: %w", err)
-			}
-			if identity == nil {
-				return nil, nil, fmt.Errorf("identity account missing after binding: %w", domain.ErrUserIdentityAuthFailed)
-			}
-			return user, identity, nil
+			return user, nil
 		}
 		lastErr = err
 		if !isUniqueViolation(err) {
-			return nil, nil, err
+			return nil, err
 		}
 	}
-	return nil, nil, lastErr
+	return nil, lastErr
 }
 
-func (u *userIdentityUsecase) findOrCreateAndBindUserOnce(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
+func (u *userIdentityUsecase) resolveOrCreateUserOnce(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
 	return u.identityRepository.WithUserBindingTx(ctx, func(txCtx context.Context, userRepo domain.UserRepository, identityRepo domain.UserIdentityRepository) (*domain.User, error) {
-		return u.findOrCreateUserForIdentity(txCtx, userRepo, identityRepo, provider, profile)
+		return u.resolveOrCreateUserForIdentity(txCtx, userRepo, identityRepo, provider, profile)
 	})
 }
 
-func (u *userIdentityUsecase) findOrCreateUserForIdentity(
+func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(
 	ctx context.Context,
 	userRepo domain.UserRepository,
 	identityRepo domain.UserIdentityRepository,
 	provider string,
 	profile domain.UserIdentityProfile,
 ) (*domain.User, error) {
-	// 1. 先查该 (provider, provider_subject) 是否已绑定
+	// 1. 先查该 (provider, provider_subject) 是否已关联
 	account, err := identityRepo.FindByProviderAndSubject(ctx, provider, profile.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("find identity account: %w", err)
 	}
 
-	var user *domain.User
 	if account != nil {
-		// 2a. 已绑定 → 直接取出对应 shadmin 用户
-		user, err = userRepo.GetByID(ctx, account.UserID)
+		// 2a. 已关联 → 取出对应用户
+		user, err := userRepo.GetByID(ctx, account.UserID)
 		if err != nil {
 			return nil, fmt.Errorf("get bound user: %w", err)
 		}
-	} else {
-		// 2b. 未绑定 → 检查相同 email 的用户是否已存在
-		// 如果存在，则绑定到同一用户；如果不存在，创建新用户
-		email := strings.TrimSpace(profile.Email)
-		if email != "" {
-			user, err = userRepo.GetByEmail(ctx, email)
-			if err != nil && !isNotFound(err) {
-				return nil, fmt.Errorf("find user by email: %w", err)
-			}
+
+		// 被禁用的账户不允许通过第三方登录进入系统
+		if user.Status != constants.UserStatusActive {
+			return nil, fmt.Errorf("user account is disabled: %w", domain.ErrUserDisabled)
 		}
 
-		// 3. 用户不存在 → 基于第三方 profile 创建新用户
-		if user == nil {
-			user, err = u.createUserFromUserIdentity(ctx, userRepo, provider, profile)
-			if err != nil {
-				return nil, fmt.Errorf("create user from user identity profile: %w", err)
-			}
+		// 按 provider 最新资料刷新 nickname/avatar（email 不刷新：
+		// provider email 变化可能撞上 (source, email) 唯一约束，登录路径不应因邮箱冲突而失败）。
+		if err := u.refreshUserProfile(ctx, userRepo, user, profile); err != nil {
+			return nil, err
 		}
+		return user, nil
 	}
 
-	// 被禁用的账户不允许通过第三方登录继续进入系统
-	if user.Status != constants.UserStatusActive {
-		return nil, fmt.Errorf("user account is disabled: %w", domain.ErrUserDisabled)
+	// 2b. 未关联 → 创建独立用户 + 建立关联记录。
+	// 不按 email 合并：oidc 用户与本地用户完全隔离，不同 provider 账号各自独立；
+	// 同渠道（source）内 email 唯一由 (source, email) 复合唯一索引保证。
+	user, err := u.createUserFromUserIdentity(ctx, userRepo, provider, profile)
+	if err != nil {
+		return nil, fmt.Errorf("create user from user identity profile: %w", err)
 	}
-
-	// 4. 绑定（或更新）第三方账号
 	err = identityRepo.Upsert(ctx, &domain.UserIdentity{
 		UserID:          user.ID,
 		Provider:        provider,
 		ProviderSubject: profile.UserID,
-		Email:           strings.TrimSpace(profile.Email),
-		Name:            strings.TrimSpace(profile.Name),
-		AvatarURL:       strings.TrimSpace(profile.AvatarURL),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("upsert identity account: %w", err)
@@ -172,14 +160,12 @@ func (u *userIdentityUsecase) findOrCreateUserForIdentity(
 // 第三方来源用户（provider:user）与本地用户（shadmin:user）的区别：
 //   - source = provider
 //   - 无本地密码（password = NULL），不可用密码登录
-//   - email 直接采用 provider 返回值，可能为空（存 NULL），不再伪造 @id.local
+//   - email 直接采用 provider 返回值，可能为空（存 NULL）
+//   - nickname/avatar 取自 provider，随登录刷新
 //   - username 由 provider + subject 稳定派生，保证全局唯一且可读
 func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, userRepo domain.UserRepository, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
 	email := strings.TrimSpace(profile.Email)
-	name := strings.TrimSpace(profile.Name)
-	if name == "" {
-		name = strings.TrimSpace(profile.NickName)
-	}
+	name := providerDisplayName(profile)
 
 	username := buildOAuthUsername(provider, profile.UserID, name)
 
@@ -187,6 +173,7 @@ func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, us
 		Username: username,
 		Nickname: name,
 		Email:    email, // 可能为空 → 仓储层写入 NULL
+		Avatar:   strings.TrimSpace(profile.AvatarURL),
 		Source:   provider,
 		Status:   constants.UserStatusActive,
 	}
@@ -195,6 +182,27 @@ func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, us
 		return nil, fmt.Errorf("create user identity user: %w", err)
 	}
 	return user, nil
+}
+
+// providerDisplayName 取 provider 返回的可读名称：Name 优先，其次 NickName。
+func providerDisplayName(profile domain.UserIdentityProfile) string {
+	name := strings.TrimSpace(profile.Name)
+	if name == "" {
+		name = strings.TrimSpace(profile.NickName)
+	}
+	return name
+}
+
+// refreshUserProfile 按 provider 最新资料刷新用户昵称与头像。
+// email 不在此处刷新：provider email 变化可能撞上 (source, email) 唯一约束，
+// 登录路径不应因邮箱冲突而失败（email 仅在建号时写入）。
+func (u *userIdentityUsecase) refreshUserProfile(ctx context.Context, userRepo domain.UserRepository, user *domain.User, profile domain.UserIdentityProfile) error {
+	user.Nickname = providerDisplayName(profile)
+	user.Avatar = strings.TrimSpace(profile.AvatarURL)
+	if err := userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("refresh user profile: %w", err)
+	}
+	return nil
 }
 
 // buildOAuthUsername 基于 provider + subject 稳定派生唯一且可读的用户名。
@@ -235,13 +243,4 @@ func isUniqueViolation(err error) bool {
 	}
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "unique") || strings.Contains(msg, "constraint") || strings.Contains(msg, "duplicate")
-}
-
-// isNotFound 判定是否为记录不存在的错误
-func isNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "not found") || strings.Contains(msg, "no rows")
 }

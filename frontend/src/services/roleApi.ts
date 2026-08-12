@@ -24,12 +24,6 @@ export const createRole = async (request: CreateRoleRequest): Promise<Role> => {
   return response.data.data
 }
 
-// Get role by ID
-export const getRole = async (id: string): Promise<Role> => {
-  const response = await apiClient.get(`/api/v1/system/role/${id}`)
-  return response.data.data
-}
-
 // Update a role
 export const updateRole = async (
   id: string,

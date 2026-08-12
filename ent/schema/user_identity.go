@@ -33,18 +33,6 @@ func (UserIdentity) Fields() []ent.Field {
 		field.String("provider_subject").
 			MaxLen(255).
 			Comment("第三方用户唯一标识（provider 内的用户ID）"),
-		field.String("email").
-			MaxLen(255).
-			Optional().
-			Comment("第三方返回的邮箱（可能为空）"),
-		field.String("name").
-			MaxLen(255).
-			Optional().
-			Comment("第三方返回的用户名"),
-		field.String("avatar_url").
-			MaxLen(512).
-			Optional().
-			Comment("第三方返回的头像地址"),
 		field.Time("created_at").
 			Default(time.Now),
 		field.Time("updated_at").
