@@ -91,3 +91,4 @@ shadmin.exe
 /cli/shadmin-cli
 CLAUDE.md
 AGENTS.md
+/.env.online
