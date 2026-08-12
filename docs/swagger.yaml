@@ -1301,9 +1301,9 @@ paths:
         in: query
         name: parent_id
         type: string
-      - description: Search in name or code
+      - description: Filter by menu name or path
         in: query
-        name: search
+        name: keyword
         type: string
       - description: 'Page number (default: 1)'
         in: query
@@ -1643,6 +1643,47 @@ paths:
       tags:
       - Resources
   /system/department:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve departments as a flat list, filterable by name / status
+        / keyword
+      parameters:
+      - description: Filter by department name or leader
+        in: query
+        name: keyword
+        type: string
+      - description: Filter by department name
+        in: query
+        name: name
+        type: string
+      - description: Filter by status (active/inactive)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved departments
+          schema:
+            allOf:
+            - $ref: '#/definitions/domain.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.Department'
+                  type: array
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/domain.Response'
+      security:
+      - BearerAuth: []
+      summary: Get department list
+      tags:
+      - Departments
     post:
       consumes:
       - application/json
@@ -1843,9 +1884,9 @@ paths:
         in: query
         name: status
         type: string
-      - description: Search by label or value
+      - description: Filter by label or value
         in: query
-        name: search
+        name: keyword
         type: string
       - description: Sort by field (label, value, sort, created_at)
         in: query
@@ -2052,9 +2093,9 @@ paths:
         in: query
         name: status
         type: string
-      - description: Search by code or name
+      - description: Filter by code or name
         in: query
-        name: search
+        name: keyword
         type: string
       - description: Sort by field (code, name, created_at)
         in: query
@@ -2374,11 +2415,6 @@ paths:
       consumes:
       - application/json
       description: Retrieve a list of all available roles in the system
-      parameters:
-      - description: Search roles by name
-        in: query
-        name: search
-        type: string
       produces:
       - application/json
       responses:
@@ -2614,9 +2650,9 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: Filter by username or email
+      - description: Filter by username, nickname or email
         in: query
-        name: search
+        name: keyword
         type: string
       - description: Filter by user status (active, inactive, invited, suspended)
         in: query

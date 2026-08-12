@@ -6,6 +6,7 @@ import (
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/menu"
+	"strings"
 )
 
 type entMenuRepository struct {
@@ -96,6 +97,15 @@ func findChildren(parentID string, allNodes []domain.MenuTreeNode) []domain.Menu
 // GetMenus retrieves paginated menus with filtering
 func (mr *entMenuRepository) GetMenus(ctx context.Context, params domain.MenuQueryParams) (*domain.PagedResult[domain.Menu], error) {
 	query := mr.client.Menu.Query()
+
+	// keyword：模糊匹配 name / path
+	kw := strings.TrimSpace(params.Keyword)
+	if kw != "" {
+		query = query.Where(menu.Or(
+			menu.NameContains(kw),
+			menu.PathContains(kw),
+		))
+	}
 
 	// Get total count
 	total, err := query.Clone().Count(ctx)

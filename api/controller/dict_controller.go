@@ -26,7 +26,7 @@ type DictController struct {
 // @Param        code      query  string  false  "Filter by type code"
 // @Param        name      query  string  false  "Filter by type name"
 // @Param        status    query  string  false  "Filter by status (active, inactive)"
-// @Param        search    query  string  false  "Search by code or name"
+// @Param        keyword   query  string  false  "Filter by code or name"
 // @Param        sort_by   query  string  false  "Sort by field (code, name, created_at)"
 // @Param        order     query  string  false  "Sort order (asc, desc)"
 // @Success      200       {object}  domain.Response{data=domain.DictTypePagedResult}  "Dictionary types retrieved successfully"
@@ -40,7 +40,7 @@ func (dc *DictController) GetDictTypes(c *gin.Context) {
 	params.Code = c.Query("code")
 	params.Name = c.Query("name")
 	params.Status = c.Query("status")
-	params.Search = c.Query("search")
+	params.Keyword = c.Query("keyword")
 
 	result, err := dc.DictUseCase.ListDictTypes(c, params)
 	if err != nil {
@@ -200,7 +200,7 @@ func (dc *DictController) DeleteDictType(c *gin.Context) {
 // @Param        label     query  string  false  "Filter by item label"
 // @Param        value     query  string  false  "Filter by item value"
 // @Param        status    query  string  false  "Filter by status (active, inactive)"
-// @Param        search    query  string  false  "Search by label or value"
+// @Param        keyword   query  string  false  "Filter by label or value"
 // @Param        sort_by   query  string  false  "Sort by field (label, value, sort, created_at)"
 // @Param        order     query  string  false  "Sort order (asc, desc)"
 // @Success      200       {object}  domain.Response{data=domain.DictItemPagedResult}  "Dictionary items retrieved successfully"
@@ -216,7 +216,7 @@ func (dc *DictController) GetDictItems(c *gin.Context) {
 	params.Label = c.Query("label")
 	params.Value = c.Query("value")
 	params.Status = c.Query("status")
-	params.Search = c.Query("search")
+	params.Keyword = c.Query("keyword")
 
 	result, err := dc.DictUseCase.ListDictItems(c, params)
 	if err != nil {

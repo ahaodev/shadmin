@@ -56,7 +56,6 @@ type RoleInfo struct {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        search    query    string  false  "Search roles by name"
 // @Success      200  {object} domain.Response{data=[]RoleInfo}  "Successfully retrieved roles"
 // @Failure      500  {object} domain.Response  "Internal server error"
 // @Router       /system/role [get]

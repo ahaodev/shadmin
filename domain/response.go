@@ -41,6 +41,10 @@ type PagedResult[T any] struct {
 // NewPagedResult 创建分页结果
 func NewPagedResult[T any](data []T, total, page, pageSize int) *PagedResult[T] {
 	totalPages := (total + pageSize - 1) / pageSize
+	// 空结果时保证 list 为 [] 而非 null，避免前端对 null 的容错缺失
+	if data == nil {
+		data = []T{}
+	}
 	return &PagedResult[T]{
 		List:       data,
 		Total:      total,

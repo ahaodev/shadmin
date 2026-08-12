@@ -59,10 +59,10 @@ type UpdateDictTypeRequest struct {
 
 // DictTypeQueryParams 字典类型查询参数
 type DictTypeQueryParams struct {
-	Code   string `json:"code,omitempty" form:"code"`
-	Name   string `json:"name,omitempty" form:"name"`
-	Status string `json:"status,omitempty" form:"status"`
-	Search string `json:"search,omitempty" form:"search"` // 模糊搜索code和name
+	Code    string `json:"code,omitempty" form:"code"`
+	Name    string `json:"name,omitempty" form:"name"`
+	Status  string `json:"status,omitempty" form:"status"`
+	Keyword string `json:"keyword,omitempty" form:"keyword"` // 模糊搜索code和name
 	QueryParams
 }
 
@@ -96,7 +96,7 @@ type DictItemQueryParams struct {
 	Label    string `json:"label,omitempty" form:"label"`
 	Value    string `json:"value,omitempty" form:"value"`
 	Status   string `json:"status,omitempty" form:"status"`
-	Search   string `json:"search,omitempty" form:"search"` // 模糊搜索label和value
+	Keyword  string `json:"keyword,omitempty" form:"keyword"` // 模糊搜索label和value
 	QueryParams
 }
 

@@ -19,7 +19,7 @@ export interface QueryParams {
   page?: number
   page_size?: number
   status?: string
-  search?: string
+  keyword?: string
 }
 
 // 用户分页结果

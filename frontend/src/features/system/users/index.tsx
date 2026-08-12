@@ -19,7 +19,7 @@ export function Users() {
   const queryParams = {
     page: search.page || 1,
     page_size: search.pageSize || 10,
-    search: search.username || undefined,
+    keyword: search.username || undefined,
     status: search.status
       ? Array.isArray(search.status)
         ? search.status.join(',')

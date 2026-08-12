@@ -215,11 +215,11 @@ func (dr *entDictRepository) FetchTypes(ctx context.Context, params domain.DictT
 	if params.Status != "" {
 		query = query.Where(dicttype.StatusEQ(domainStatusToDictTypeStatus(params.Status)))
 	}
-	if params.Search != "" {
+	if params.Keyword != "" {
 		query = query.Where(
 			dicttype.Or(
-				dicttype.CodeContains(params.Search),
-				dicttype.NameContains(params.Search),
+				dicttype.CodeContains(params.Keyword),
+				dicttype.NameContains(params.Keyword),
 			),
 		)
 	}
@@ -429,11 +429,11 @@ func (dr *entDictRepository) FetchItems(ctx context.Context, params domain.DictI
 	if params.Status != "" {
 		query = query.Where(dictitem.StatusEQ(domainStatusToDictItemStatus(params.Status)))
 	}
-	if params.Search != "" {
+	if params.Keyword != "" {
 		query = query.Where(
 			dictitem.Or(
-				dictitem.LabelContains(params.Search),
-				dictitem.ValueContains(params.Search),
+				dictitem.LabelContains(params.Keyword),
+				dictitem.ValueContains(params.Keyword),
 			),
 		)
 	}

@@ -5,8 +5,10 @@ import (
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/predicate"
+	"shadmin/ent/role"
 	"shadmin/ent/user"
 	"shadmin/internal/constants"
+	"strings"
 )
 
 // Helper function to convert domain status string to ent status enum
@@ -21,7 +23,8 @@ func domainStatusToEntStatus(status string) user.Status {
 	case constants.UserStatusSuspended:
 		return user.StatusSuspended
 	default:
-		return user.StatusActive
+		// 未知/非法状态：返回空串使其不匹配任何行，避免静默回退 active 掩盖错误
+		return ""
 	}
 }
 
@@ -132,13 +135,42 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	// 构建查询条件
 	var predicates []predicate.User
 	if filter.Status != "" {
-		predicates = append(predicates, user.StatusEQ(domainStatusToEntStatus(filter.Status)))
+		// status 支持逗号多值（web 多选拼接，如 active,suspended）
+		var entStatuses []user.Status
+		for _, s := range strings.Split(filter.Status, ",") {
+			if s = strings.TrimSpace(s); s != "" {
+				entStatuses = append(entStatuses, domainStatusToEntStatus(s))
+			}
+		}
+		predicates = append(predicates, user.StatusIn(entStatuses...))
 	}
 	if filter.Username != "" {
 		predicates = append(predicates, user.UsernameContains(filter.Username))
 	}
 	if filter.Email != "" {
 		predicates = append(predicates, user.EmailContains(filter.Email))
+	}
+	if filter.Keyword != "" {
+		kw := strings.TrimSpace(filter.Keyword)
+		if kw != "" {
+			predicates = append(predicates, user.Or(
+				user.UsernameContains(kw),
+				user.NicknameContains(kw),
+				user.EmailContains(kw),
+			))
+		}
+	}
+	if filter.Role != "" {
+		// role 过滤：逗号分隔的角色 ID，匹配拥有任一角色的用户
+		var roleIDs []string
+		for _, id := range strings.Split(filter.Role, ",") {
+			if id = strings.TrimSpace(id); id != "" {
+				roleIDs = append(roleIDs, id)
+			}
+		}
+		if len(roleIDs) > 0 {
+			predicates = append(predicates, user.HasRolesWith(role.IDIn(roleIDs...)))
+		}
 	}
 	if filter.IsAdmin != nil {
 		predicates = append(predicates, user.IsAdmin(*filter.IsAdmin))

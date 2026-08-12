@@ -24,7 +24,7 @@ type MenuController struct {
 // @Param        type      query    string  false  "Filter by menu type (menu/button/api)"
 // @Param        status    query    string  false  "Filter by status (active/inactive)"
 // @Param        parent_id query    string  false  "Filter by parent menu ID"
-// @Param        search    query    string  false  "Search in name or code"
+// @Param        keyword   query    string  false  "Filter by menu name or path"
 // @Param        page      query    int     false  "Page number (default: 1)"
 // @Param        page_size query    int     false  "Page size (default: 20)"
 // @Success      200       {object} domain.Response{data=domain.PagedResult[domain.Menu]}  "Successfully retrieved menus"

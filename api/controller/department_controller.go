@@ -14,6 +14,34 @@ type DepartmentController struct {
 	Env               *conf.Env
 }
 
+// GetDepartmentList 按过滤条件返回扁平部门列表
+// @Summary      Get department list
+// @Description  Retrieve departments as a flat list, filterable by name / status / keyword
+// @Tags         Departments
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        keyword   query  string  false  "Filter by department name or leader"
+// @Param        name      query  string  false  "Filter by department name"
+// @Param        status    query  string  false  "Filter by status (active/inactive)"
+// @Success      200       {object} domain.Response{data=[]domain.Department}  "Successfully retrieved departments"
+// @Failure      500       {object} domain.Response  "Internal server error"
+// @Router       /system/department [get]
+func (dc *DepartmentController) GetDepartmentList(c *gin.Context) {
+	var filter domain.DepartmentQueryFilter
+	if err := c.ShouldBindQuery(&filter); err != nil {
+		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+		return
+	}
+
+	list, err := dc.DepartmentUseCase.FetchList(c.Request.Context(), filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, domain.RespError("获取部门列表失败: "+err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, domain.RespSuccess(list))
+}
+
 // GetDepartmentTree 获取部门树结构
 // @Summary      Get department tree
 // @Description  Retrieve departments in hierarchical tree structure

@@ -48,7 +48,7 @@ export interface DictTypeQueryParams {
   code?: string
   name?: string
   status?: DictStatus
-  search?: string
+  keyword?: string
   sort_by?: string
   order?: 'asc' | 'desc'
 }
@@ -82,7 +82,7 @@ export interface DictItemQueryParams {
   label?: string
   value?: string
   status?: DictStatus
-  search?: string
+  keyword?: string
   sort_by?: string
   order?: 'asc' | 'desc'
 }

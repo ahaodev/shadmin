@@ -25,7 +25,7 @@ type UserController struct {
 // @Security     BearerAuth
 // @Param        page      query  int     false  "Page number (default: 1)"
 // @Param        page_size query  int     false  "Page size (default: 20)"
-// @Param        search   query  string  false  "Filter by username or email"
+// @Param        keyword   query  string  false  "Filter by username, nickname or email"
 // @Param        status    query  string  false  "Filter by user status (active, inactive, invited, suspended)"
 // @Param        role      query  string  false  "Filter by user role"
 // @Success      200       {object}  domain.Response  "user retrieved successfully"
@@ -41,6 +41,8 @@ func (uc *UserController) GetUsers(c *gin.Context) {
 	filter.Role = c.Query("role")
 	filter.Username = c.Query("username")
 	filter.Email = c.Query("email")
+	// 统一过滤参数：keyword（CLI 与 web 通用）
+	filter.Keyword = c.Query("keyword")
 	filter.IncludeRoles = c.Query("include_roles") == "true"
 
 	// 使用统一查询接口

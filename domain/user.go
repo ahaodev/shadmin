@@ -75,6 +75,7 @@ type UserQueryFilter struct {
 	Role         string `json:"role,omitempty"`
 	Username     string `json:"username,omitempty"`
 	Email        string `json:"email,omitempty"`
+	Keyword      string `json:"keyword,omitempty"` // 模糊匹配 username / nickname / email（CLI 统一约定）
 	IsAdmin      *bool  `json:"is_admin,omitempty"`
 	IncludeRoles bool   `json:"include_roles,omitempty"`
 	DepartmentID string `json:"department_id,omitempty" form:"department_id"`

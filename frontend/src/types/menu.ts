@@ -84,7 +84,7 @@ export interface MenuQueryParams {
   type?: MenuType
   status?: MenuStatus
   parent_id?: string
-  search?: string
+  keyword?: string
   page?: number
   page_size?: number
 }

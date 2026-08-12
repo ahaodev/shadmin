@@ -722,8 +722,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Search in name or code",
-                        "name": "search",
+                        "description": "Filter by menu name or path",
+                        "name": "keyword",
                         "in": "query"
                     },
                     {
@@ -1278,6 +1278,73 @@ const docTemplate = `{
             }
         },
         "/system/department": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve departments as a flat list, filterable by name / status / keyword",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Departments"
+                ],
+                "summary": "Get department list",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by department name or leader",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by department name",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status (active/inactive)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved departments",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/domain.Department"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -1616,8 +1683,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Search by label or value",
-                        "name": "search",
+                        "description": "Filter by label or value",
+                        "name": "keyword",
                         "in": "query"
                     },
                     {
@@ -1955,8 +2022,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Search by code or name",
-                        "name": "search",
+                        "description": "Filter by code or name",
+                        "name": "keyword",
                         "in": "query"
                     },
                     {
@@ -2477,14 +2544,6 @@ const docTemplate = `{
                     "Roles"
                 ],
                 "summary": "Get all roles",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Search roles by name",
-                        "name": "search",
-                        "in": "query"
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Successfully retrieved roles",
@@ -2874,8 +2933,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter by username or email",
-                        "name": "search",
+                        "description": "Filter by username, nickname or email",
+                        "name": "keyword",
                         "in": "query"
                     },
                     {

@@ -28,8 +28,9 @@ func buildList() client.ListParams {
 	return client.ListParams{Page: listPage, PageSize: listPageSize, Keyword: listKeyword}
 }
 
-// newReadonlyGroup 构造 "parent" + "parent list / parent get <id>" 常规只读命令
-func newReadonlyGroup(use, short, basePath string) *cobra.Command {
+// newReadonlyGroup 构造 "parent" + "parent list / parent get <id>" 常规只读命令。
+// withListFlags 控制是否提供 --page/--page-size/--keyword（后端支持分页/过滤时启用）。
+func newReadonlyGroup(use, short, basePath string, withListFlags bool) *cobra.Command {
 	parent := &cobra.Command{Use: use, Short: short}
 
 	listCmd := &cobra.Command{
@@ -56,7 +57,9 @@ func newReadonlyGroup(use, short, basePath string) *cobra.Command {
 			return writeRaw(raw, renderListPretty)
 		}),
 	}
-	addListFlags(listCmd)
+	if withListFlags {
+		addListFlags(listCmd)
+	}
 
 	getCmd := &cobra.Command{
 		Use:   "get <id>",
@@ -181,8 +184,9 @@ func printObjects(list []any) {
 }
 
 func init() {
-	rootCmd.AddCommand(newReadonlyGroup("users", "Manage users (read-only)", "/api/v1/system/user"))
-	rootCmd.AddCommand(newReadonlyGroup("roles", "Manage roles (read-only)", "/api/v1/system/role"))
+	rootCmd.AddCommand(newReadonlyGroup("users", "Manage users (read-only)", "/api/v1/system/user", true))
+	// roles 后端全量返回（无分页/过滤），不提供无效的 --page/--keyword flag
+	rootCmd.AddCommand(newReadonlyGroup("roles", "Manage roles (read-only)", "/api/v1/system/role", false))
 
 	// menus 有额外 tree 子命令
 	menus := &cobra.Command{Use: "menus", Short: "Manage menus (read-only)"}

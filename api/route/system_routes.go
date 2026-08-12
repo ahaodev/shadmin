@@ -103,6 +103,7 @@ func (pr *ProtectedRoutes) setupDepartmentManagement(systemGroup *gin.RouterGrou
 	deptGroup.Use(casbinMiddleware.CheckAPIPermission())
 	deptController := pr.factory.CreateDepartmentController()
 
+	deptGroup.GET("", deptController.GetDepartmentList)       // GET /api/v1/system/department（扁平列表，支持 keyword 过滤）
 	deptGroup.GET("/tree", deptController.GetDepartmentTree)  // GET /api/v1/system/department/tree
 	deptGroup.POST("", deptController.CreateDepartment)       // POST /api/v1/system/department
 	deptGroup.GET("/:id", deptController.GetDepartment)       // GET /api/v1/system/department/:id

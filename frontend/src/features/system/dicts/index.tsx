@@ -18,7 +18,7 @@ export function Dicts() {
   const queryParams = {
     page: search.page || 1,
     page_size: search.page_size || 10,
-    search: search.search || undefined,
+    keyword: search.search || undefined,
     status: search.status || undefined,
   }
 

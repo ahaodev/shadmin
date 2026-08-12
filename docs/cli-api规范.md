@@ -39,10 +39,10 @@
 🔜 shadmin-cli roles get <id> --show-permissions
 
 ✅ shadmin-cli menus tree
-✅ shadmin-cli menus list
+✅ shadmin-cli menus list [--keyword X]
 ✅ shadmin-cli menus get <id>
 
-✅ shadmin-cli api-resources list
+✅ shadmin-cli api-resources list [--keyword X]
 
 🔜 shadmin-cli login-logs list [--user-id X] [--days N]  # 只读，不可删
 🔜 shadmin-cli auth check-permission <method> <path>

@@ -201,7 +201,7 @@ var whoamiCmd = &cobra.Command{
 			var m map[string]any
 			_ = json.Unmarshal(raw, &m)
 			fmt.Printf("Server:   %s\n", cfg.ServerURL)
-			for _, k := range []string{"id", "name", "email", "phone", "status"} {
+			for _, k := range []string{"id", "username", "email", "phone", "status"} {
 				if v, ok := m[k]; ok {
 					fmt.Printf("%-9s %v\n", capitalize(k)+":", v)
 				}

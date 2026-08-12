@@ -111,7 +111,7 @@ type MenuQueryParams struct {
 	Type     string `form:"type"`   // menu/button
 	Status   string `form:"status"` // active/inactive
 	ParentID string `form:"parent_id"`
-	Search   string `form:"search"` // Search in name or code
+	Keyword  string `form:"keyword"` // 模糊匹配 name/path
 }
 
 // MenuItem 固定菜单定义

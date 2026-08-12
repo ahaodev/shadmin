@@ -74,11 +74,11 @@ func (r *entDepartmentRepository) FetchList(ctx context.Context, filter domain.D
 	if filter.Status != "" {
 		query = query.Where(department.StatusEQ(department.Status(filter.Status)))
 	}
-	if filter.Search != "" {
+	if filter.Keyword != "" {
 		query = query.Where(
 			department.Or(
-				department.NameContains(filter.Search),
-				department.LeaderContains(filter.Search),
+				department.NameContains(filter.Keyword),
+				department.LeaderContains(filter.Keyword),
 			),
 		)
 	}

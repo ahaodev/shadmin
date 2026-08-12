@@ -45,9 +45,9 @@ type UpdateDepartmentRequest struct {
 
 // DepartmentQueryFilter represents query parameters for department filtering
 type DepartmentQueryFilter struct {
-	Name   string `json:"name,omitempty" form:"name"`
-	Status string `json:"status,omitempty" form:"status"`
-	Search string `json:"search,omitempty" form:"search"`
+	Name    string `json:"name,omitempty" form:"name"`
+	Status  string `json:"status,omitempty" form:"status"`
+	Keyword string `json:"keyword,omitempty" form:"keyword"`
 	QueryParams
 }
 
@@ -80,6 +80,7 @@ type DepartmentUseCase interface {
 	Create(ctx context.Context, req *CreateDepartmentRequest) error
 	GetByID(ctx context.Context, id string) (*Department, error)
 	FetchTree(ctx context.Context) ([]Department, error)
+	FetchList(ctx context.Context, filter DepartmentQueryFilter) ([]Department, error)
 	Update(ctx context.Context, id string, req *UpdateDepartmentRequest) (*Department, error)
 	Delete(ctx context.Context, id string) error
 }

@@ -68,6 +68,14 @@ func (u *departmentUsecase) FetchTree(ctx context.Context) ([]domain.Department,
 	return u.departmentRepo.FetchTree(ctx)
 }
 
+// FetchList 按过滤条件（name / status / keyword）返回扁平部门列表。
+func (u *departmentUsecase) FetchList(ctx context.Context, filter domain.DepartmentQueryFilter) ([]domain.Department, error) {
+	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
+	defer cancel()
+
+	return u.departmentRepo.FetchList(ctx, filter)
+}
+
 func (u *departmentUsecase) Update(ctx context.Context, id string, req *domain.UpdateDepartmentRequest) (*domain.Department, error) {
 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
