@@ -1,16 +1,8 @@
 import { useCallback, useEffect } from 'react'
-import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { Role } from '@/types/role'
-
-const roleSchema = z.object({
-  name: z.string().min(1, '角色名称是必填的').max(100, '角色名称最多100个字符'),
-  sequence: z.number().int().min(0, '序号必须是非负整数'),
-  status: z.enum(['active', 'inactive']),
-})
-
-export type RoleFormData = z.infer<typeof roleSchema>
+import { roleSchema, type RoleFormData } from '../data/schema'
 
 interface UseRoleFormProps {
   open: boolean

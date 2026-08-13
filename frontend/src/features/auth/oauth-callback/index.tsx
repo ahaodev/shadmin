@@ -89,7 +89,8 @@ export function OAuthCallback() {
         }
 
         try {
-          const { menuService } = await import('@/services/menu-service')
+          const { menuService } =
+            await import('@/services/menu-resource-service')
           await menuService.reloadMenuData()
         } catch (e) {
           console.warn('Failed to reload menu data after identity login:', e)

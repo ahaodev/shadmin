@@ -1,5 +1,5 @@
 import { registerAuthStoreReset } from '@/services/config'
-import { menuService } from '@/services/menu-service'
+import { menuService } from '@/services/menu-resource-service'
 import { getProfile } from '@/services/profileApi'
 import { type User } from '@/types/user'
 import { create } from 'zustand'

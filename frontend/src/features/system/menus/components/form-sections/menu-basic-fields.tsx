@@ -7,7 +7,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import type { CreateMenuFormData } from '../../schemas/menu-form-schema'
+import type { CreateMenuFormData } from '../../data/schema'
 
 interface MenuBasicFieldsProps {
   form: UseFormReturn<CreateMenuFormData>

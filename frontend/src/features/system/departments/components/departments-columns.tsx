@@ -144,8 +144,8 @@ export function createDepartmentColumns({
       header: '操作',
       cell: ({ row }) => {
         const dept = row.original
-        const canEdit = hasPermission(PERMISSIONS.SYSTEM.DEPT.EDIT)
-        const canDelete = hasPermission(PERMISSIONS.SYSTEM.DEPT.DELETE)
+        const canEdit = hasPermission(PERMISSIONS.SYSTEM.DEPARTMENT.EDIT)
+        const canDelete = hasPermission(PERMISSIONS.SYSTEM.DEPARTMENT.DELETE)
 
         if (!canEdit && !canDelete) return null
 

@@ -1,17 +1,5 @@
 basePath: /api/v1
 definitions:
-  controller.RoleInfo:
-    properties:
-      id:
-        description: 角色ID
-        type: string
-      name:
-        description: 角色显示名称
-        type: string
-      type:
-        description: 角色类型
-        type: string
-    type: object
   domain.ApiResource:
     properties:
       created_at:
@@ -2426,7 +2414,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/controller.RoleInfo'
+                    $ref: '#/definitions/domain.Role'
                   type: array
               type: object
         "500":
@@ -2593,7 +2581,7 @@ paths:
       summary: Update role
       tags:
       - Roles
-  /system/role/menus/{id}:
+  /system/role/{id}/menus:
     get:
       consumes:
       - application/json

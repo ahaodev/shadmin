@@ -24,7 +24,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import type { CreateMenuFormData } from '../../schemas/menu-form-schema'
+import type { CreateMenuFormData } from '../../data/schema'
 
 interface MenuPermissionsProps {
   form: UseFormReturn<CreateMenuFormData>

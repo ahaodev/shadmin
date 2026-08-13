@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { menuService } from '@/services/menu-service'
+import { menuService } from '@/services/menu-resource-service'
 import { deleteMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
 import { toast } from 'sonner'

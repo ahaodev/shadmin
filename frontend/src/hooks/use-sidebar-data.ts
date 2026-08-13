@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { menuService } from '@/services/menu-service'
+import { menuService } from '@/services/menu-resource-service'
 import { Command } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { type SidebarData } from '@/components/layout/types'

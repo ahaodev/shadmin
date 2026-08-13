@@ -131,7 +131,7 @@ func (rr *entRoleRepository) GetByID(c context.Context, id string) (*domain.Role
 		Only(c)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, fmt.Errorf("role not found")
+			return nil, domain.ErrRoleNotFound
 		}
 		return nil, fmt.Errorf("failed to get role by ID: %w", err)
 	}
@@ -146,7 +146,7 @@ func (rr *entRoleRepository) GetByName(c context.Context, name string) (*domain.
 		Only(c)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, fmt.Errorf("role not found")
+			return nil, domain.ErrRoleNotFound
 		}
 		return nil, fmt.Errorf("failed to get role by name: %w", err)
 	}
@@ -179,7 +179,7 @@ func (rr *entRoleRepository) Delete(c context.Context, id string) error {
 	err := rr.client.Role.DeleteOneID(id).Exec(c)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return fmt.Errorf("role not found")
+			return domain.ErrRoleNotFound
 		}
 		return fmt.Errorf("failed to delete role: %w", err)
 	}
@@ -203,12 +203,12 @@ func (rr *entRoleRepository) DeleteIfUnused(c context.Context, id, name string) 
 		return fmt.Errorf("failed to check role usage: %w", err)
 	}
 	if userCount > 0 {
-		return fmt.Errorf("cannot delete role %s: still assigned to %d users", name, userCount)
+		return fmt.Errorf("%w: role %s still assigned to %d users", domain.ErrRoleInUse, name, userCount)
 	}
 
 	if err := tx.Role.DeleteOneID(id).Exec(c); err != nil {
 		if ent.IsNotFound(err) {
-			return fmt.Errorf("role not found")
+			return domain.ErrRoleNotFound
 		}
 		return fmt.Errorf("failed to delete role: %w", err)
 	}

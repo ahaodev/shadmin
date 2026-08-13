@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"shadmin/internal/auth"
 	"shadmin/internal/constants"
+	"shadmin/internal/contextutil"
 
 	"shadmin/domain"
 
@@ -112,7 +113,7 @@ func (sc *UserIdentityController) recordIdentityLoginLog(c *gin.Context, provide
 	}
 	logRequest := &domain.CreateLoginLogRequest{
 		Email:         email,
-		LoginIP:       getClientIP(c),
+		LoginIP:       contextutil.GetClientIP(c),
 		UserAgent:     c.Request.Header.Get("User-Agent"),
 		Status:        status,
 		Source:        provider,

@@ -24,7 +24,7 @@ export function LogsPrimaryButtons() {
   const clearAllMutation = useClearAllLoginLogs()
   const refreshLogs = useRefreshLoginLogs()
 
-  const canCleanLogs = hasPermission(PERMISSIONS.SYSTEM.LOGIN_LOGS.CLEAN)
+  const canCleanLogs = hasPermission(PERMISSIONS.SYSTEM.LOGIN_LOG.CLEAN)
 
   const handleRefresh = () => {
     refreshLogs()

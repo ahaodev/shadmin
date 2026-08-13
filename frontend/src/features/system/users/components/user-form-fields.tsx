@@ -21,7 +21,7 @@ import {
 import { MultiSelectDropdown } from '@/components/multi-select-dropdown'
 import { PasswordInput } from '@/components/password-input'
 import { SelectDropdown } from '@/components/select-dropdown'
-import { statusOptions, type UserFormData } from '../lib/user-form-schema'
+import { statusOptions, type UserFormData } from '../data/schema'
 
 interface UserFormFieldsProps {
   form: UseFormReturn<UserFormData>

@@ -114,7 +114,7 @@ func (mu *menuUsecase) UpdateMenu(ctx context.Context, id string, req *domain.Up
 	}
 
 	// 注意: casbin权限同步由定时任务自动处理，无需在此手动操作
-	log.Printf(" Successfully updated menu %s", updatedMenu.ID)
+	log.Printf("Successfully updated menu %s", updatedMenu.ID)
 
 	return updatedMenu, nil
 }
@@ -129,7 +129,7 @@ func (mu *menuUsecase) DeleteMenu(ctx context.Context, id string) error {
 		return fmt.Errorf("menu not found: %w", err)
 	}
 
-	log.Printf(" Starting deletion process for menu %s (ID: %s, Type: %s)",
+	log.Printf("Starting deletion process for menu %s (ID: %s, Type: %s)",
 		menu.Name, id, menu.Type)
 
 	// 2. 递归删除菜单及其所有子菜单；事务由 repository 处理
@@ -137,6 +137,6 @@ func (mu *menuUsecase) DeleteMenu(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to delete menu recursively: %w", err)
 	}
 
-	log.Printf(" Successfully deleted menu %s and all its children", menu.Name)
+	log.Printf("Successfully deleted menu %s and all its children", menu.Name)
 	return nil
 }

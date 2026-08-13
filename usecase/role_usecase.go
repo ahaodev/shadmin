@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"shadmin/domain"
@@ -19,8 +20,11 @@ func (ru *roleUsecase) Create(c context.Context, request *domain.CreateRoleReque
 
 	// Check if role with same name already exists
 	existingRole, err := ru.roleRepository.GetByName(ctx, request.Name)
-	if err == nil && existingRole != nil {
-		return err
+	if err != nil && !errors.Is(err, domain.ErrRoleNotFound) {
+		return fmt.Errorf("check role name: %w", err)
+	}
+	if existingRole != nil {
+		return domain.ErrRoleNameExists
 	}
 
 	// Create the role domain model
@@ -43,7 +47,7 @@ func (ru *roleUsecase) Create(c context.Context, request *domain.CreateRoleReque
 	}
 
 	// 注意: casbin权限同步由定时任务自动处理，无需在此手动操作
-	log.Printf(" Successfully created role %s with %d menus", role.ID, len(role.MenusIds))
+	log.Printf("Successfully created role %s with %d menus", role.ID, len(role.MenusIds))
 
 	return nil
 }
@@ -113,7 +117,7 @@ func (ru *roleUsecase) Update(c context.Context, id string, request *domain.Upda
 
 	// Log menu assignments change - casbin sync handled by scheduled task
 	if request.MenuIDs != nil && ru.hasMenuAssignmentsChanged(oldMenuIDs, request.MenuIDs) {
-		log.Printf(" Menu assignments changed for role %s, will be synced by scheduled casbin task", existingRole.ID)
+		log.Printf("Menu assignments changed for role %s, will be synced by scheduled casbin task", existingRole.ID)
 	}
 	// Fetch and return updated role
 	updatedRole, err := ru.roleRepository.GetByID(ctx, id)
@@ -139,7 +143,7 @@ func (ru *roleUsecase) Delete(c context.Context, id string) error {
 		return domain.ErrCannotDeleteAdminRole
 	}
 
-	log.Printf(" Starting deletion process for role %s (ID: %s)", role.Name, id)
+	log.Printf("Starting deletion process for role %s (ID: %s)", role.Name, id)
 
 	// 2. 删除角色记录；使用情况检查和删除在 repository 事务内完成
 	if err := ru.roleRepository.DeleteIfUnused(ctx, id, role.Name); err != nil {
@@ -153,13 +157,13 @@ func (ru *roleUsecase) Delete(c context.Context, id string) error {
 		// 可以考虑加入告警机制
 	}
 
-	log.Printf(" Successfully deleted role %s", role.Name)
+	log.Printf("Successfully deleted role %s", role.Name)
 	return nil
 }
 
 // cleanupRolePermissions 记录角色删除，权限清理由定时同步处理
 func (ru *roleUsecase) cleanupRolePermissions(roleName string) error {
-	log.Printf(" Role %s deleted, permissions will be cleaned up by scheduled casbin sync", roleName)
+	log.Printf("Role %s deleted, permissions will be cleaned up by scheduled casbin sync", roleName)
 	return nil
 }
 

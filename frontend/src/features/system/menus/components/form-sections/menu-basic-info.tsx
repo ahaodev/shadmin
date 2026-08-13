@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { CreateMenuFormData } from '../../schemas/menu-form-schema'
+import type { CreateMenuFormData } from '../../data/schema'
 
 interface MenuBasicInfoProps {
   form: UseFormReturn<CreateMenuFormData>

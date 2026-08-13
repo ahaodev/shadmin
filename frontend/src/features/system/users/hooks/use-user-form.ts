@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRoles } from '@/services/roleApi'
 import { getUserRoleList } from '@/services/userApi'
 import { type User, type UserStatus } from '@/types/user'
-import { type UserFormData, userFormSchema } from '../lib/user-form-schema'
+import { type UserFormData, userFormSchema } from '../data/schema'
 import { useCreateUser, useUpdateUser } from './use-users'
 
 interface UseUserFormProps {

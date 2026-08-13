@@ -16,13 +16,13 @@ export const PERMISSIONS = {
       DELETE: 'system:user:delete',
       INVITE: 'system:user:invite',
     },
-    LOGIN_LOGS: {
-      CLEAN: 'system:login_logs:clean',
+    LOGIN_LOG: {
+      CLEAN: 'system:login_log:clean',
     },
-    DEPT: {
-      ADD: 'system:dept:add',
-      EDIT: 'system:dept:edit',
-      DELETE: 'system:dept:delete',
+    DEPARTMENT: {
+      ADD: 'system:department:add',
+      EDIT: 'system:department:edit',
+      DELETE: 'system:department:delete',
     },
     DICT: {
       ADD_TYPE: 'system:dict:add_type',

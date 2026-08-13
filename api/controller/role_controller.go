@@ -4,19 +4,12 @@ import (
 	"errors"
 	"net/http"
 	"shadmin/domain"
-	"shadmin/internal/casbin"
-	"shadmin/internal/conf"
 
 	"github.com/gin-gonic/gin"
 )
 
 type RoleController struct {
-	CasManager     casbin.Manager
-	Env            *conf.Env
-	RoleUseCase    domain.RoleUseCase
-	UserRepository domain.UserRepository
-	RoleRepository domain.RoleRepository
-	MenuRepository domain.MenuRepository
+	RoleUseCase domain.RoleUseCase
 }
 
 func (rc *RoleController) getRoleIDOrBadRequest(c *gin.Context) (string, bool) {
@@ -34,19 +27,20 @@ func (rc *RoleController) writeRoleMutationError(c *gin.Context, err error, forb
 		c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
 		return
 	}
-	if err.Error() == "role not found" {
+	if errors.Is(err, domain.ErrRoleNotFound) {
 		c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
+		return
+	}
+	if errors.Is(err, domain.ErrRoleNameExists) {
+		c.JSON(http.StatusConflict, domain.RespError(err.Error()))
+		return
+	}
+	if errors.Is(err, domain.ErrRoleInUse) {
+		c.JSON(http.StatusConflict, domain.RespError(err.Error()))
 		return
 	}
 
 	c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
-}
-
-// RoleInfo 角色信息结构
-type RoleInfo struct {
-	ID   string `json:"id"`   // 角色ID
-	Name string `json:"name"` // 角色显示名称
-	Type string `json:"type"` // 角色类型
 }
 
 // GetRoles 获取所有角色
@@ -56,7 +50,7 @@ type RoleInfo struct {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Success      200  {object} domain.Response{data=[]RoleInfo}  "Successfully retrieved roles"
+// @Success      200  {object} domain.Response{data=[]domain.Role}  "Successfully retrieved roles"
 // @Failure      500  {object} domain.Response  "Internal server error"
 // @Router       /system/role [get]
 func (rc *RoleController) GetRoles(c *gin.Context) {
@@ -97,7 +91,7 @@ func (rc *RoleController) CreateRole(c *gin.Context) {
 	// Create the role
 	err := rc.RoleUseCase.Create(c.Request.Context(), &request)
 	if err != nil {
-		if err.Error() == "role code already exists" {
+		if errors.Is(err, domain.ErrRoleNameExists) {
 			c.JSON(http.StatusConflict, domain.RespError(err.Error()))
 			return
 		}
@@ -105,7 +99,7 @@ func (rc *RoleController) CreateRole(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, domain.RespSuccess(err))
+	c.JSON(http.StatusCreated, domain.RespSuccess(nil))
 }
 
 // getRoleByID extracts the role ID from the path, fetches the role, and writes
@@ -118,7 +112,7 @@ func (rc *RoleController) getRoleByID(c *gin.Context) *domain.Role {
 
 	role, err := rc.RoleUseCase.GetByID(c.Request.Context(), roleID)
 	if err != nil {
-		if err.Error() == "role not found" {
+		if errors.Is(err, domain.ErrRoleNotFound) {
 			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
 			return nil
 		}
@@ -226,7 +220,7 @@ func (rc *RoleController) DeleteRole(c *gin.Context) {
 // @Failure      400  {object} domain.Response  "Bad request - Role ID is required"
 // @Failure      404  {object} domain.Response  "Role not found"
 // @Failure      500  {object} domain.Response  "Internal server error"
-// @Router       /system/role/menus/{id} [get]
+// @Router       /system/role/{id}/menus [get]
 func (rc *RoleController) GetRoleMenus(c *gin.Context) {
 	role := rc.getRoleByID(c)
 	if role == nil {

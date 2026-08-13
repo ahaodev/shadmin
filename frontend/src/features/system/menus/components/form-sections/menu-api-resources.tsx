@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { METHOD_COLORS } from '@/features/system/api-resources/constants/api-constants'
 import { useApiResources } from '@/features/system/api-resources/hooks/use-api-resources'
-import type { CreateMenuFormData } from '../../schemas/menu-form-schema'
+import type { CreateMenuFormData } from '../../data/schema'
 import { useMenus } from '../menus-provider'
 import { ApiResourceSelector } from './api-resource-selector'
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { menuService } from '@/services/menu-service'
+import { menuService } from '@/services/menu-resource-service'
 import { updateMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
 import type { TableMenuItem } from '@/lib/menu-utils'

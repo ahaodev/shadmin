@@ -38,8 +38,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import type { RoleFormData } from '../data/schema'
 import { useMenuSelection } from '../hooks/use-menu-selection'
-import { type RoleFormData, useRoleForm } from '../hooks/use-role-form'
+import { useRoleForm } from '../hooks/use-role-form'
 import { MenuTreeSection } from './menu-tree-section'
 
 interface CreateRoleDialogProps {

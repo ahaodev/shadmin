@@ -12,15 +12,15 @@ func (pr *ProtectedRoutes) setupUserManagement(systemGroup *gin.RouterGroup, cas
 	userGroup.Use(casbinMiddleware.CheckAPIPermission())
 	userController := pr.factory.CreateUserController()
 
-	userGroup.GET("/", userController.GetUsers)
-	userGroup.POST("/", userController.CreateUser)
+	userGroup.GET("", userController.GetUsers)    // GET /api/v1/system/user
+	userGroup.POST("", userController.CreateUser) // POST /api/v1/system/user
 
-	userGroup.GET("/:id", userController.GetUser)
-	userGroup.PUT("/:id", userController.UpdateUser)
-	userGroup.DELETE("/:id", userController.DeleteUser)
+	userGroup.GET("/:id", userController.GetUser)       // GET /api/v1/system/user/:id
+	userGroup.PUT("/:id", userController.UpdateUser)    // PUT /api/v1/system/user/:id
+	userGroup.DELETE("/:id", userController.DeleteUser) // DELETE /api/v1/system/user/:id
 
-	userGroup.POST("/invite", userController.InviteUser)
-	userGroup.GET("/:id/roles", userController.GetUserRoles)
+	userGroup.POST("/invite", userController.InviteUser)     // POST /api/v1/system/user/invite
+	userGroup.GET("/:id/roles", userController.GetUserRoles) // GET /api/v1/system/user/:id/roles
 }
 
 // setupRoleManagement configures role management routes with unified API permission check
@@ -36,7 +36,7 @@ func (pr *ProtectedRoutes) setupRoleManagement(systemGroup *gin.RouterGroup, cas
 	roleGroup.PUT("/:id", roleController.UpdateRole)    // PUT /api/v1/system/role/:id
 	roleGroup.DELETE("/:id", roleController.DeleteRole) // DELETE /api/v1/system/role/:id
 
-	roleGroup.GET("/:id/menus", roleController.GetRoleMenus) // GET /api/v1/system/role/menus/:id
+	roleGroup.GET("/:id/menus", roleController.GetRoleMenus) // GET /api/v1/system/role/:id/menus
 }
 
 // setupMenuManagement configures menu management routes with unified API permission check

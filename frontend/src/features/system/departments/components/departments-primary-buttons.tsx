@@ -15,7 +15,7 @@ export function DepartmentsPrimaryButtons() {
 
   return (
     <div className='flex space-x-2'>
-      {hasPermission(PERMISSIONS.SYSTEM.DEPT.ADD) && (
+      {hasPermission(PERMISSIONS.SYSTEM.DEPARTMENT.ADD) && (
         <Button onClick={handleCreateClick} className='space-x-1'>
           <span>添加部门</span>
           <Plus className='ml-1 h-4 w-4' />

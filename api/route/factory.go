@@ -60,16 +60,21 @@ func (f *ControllerFactory) tokenService() *tokenservice.TokenService {
 // CreateAuthController creates an authentication controller
 func (f *ControllerFactory) CreateAuthController() *controller.AuthController {
 	ur := repository.NewUserRepository(f.db)
-	ts := f.tokenService()
 
 	return &controller.AuthController{
-		LoginUsecase:    usecase.NewLoginUsecase(ur, f.timeout),
-		LoginLogUsecase: f.loginLogUsecase(),
-		Env:             f.app.Env,
-		SecurityManager: auth.NewLoginSecurityManager(),
-		TokenService:    ts,
-		CaptchaUsecase:  usecase.NewCaptchaUsecase(f.captchaManager, f.timeout),
-		TokenBlacklist:  f.app.TokenBlacklist,
+		LoginUsecase: usecase.NewLoginUsecase(
+			ur,
+			usecase.NewCaptchaUsecase(f.captchaManager, f.timeout),
+			f.loginLogUsecase(),
+			auth.NewLoginSecurityManager(),
+			f.tokenService(),
+			f.app.TokenBlacklist,
+			f.app.Env.AccessTokenSecret,
+			f.app.Env.RefreshTokenSecret,
+			f.app.Env.AccessTokenExpiryMinute,
+			f.app.Env.RefreshTokenExpiryMinute,
+			f.timeout,
+		),
 	}
 }
 
@@ -161,17 +166,10 @@ func (f *ControllerFactory) CreateUserController() *controller.UserController {
 // CreateRoleController creates a role controller
 func (f *ControllerFactory) CreateRoleController() *controller.RoleController {
 	roleRepository := repository.NewRoleRepository(f.db)
-	userRepository := repository.NewUserRepository(f.db)
-	menuRepository := repository.NewMenuRepository(f.db)
 	roleUseCase := usecase.NewRoleUsecase(roleRepository, f.timeout)
 
 	return &controller.RoleController{
-		CasManager:     f.app.CasManager,
-		Env:            f.app.Env,
-		RoleUseCase:    roleUseCase,
-		UserRepository: userRepository,
-		RoleRepository: roleRepository,
-		MenuRepository: menuRepository,
+		RoleUseCase: roleUseCase,
 	}
 }
 

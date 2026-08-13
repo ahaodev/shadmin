@@ -35,7 +35,7 @@ function isPathMatch(pathname: string, allowedPath: string): boolean {
 
 /**
  * Fetch complete resources data (menus + permissions + roles) from backend.
- * Internal to menu-service — not exported.
+ * Internal to menu-resource-service — not exported.
  */
 async function fetchResourcesWithPermissions(): Promise<ResourcesResponse> {
   try {

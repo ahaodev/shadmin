@@ -2558,7 +2558,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/controller.RoleInfo"
+                                                "$ref": "#/definitions/domain.Role"
                                             }
                                         }
                                     }
@@ -2629,76 +2629,6 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Role code already exists",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/system/role/menus/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get menu permissions assigned to a role",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Roles"
-                ],
-                "summary": "Get role menu permissions",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Role ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully retrieved role menu permissions",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/domain.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request - Role ID is required",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Role not found",
                         "schema": {
                             "$ref": "#/definitions/domain.Response"
                         }
@@ -2881,6 +2811,76 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "Successfully deleted role",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Role not found",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/system/role/{id}/menus": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get menu permissions assigned to a role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Get role menu permissions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved role menu permissions",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - Role ID is required",
                         "schema": {
                             "$ref": "#/definitions/domain.Response"
                         }
@@ -3323,23 +3323,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "controller.RoleInfo": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "description": "角色ID",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "角色显示名称",
-                    "type": "string"
-                },
-                "type": {
-                    "description": "角色类型",
-                    "type": "string"
-                }
-            }
-        },
         "domain.ApiResource": {
             "type": "object",
             "properties": {

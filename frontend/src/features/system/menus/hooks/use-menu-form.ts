@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { menuService } from '@/services/menu-service'
+import { menuService } from '@/services/menu-resource-service'
 import { createMenu, updateMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
 import { toast } from 'sonner'
@@ -10,7 +10,7 @@ import {
   type CreateMenuFormData,
   createMenuSchema,
   defaultFormValues,
-} from '../schemas/menu-form-schema'
+} from '../data/schema'
 
 interface UseMenuFormProps {
   menu?: Menu | null

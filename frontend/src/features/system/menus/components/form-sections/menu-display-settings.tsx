@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { IconPicker } from '@/components/icon-picker.tsx'
-import type { CreateMenuFormData } from '../../schemas/menu-form-schema'
+import type { CreateMenuFormData } from '../../data/schema'
 
 interface MenuDisplaySettingsProps {
   form: UseFormReturn<CreateMenuFormData>

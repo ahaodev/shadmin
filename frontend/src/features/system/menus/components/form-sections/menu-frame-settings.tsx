@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/form'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import type { CreateMenuFormData } from '../../schemas/menu-form-schema'
+import type { CreateMenuFormData } from '../../data/schema'
 
 interface MenuFrameSettingsProps {
   form: UseFormReturn<CreateMenuFormData>
