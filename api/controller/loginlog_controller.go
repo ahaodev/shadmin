@@ -25,14 +25,14 @@ type LoginLogController struct {
 // @Security     BearerAuth
 // @Param        page      query  int     false  "Page number (default: 1)"
 // @Param        page_size query  int     false  "Page size (default: 20)"
-// @Param        username  query  string  false  "Filter by username"
+// @Param        email     query  string  false  "Filter by email"
 // @Param        login_ip  query  string  false  "Filter by login IP"
 // @Param        status    query  string  false  "Filter by status (success, failed)"
 // @Param        browser   query  string  false  "Filter by browser"
 // @Param        os        query  string  false  "Filter by operating system"
 // @Param        start_time query string false  "Start time (RFC3339 format, e.g., 2023-01-01T00:00:00Z)"
 // @Param        end_time   query string false  "End time (RFC3339 format, e.g., 2023-01-31T23:59:59Z)"
-// @Param        sort_by   query  string  false  "Sort by field (login_time, username, login_ip, status)"
+// @Param        sort_by   query  string  false  "Sort by field (login_time, email, login_ip, status)"
 // @Param        order     query  string  false  "Sort order (asc, desc, default: desc)"
 // @Success      200       {object}  domain.Response{data=domain.LoginLogPagedResult}  "Login logs retrieved successfully"
 // @Failure      400       {object}  domain.Response  "Invalid request parameters"
@@ -64,7 +64,7 @@ func (llc *LoginLogController) GetLoginLogs(c *gin.Context) {
 	}
 
 	// 解析过滤参数
-	filter.Username = c.Query("username")
+	filter.Email = c.Query("email")
 	filter.LoginIP = c.Query("login_ip")
 	filter.Status = c.Query("status")
 	filter.Browser = c.Query("browser")

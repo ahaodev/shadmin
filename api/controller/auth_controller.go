@@ -107,10 +107,10 @@ func (lc *AuthController) Login(c *gin.Context) {
 	}
 
 	// 创建记录登录日志的辅助函数
-	recordLoginLog := func(status, failureReason string) {
+	recordLoginLog := func(status, failureReason, email string) {
 		if lc.LoginLogUsecase != nil {
 			logRequest := &domain.CreateLoginLogRequest{
-				Username:      request.Identifier,
+				Email:         email,
 				LoginIP:       clientIP,
 				UserAgent:     userAgent,
 				Status:        status,
@@ -152,7 +152,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 		lc.SecurityManager.RecordFailedAttempt(request.Identifier)
 
 		// 记录登录失败日志
-		recordLoginLog("failed", "用户不存在")
+		recordLoginLog("failed", "用户不存在", "")
 
 		c.JSON(http.StatusUnauthorized, domain.RespError("用户名或密码错误"))
 		return
@@ -161,7 +161,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 	// 账户状态检查：未启用 / 邀请中 / 已停用 的用户不能登录。
 	// 错误消息保持与“用户名或密码错误”一致，避免暴露账户是否存在。
 	if user.Status != constants.UserStatusActive {
-		recordLoginLog("failed", "账户未启用或已停用")
+		recordLoginLog("failed", "账户未启用或已停用", user.Email)
 		c.JSON(http.StatusForbidden, domain.RespError("账户未启用或已停用，请联系管理员"))
 		return
 	}
@@ -169,7 +169,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 	// 第三方来源用户没有本地密码：拒绝其走密码登录，避免被撞库。
 	// 保持与“用户名或密码错误”一致的模糊提示，不暴露账户来源。
 	if user.Password == "" {
-		recordLoginLog("failed", "第三方账户不支持密码登录")
+		recordLoginLog("failed", "第三方账户不支持密码登录", user.Email)
 		c.JSON(http.StatusUnauthorized, domain.RespError("用户名或密码错误"))
 		return
 	}
@@ -182,7 +182,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 		lc.SecurityManager.RecordFailedAttempt(request.Identifier)
 
 		// 记录登录失败日志
-		recordLoginLog("failed", "密码错误")
+		recordLoginLog("failed", "密码错误", user.Email)
 
 		// 检查是否刚被锁定
 		fmt.Printf("Checking if user %s is now locked after failed attempt\n", request.Identifier)
@@ -228,7 +228,7 @@ func (lc *AuthController) Login(c *gin.Context) {
 	}
 
 	// 记录登录成功日志
-	recordLoginLog(constants.StatusSuccess, "")
+	recordLoginLog(constants.StatusSuccess, "", user.Email)
 
 	c.JSON(http.StatusOK, domain.RespSuccess(loginResponse))
 }

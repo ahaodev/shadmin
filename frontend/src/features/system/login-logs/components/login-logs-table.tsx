@@ -59,8 +59,8 @@ export function LoginLogsTable({
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: false },
     columnFilters: [
-      // username per-column text filter
-      { columnId: 'username', searchKey: 'username', type: 'string' },
+      // email per-column text filter
+      { columnId: 'email', searchKey: 'email', type: 'string' },
       { columnId: 'status', searchKey: 'status', type: 'array' },
     ],
   })
@@ -105,8 +105,8 @@ export function LoginLogsTable({
     >
       <DataTableToolbar
         table={table}
-        searchPlaceholder='筛选用户名...'
-        searchKey='username'
+        searchPlaceholder='筛选邮箱...'
+        searchKey='email'
         filters={[
           {
             columnId: 'status',

@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"shadmin/internal/auth"
 	"shadmin/internal/constants"
-	"strings"
 
 	"shadmin/domain"
 
@@ -68,7 +67,7 @@ func (sc *UserIdentityController) Callback(c *gin.Context) {
 	// 在后端回调中完成 provider 身份校验并拿到第三方用户资料。
 	oidcUser, err := gothic.CompleteUserAuth(c.Writer, c.Request)
 	if err != nil {
-		sc.recordIdentityLoginLog(c, provider, provider, "failed", "第三方身份认证失败")
+		sc.recordIdentityLoginLog(c, provider, "", "failed", "第三方身份认证失败")
 		sc.redirectError(c)
 		return
 	}
@@ -76,16 +75,16 @@ func (sc *UserIdentityController) Callback(c *gin.Context) {
 	result, err := sc.UserIdentityUsecase.HandleCallback(c.Request.Context(), provider, oidcUser)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserDisabled) {
-			sc.recordIdentityLoginLog(c, provider, oidcUser.Name, "failed", "账户已停用或未启用")
+			sc.recordIdentityLoginLog(c, provider, oidcUser.Email, "failed", "账户已停用或未启用")
 			sc.redirectTo(c, sc.errorRedirectURL("disabled"))
 			return
 		}
-		sc.recordIdentityLoginLog(c, provider, oidcUser.Name, "failed", "第三方登录处理失败")
+		sc.recordIdentityLoginLog(c, provider, oidcUser.Email, "failed", "第三方登录处理失败")
 		sc.redirectError(c)
 		return
 	}
 
-	sc.recordIdentityLoginLog(c, provider, oidcUser.Name, constants.StatusSuccess, "")
+	sc.recordIdentityLoginLog(c, provider, oidcUser.Email, constants.StatusSuccess, "")
 
 	//  避免 JWT 放进 URL；改为生成一次性短码，供前端随后 POST /exchange 换取 token。
 	code, err := sc.CodeStore.Put(c.Request.Context(), result)
@@ -107,13 +106,12 @@ func (sc *UserIdentityController) Callback(c *gin.Context) {
 
 // recordIdentityLoginLog 异步记录第三方登录日志，来源固定为 oauth（按登录渠道判定，
 // 不依赖可能滞后的 users.source），不阻塞回调主流程；未配置 LoginLogUsecase 时静默跳过。
-func (sc *UserIdentityController) recordIdentityLoginLog(c *gin.Context, provider, username, status, failureReason string) {
+func (sc *UserIdentityController) recordIdentityLoginLog(c *gin.Context, provider, email, status, failureReason string) {
 	if sc.LoginLogUsecase == nil {
 		return
 	}
-	_ = provider // provider 仅用于用户名回退，来源统一记为 oauth
 	logRequest := &domain.CreateLoginLogRequest{
-		Username:      username,
+		Email:         email,
 		LoginIP:       getClientIP(c),
 		UserAgent:     c.Request.Header.Get("User-Agent"),
 		Status:        status,
@@ -129,17 +127,6 @@ func (sc *UserIdentityController) recordIdentityLoginLog(c *gin.Context, provide
 			_ = err
 		}
 	}()
-}
-
-// identityLogUsername 选择第三方登录日志中最可读的账号标识：邮箱 > 名称 > provider。
-func identityLogUsername(email, name, provider string) string {
-	if v := strings.TrimSpace(email); v != "" {
-		return v
-	}
-	if v := strings.TrimSpace(name); v != "" {
-		return v
-	}
-	return provider
 }
 
 // Exchange godoc

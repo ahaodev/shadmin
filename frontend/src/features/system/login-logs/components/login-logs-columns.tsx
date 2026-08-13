@@ -4,14 +4,19 @@ import type { LoginLog } from '../data/schema'
 
 export const loginLogsColumns: ColumnDef<LoginLog>[] = [
   {
-    accessorKey: 'username',
-    header: '用户名',
+    accessorKey: 'email',
+    header: '邮箱',
     meta: {
-      displayName: '用户名',
+      displayName: '邮箱',
     },
-    cell: ({ row }) => (
-      <div className='font-medium'>{row.getValue('username')}</div>
-    ),
+    cell: ({ row }) => {
+      const email = row.getValue('email') as string
+      return email ? (
+        <span className='text-muted-foreground text-sm'>{email}</span>
+      ) : (
+        <span className='text-muted-foreground text-xs italic'>未知</span>
+      )
+    },
   },
   {
     accessorKey: 'login_ip',

@@ -17,7 +17,7 @@ export function LoginLogs() {
   const queryParams = {
     page: search.page || 1,
     page_size: search.pageSize || 10,
-    username: search.username || undefined,
+    email: search.email || undefined,
     status:
       search.status && search.status.length > 0
         ? (search.status[0] as 'success' | 'failed')

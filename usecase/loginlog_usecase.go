@@ -101,7 +101,7 @@ func (luc *loginLogUsecase) CreateLoginLog(c context.Context, request *domain.Cr
 	}
 
 	loginLog := &domain.LoginLog{
-		Username:      request.Username,
+		Email:         request.Email,
 		LoginIP:       request.LoginIP,
 		UserAgent:     request.UserAgent,
 		Browser:       request.Browser,

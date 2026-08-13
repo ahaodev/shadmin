@@ -41,7 +41,7 @@ func (lr *entLoginLogRepository) Create(c context.Context, log *domain.LoginLog)
 
 	created, err := lr.client.LoginLog.
 		Create().
-		SetUsername(log.Username).
+		SetNillableEmail(emptyToNil(log.Email)).
 		SetLoginIP(log.LoginIP).
 		SetUserAgent(log.UserAgent).
 		SetNillableBrowser(&log.Browser).
@@ -67,8 +67,8 @@ func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLog
 	// 构建基础查询
 	// 构建查询条件
 	var predicates []predicate.LoginLog
-	if filter.Username != "" {
-		predicates = append(predicates, loginlog.UsernameContains(filter.Username))
+	if filter.Email != "" {
+		predicates = append(predicates, loginlog.EmailContains(filter.Email))
 	}
 	if filter.LoginIP != "" {
 		predicates = append(predicates, loginlog.LoginIPContains(filter.LoginIP))
@@ -102,7 +102,7 @@ func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLog
 	// 应用排序（默认按登录时间倒序）
 	if filter.SortBy != "" {
 		baseQuery = baseQuery.Order(ApplySorting(filter.SortBy, filter.Order, map[string]string{
-			"username": loginlog.FieldUsername,
+			"email":    loginlog.FieldEmail,
 			"login_ip": loginlog.FieldLoginIP,
 			"status":   loginlog.FieldStatus,
 		}, loginlog.FieldLoginTime))
@@ -125,7 +125,7 @@ func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLog
 	for _, log := range logs {
 		domainLog := &domain.LoginLog{
 			ID:            log.ID,
-			Username:      log.Username,
+			Email:         derefString(log.Email),
 			LoginIP:       log.LoginIP,
 			UserAgent:     log.UserAgent,
 			Browser:       log.Browser,

@@ -377,6 +377,8 @@ definitions:
         type: string
       device:
         type: string
+      email:
+        type: string
       failure_reason:
         type: string
       id:
@@ -394,8 +396,6 @@ definitions:
         description: success, failed
         type: string
       user_agent:
-        type: string
-      username:
         type: string
     type: object
   domain.LoginLogPagedResult:
@@ -2349,9 +2349,9 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: Filter by username
+      - description: Filter by email
         in: query
-        name: username
+        name: email
         type: string
       - description: Filter by login IP
         in: query
@@ -2377,7 +2377,7 @@ paths:
         in: query
         name: end_time
         type: string
-      - description: Sort by field (login_time, username, login_ip, status)
+      - description: Sort by field (login_time, email, login_ip, status)
         in: query
         name: sort_by
         type: string

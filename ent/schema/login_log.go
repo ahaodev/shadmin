@@ -22,9 +22,11 @@ func (LoginLog) Fields() []ent.Field {
 			DefaultFunc(func() string {
 				return xid.New().String()
 			}),
-		field.String("username").
+		field.String("email").
 			MaxLen(100).
-			Comment("登录账号"),
+			Optional().
+			Nillable().
+			Comment("邮箱"),
 		field.String("login_ip").
 			MaxLen(45).
 			Comment("登录IP地址"),
@@ -69,7 +71,6 @@ func (LoginLog) Edges() []ent.Edge {
 // Indexes of the LoginLog.
 func (LoginLog) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("username"),
 		index.Fields("login_ip"),
 		index.Fields("status"),
 		index.Fields("login_time"),

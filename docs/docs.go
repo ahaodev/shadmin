@@ -2407,8 +2407,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter by username",
-                        "name": "username",
+                        "description": "Filter by email",
+                        "name": "email",
                         "in": "query"
                     },
                     {
@@ -2449,7 +2449,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort by field (login_time, username, login_ip, status)",
+                        "description": "Sort by field (login_time, email, login_ip, status)",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -3874,6 +3874,9 @@ const docTemplate = `{
                 "device": {
                     "type": "string"
                 },
+                "email": {
+                    "type": "string"
+                },
                 "failure_reason": {
                     "type": "string"
                 },
@@ -3898,9 +3901,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_agent": {
-                    "type": "string"
-                },
-                "username": {
                     "type": "string"
                 }
             }

@@ -7,7 +7,7 @@ const loginLogStatusSchema = z.union([
 
 const loginLogSchema = z.object({
   id: z.string(),
-  username: z.string(),
+  email: z.string().optional(),
   login_ip: z.string(),
   user_agent: z.string(),
   browser: z.string().optional(),
@@ -35,7 +35,7 @@ export type PaginatedLoginLogsResponse = {
 export const loginLogFilterSchema = z.object({
   page: z.number().optional(),
   page_size: z.number().optional(),
-  username: z.string().optional(),
+  email: z.string().optional(),
   login_ip: z.string().optional(),
   status: loginLogStatusSchema.optional(),
   source: z.string().optional(),

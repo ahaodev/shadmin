@@ -8,7 +8,7 @@ import (
 // LoginLog 结构体定义了登录日志的信息
 type LoginLog struct {
 	ID            string    `json:"id"`
-	Username      string    `json:"username"`
+	Email         string    `json:"email,omitempty"`
 	LoginIP       string    `json:"login_ip"`
 	UserAgent     string    `json:"user_agent"`
 	Browser       string    `json:"browser,omitempty"`
@@ -22,7 +22,7 @@ type LoginLog struct {
 
 // CreateLoginLogRequest 创建登录日志请求
 type CreateLoginLogRequest struct {
-	Username      string `json:"username" binding:"required"`
+	Email         string `json:"email,omitempty"`
 	LoginIP       string `json:"login_ip" binding:"required"`
 	UserAgent     string `json:"user_agent" binding:"required"`
 	Browser       string `json:"browser,omitempty"`
@@ -38,7 +38,7 @@ type LoginLogPagedResult = PagedResult[*LoginLog]
 
 // LoginLogQueryFilter 登录日志查询过滤器
 type LoginLogQueryFilter struct {
-	Username  string     `json:"username,omitempty"`
+	Email     string     `json:"email,omitempty"`
 	LoginIP   string     `json:"login_ip,omitempty"`
 	Status    string     `json:"status,omitempty"`
 	Source    string     `json:"source,omitempty"`
