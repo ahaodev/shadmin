@@ -19,53 +19,6 @@ func GetUserID(c *gin.Context) string {
 	return ""
 }
 
-// GetUserName 从gin context中获取用户名
-func GetUserName(c *gin.Context) string {
-	if userName, exists := c.Get(constants.UserName); exists {
-		if userNameStr, ok := userName.(string); ok {
-			return userNameStr
-		}
-	}
-	return ""
-}
-
-// GetUserEmail 从gin context中获取用户邮箱
-func GetUserEmail(c *gin.Context) string {
-	if userEmail, exists := c.Get(constants.UserEmail); exists {
-		if userEmailStr, ok := userEmail.(string); ok {
-			return userEmailStr
-		}
-	}
-	return ""
-}
-
-// GetIsAdmin 从gin context中获取是否为管理员
-func GetIsAdmin(c *gin.Context) bool {
-	if isAdmin, exists := c.Get(constants.IsAdmin); exists {
-		if isAdminBool, ok := isAdmin.(bool); ok {
-			return isAdminBool
-		}
-	}
-	return false
-}
-
-type CurrentUser struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Email   string `json:"email"`
-	IsAdmin bool   `json:"is_admin"`
-}
-
-// GetCurrentUser 获取当前用户的所有信息
-func GetCurrentUser(c *gin.Context) *CurrentUser {
-	return &CurrentUser{
-		ID:      GetUserID(c),
-		Name:    GetUserName(c),
-		Email:   GetUserEmail(c),
-		IsAdmin: GetIsAdmin(c),
-	}
-}
-
 // GetClientIP 获取客户端真实 IP 地址，依次信任 X-Forwarded-For、X-Real-IP，最后回退到 RemoteAddr。
 func GetClientIP(c *gin.Context) string {
 	if xff := c.Request.Header.Get("X-Forwarded-For"); xff != "" {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"shadmin/internal/constants"
 	"strings"
 	"time"
 
@@ -38,11 +39,11 @@ func LogMiddleware() gin.HandlerFunc {
 		}
 
 		// 只显示重要的请求头
-		importantHeaders := []string{"Content-Type", "Authorization", "Accept"}
+		importantHeaders := []string{"Content-Type", constants.Authorization, "Accept"}
 		for _, header := range importantHeaders {
 			if value := c.Request.Header.Get(header); value != "" {
 				// 对Authorization进行脱敏处理
-				if header == "Authorization" && len(value) > 20 {
+				if header == constants.Authorization && len(value) > 20 {
 					value = value[:20] + "..."
 				}
 				logLines = append(logLines, fmt.Sprintf("│ 📋 %s: %s", header, value))

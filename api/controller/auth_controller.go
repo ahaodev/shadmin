@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"shadmin/domain"
+	"shadmin/internal/constants"
 	"shadmin/internal/contextutil"
 	"strings"
 
@@ -137,7 +138,7 @@ func (lc *AuthController) Logout(c *gin.Context) {
 
 // extractBearerToken 从 Authorization 头中提取 Bearer token，未携带时返回空串。
 func extractBearerToken(c *gin.Context) string {
-	parts := strings.Split(c.Request.Header.Get("Authorization"), " ")
+	parts := strings.Split(c.Request.Header.Get(constants.Authorization), " ")
 	if len(parts) == 2 && parts[0] == "Bearer" {
 		return parts[1]
 	}

@@ -16,7 +16,7 @@ func JwtAuthMiddleware(secret string, tokenBlacklist auth.JWTBlacklist) gin.Hand
 	tokenService := tokenservice.NewTokenService()
 
 	return func(c *gin.Context) {
-		authHeader := c.Request.Header.Get("Authorization")
+		authHeader := c.Request.Header.Get(constants.Authorization)
 		t := strings.Split(authHeader, " ")
 		if len(t) != 2 {
 			c.JSON(http.StatusUnauthorized, domain.RespError("Not authorized"))
