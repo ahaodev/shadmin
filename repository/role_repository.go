@@ -95,35 +95,6 @@ func (rr *entRoleRepository) Fetch(c context.Context) ([]*domain.Role, error) {
 	return roles, nil
 }
 
-func (rr *entRoleRepository) FetchPaged(c context.Context, params domain.QueryParams) (*domain.RolePagedResult, error) {
-	query := rr.client.Role.Query()
-
-	// Get total count
-	total, err := query.Clone().Count(c)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count roles: %w", err)
-	}
-
-	// Apply pagination and ordering
-	query = query.
-		WithMenus().
-		Order(ent.Asc(role.FieldSequence)).
-		Offset((params.Page - 1) * params.PageSize).
-		Limit(params.PageSize)
-
-	entRoles, err := query.All(c)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch paged roles: %w", err)
-	}
-
-	roles := make([]*domain.Role, len(entRoles))
-	for i, entRole := range entRoles {
-		roles[i] = rr.convertEntRoleToDomain(entRole)
-	}
-
-	return domain.NewPagedResult(roles, total, params.Page, params.PageSize), nil
-}
-
 func (rr *entRoleRepository) GetByID(c context.Context, id string) (*domain.Role, error) {
 	entRole, err := rr.client.Role.Query().
 		Where(role.ID(id)).

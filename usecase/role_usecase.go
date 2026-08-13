@@ -59,13 +59,6 @@ func (ru *roleUsecase) Fetch(c context.Context) ([]*domain.Role, error) {
 	return ru.roleRepository.Fetch(ctx)
 }
 
-func (ru *roleUsecase) FetchPaged(c context.Context, params domain.QueryParams) (*domain.RolePagedResult, error) {
-	ctx, cancel := context.WithTimeout(c, ru.contextTimeout)
-	defer cancel()
-
-	return ru.roleRepository.FetchPaged(ctx, params)
-}
-
 func (ru *roleUsecase) GetByID(c context.Context, id string) (*domain.Role, error) {
 	ctx, cancel := context.WithTimeout(c, ru.contextTimeout)
 	defer cancel()

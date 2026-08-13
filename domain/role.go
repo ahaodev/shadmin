@@ -48,9 +48,6 @@ type UpdateRoleRequest struct {
 	MenuIDs  []string `json:"menu_ids,omitempty"` // Menu permissions managed through Casbin
 }
 
-// RolePagedResult represents paginated role query results
-type RolePagedResult = PagedResult[*Role]
-
 // RoleFilters represents filters for role queries
 type RoleFilters struct {
 	Status string `json:"status,omitempty"`
@@ -61,7 +58,6 @@ type RoleFilters struct {
 type RoleUseCase interface {
 	Create(c context.Context, request *CreateRoleRequest) error
 	Fetch(c context.Context) ([]*Role, error)
-	FetchPaged(c context.Context, params QueryParams) (*RolePagedResult, error)
 	GetByID(c context.Context, id string) (*Role, error)
 	Update(c context.Context, id string, request *UpdateRoleRequest) (*Role, error)
 	Delete(c context.Context, id string) error
@@ -71,7 +67,6 @@ type RoleUseCase interface {
 type RoleRepository interface {
 	Create(c context.Context, role *Role) error
 	Fetch(c context.Context) ([]*Role, error)
-	FetchPaged(c context.Context, params QueryParams) (*RolePagedResult, error)
 	GetByID(c context.Context, id string) (*Role, error)
 	GetByName(c context.Context, name string) (*Role, error)
 	Update(c context.Context, role *Role) error

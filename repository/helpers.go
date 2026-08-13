@@ -20,3 +20,12 @@ func ApplySorting(sortBy, order string, fieldMap map[string]string, defaultField
 	}
 	return ent.Asc(field)
 }
+
+// mapSlice 将实体切片按 convert 映射为领域切片。
+func mapSlice[E any, D any](ents []*E, convert func(*E) *D) []*D {
+	result := make([]*D, 0, len(ents))
+	for _, e := range ents {
+		result = append(result, convert(e))
+	}
+	return result
+}

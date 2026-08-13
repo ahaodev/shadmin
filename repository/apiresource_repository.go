@@ -79,10 +79,5 @@ func (arr *entApiResourceRepository) FetchPaged(ctx context.Context, params doma
 		return nil, fmt.Errorf("failed to fetch paged API resources: %w", err)
 	}
 
-	apiResources := make([]*domain.ApiResource, len(entApiResources))
-	for i, entApiResource := range entApiResources {
-		apiResources[i] = arr.convertEntApiResourceToDomain(entApiResource)
-	}
-
-	return domain.NewPagedResult(apiResources, total, params.GetPage(), params.GetPageSize()), nil
+	return domain.NewPagedResult(mapSlice(entApiResources, arr.convertEntApiResourceToDomain), total, params.GetPage(), params.GetPageSize()), nil
 }
