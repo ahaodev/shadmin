@@ -3,12 +3,15 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"strings"
+
 	"shadmin/domain"
 	"shadmin/internal/casbin"
 	"shadmin/internal/constants"
-	"strings"
+	"shadmin/pkg"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // CasbinMiddleware API权限鉴权中间件
@@ -32,28 +35,32 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 		path := c.Request.URL.Path
 		method := c.Request.Method
 
-		fmt.Printf("🔍 API权限检查> 用户ID %s, %s %s\n", userID, method, path)
+		fmt.Printf("🔍 user= %s method=%s path=%s\n", userID, method, path)
 
 		// 跳过不需要权限校验的API
 		if m.shouldSkipPermissionCheck(path) {
-			fmt.Printf("✅ 跳过权限检查: %s\n", path)
 			c.Next()
 			return
 		}
 
-		// 包装用户ID后传给 Manager
 		hasPermission, err := m.CasManager.CheckPermission(userID, path, method)
-
-		fmt.Printf("🔍 检查结果: %t, error=%v\n", hasPermission, err)
-
 		if err != nil {
-			fmt.Printf("❌ 权限检查错误: %v\n", err)
+			pkg.Log.WithFields(logrus.Fields{
+				"user_id": userID,
+				"method":  method,
+				"path":    path,
+			}).WithError(err).Error("API 权限检查失败")
 			c.JSON(http.StatusInternalServerError, domain.RespError("权限检查失败"))
 			c.Abort()
 			return
 		}
 
 		if !hasPermission {
+			pkg.Log.WithFields(logrus.Fields{
+				"user_id": userID,
+				"method":  method,
+				"path":    path,
+			}).Warn("API 权限不足")
 			c.JSON(http.StatusForbidden, domain.RespError("权限不足"))
 			c.Abort()
 			return

@@ -16,6 +16,7 @@ import (
 
 	"shadmin/domain"
 	"shadmin/internal/tokenservice"
+	"shadmin/pkg"
 
 	"github.com/gin-gonic/gin"
 )
@@ -254,35 +255,32 @@ func (lc *AuthController) RefreshToken(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, domain.RespError("Invalid request format"))
 		return
 	}
-
 	// 验证刷新令牌是否有效
-	isValid, err := lc.TokenService.IsAuthorized(request.RefreshToken, lc.Env.RefreshTokenSecret)
-	if err != nil || !isValid {
-		c.JSON(http.StatusUnauthorized, domain.RespError("Invalid refresh token"))
-		return
-	}
-
-	// 黑名单校验：refresh token 的 jti 已登出则拒绝续发。
-	if lc.TokenBlacklist != nil {
-		if jti, jErr := lc.TokenService.ExtractJTI(request.RefreshToken, lc.Env.RefreshTokenSecret); jErr == nil && jti != "" {
-			revoked, rErr := lc.TokenBlacklist.Exists(c.Request.Context(), jti)
-			if rErr != nil {
-				c.JSON(http.StatusUnauthorized, domain.RespError("令牌无法验证"))
-				return
-			}
-			if revoked {
-				c.JSON(http.StatusUnauthorized, domain.RespError("令牌已登出"))
-				return
-			}
-		}
-	}
-
-	// 从刷新令牌中提取用户ID
-	userID, err := lc.TokenService.ExtractIDFromToken(request.RefreshToken, lc.Env.RefreshTokenSecret)
+	refreshClaims, err := lc.TokenService.ParseRefreshClaims(request.RefreshToken, lc.Env.RefreshTokenSecret)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, domain.RespError("Invalid refresh token"))
 		return
 	}
+
+	if lc.TokenBlacklist != nil {
+		// 黑名单以 jti 为键：无 jti 的令牌无法吊销，直接拒绝
+		if refreshClaims.JTI() == "" {
+			c.JSON(http.StatusUnauthorized, domain.RespError("Invalid refresh token"))
+			return
+		}
+
+		revoked, rErr := lc.TokenBlacklist.Exists(c.Request.Context(), refreshClaims.JTI())
+		if rErr != nil {
+			c.JSON(http.StatusUnauthorized, domain.RespError("令牌无法验证"))
+			return
+		}
+		if revoked {
+			c.JSON(http.StatusUnauthorized, domain.RespError("令牌已登出"))
+			return
+		}
+	}
+
+	userID := refreshClaims.ID
 
 	// 根据用户ID获取用户信息
 	user, err := lc.LoginUsecase.GetUserByID(c, userID)
@@ -344,32 +342,20 @@ func (lc *AuthController) Logout(c *gin.Context) {
 	// 从请求头中提取访问令牌
 	authHeader := c.Request.Header.Get("Authorization")
 	var accessToken string
-	if authHeader != "" {
-		parts := strings.Split(authHeader, " ")
-		if len(parts) == 2 && parts[0] == "Bearer" {
-			accessToken = parts[1]
-		}
+	if scheme, token, found := strings.Cut(authHeader, " "); found && token != "" && strings.EqualFold(scheme, "Bearer") {
+		accessToken = token
 	}
 
-	// 提取用户信息用于日志记录
+	// 登出审计日志（不记录令牌内容）
 	var userID, userName string
 	if accessToken != "" {
-		// 从令牌中提取用户信息（即使令牌即将失效，我们仍然可以从中提取信息用于日志）
-		if claims, err := lc.TokenService.ExtractAllClaimsFromToken(accessToken, lc.Env.AccessTokenSecret); err == nil {
+		// 令牌即将失效时仍可解析出用户信息用于日志
+		if claims, err := lc.TokenService.ParseAccessClaims(accessToken, lc.Env.AccessTokenSecret); err == nil {
 			userID = claims.ID
 			userName = claims.Name
 		}
 	}
-
-	// 记录登出日志
-	fmt.Printf("User logout - UserID: %s, UserName: %s, AccessToken: %s...\n",
-		userID, userName,
-		func() string {
-			if len(accessToken) > 10 {
-				return accessToken[:10]
-			}
-			return accessToken
-		}())
+	pkg.Log.Infof("User logout - UserID: %s, UserName: %s", userID, userName)
 
 	// 将 access/refresh token 的 jti 加入黑名单，TTL 设为 token 剩余有效期。
 	// 老令牌无 jti 时跳过；黑名单未配置时整体跳过（向后兼容）。

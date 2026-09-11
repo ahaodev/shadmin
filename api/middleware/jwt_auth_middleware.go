@@ -2,11 +2,12 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
+
 	"shadmin/domain"
 	"shadmin/internal/auth"
 	"shadmin/internal/constants"
 	"shadmin/internal/tokenservice"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,22 +17,14 @@ func JwtAuthMiddleware(secret string, tokenBlacklist auth.JWTBlacklist) gin.Hand
 	tokenService := tokenservice.NewTokenService()
 
 	return func(c *gin.Context) {
-		authHeader := c.Request.Header.Get("Authorization")
-		t := strings.Split(authHeader, " ")
-		if len(t) != 2 {
+		authToken, ok := bearerToken(c.Request.Header.Get("Authorization"))
+		if !ok {
 			c.JSON(http.StatusUnauthorized, domain.RespError("Not authorized"))
 			c.Abort()
 			return
 		}
-		authToken := t[1]
-		authorized, err := tokenService.IsAuthorized(authToken, secret)
-		if !authorized {
-			c.JSON(http.StatusUnauthorized, domain.RespError(err.Error()))
-			c.Abort()
-			return
-		}
 
-		claims, err := tokenService.ExtractAllClaimsFromToken(authToken, secret)
+		claims, err := tokenService.ParseAccessClaims(authToken, secret)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, domain.RespError(err.Error()))
 			c.Abort()
@@ -39,18 +32,23 @@ func JwtAuthMiddleware(secret string, tokenBlacklist auth.JWTBlacklist) gin.Hand
 		}
 
 		if tokenBlacklist != nil {
-			if jti, jErr := tokenService.ExtractJTI(authToken, secret); jErr == nil && jti != "" {
-				revoked, rErr := tokenBlacklist.Exists(c.Request.Context(), jti)
-				if rErr != nil {
-					c.JSON(http.StatusUnauthorized, domain.RespError("令牌无法验证"))
-					c.Abort()
-					return
-				}
-				if revoked {
-					c.JSON(http.StatusUnauthorized, domain.RespError("令牌已登出"))
-					c.Abort()
-					return
-				}
+			// 黑名单以 jti 为键：无 jti 的令牌无法吊销，直接拒绝
+			if claims.JTI() == "" {
+				c.JSON(http.StatusUnauthorized, domain.RespError("令牌无效"))
+				c.Abort()
+				return
+			}
+
+			revoked, rErr := tokenBlacklist.Exists(c.Request.Context(), claims.JTI())
+			if rErr != nil {
+				c.JSON(http.StatusUnauthorized, domain.RespError("令牌无法验证"))
+				c.Abort()
+				return
+			}
+			if revoked {
+				c.JSON(http.StatusUnauthorized, domain.RespError("令牌已登出"))
+				c.Abort()
+				return
 			}
 		}
 
@@ -63,4 +61,16 @@ func JwtAuthMiddleware(secret string, tokenBlacklist auth.JWTBlacklist) gin.Hand
 
 		c.Next()
 	}
+}
+
+// bearerToken 从 Authorization 头中取出 Bearer 令牌。
+func bearerToken(header string) (string, bool) {
+	scheme, token, found := strings.Cut(header, " ")
+	if !found || token == "" || strings.Contains(token, " ") {
+		return "", false
+	}
+	if !strings.EqualFold(scheme, "Bearer") {
+		return "", false
+	}
+	return token, true
 }
