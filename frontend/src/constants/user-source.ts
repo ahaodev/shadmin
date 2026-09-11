@@ -1,4 +1,3 @@
-
 export const USER_SOURCE_LOCAL = 'shadmin'
 
 const USER_SOURCE_LABELS: Record<string, string> = {
