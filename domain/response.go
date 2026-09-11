@@ -3,7 +3,6 @@ package domain
 const (
 	SuccessCode = 0
 	FailCode    = 1
-	NotFondCode = 404
 )
 
 type Response struct {
@@ -38,8 +37,14 @@ type PagedResult[T any] struct {
 	TotalPages int `json:"total_pages"`
 }
 
-// NewPagedResult 创建分页结果
+// NewPagedResult 创建分页结果。
 func NewPagedResult[T any](data []T, total, page, pageSize int) *PagedResult[T] {
+	if page < DefaultPage {
+		page = DefaultPage
+	}
+	if pageSize <= 0 {
+		pageSize = DefaultPageSize
+	}
 	totalPages := (total + pageSize - 1) / pageSize
 	return &PagedResult[T]{
 		List:       data,

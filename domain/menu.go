@@ -127,22 +127,17 @@ type MenuItem struct {
 	RequiresAdmin bool   `json:"requiresAdmin"`
 }
 
-// ValidateMenuQueryParams validates and sets default values for menu query parameters
-func ValidateMenuQueryParams(params *MenuQueryParams) error {
-	// 使用通用的分页参数验证
-	if err := ValidateQueryParams(&params.QueryParams); err != nil {
-		return err
-	}
+// ValidateMenuQueryParams 归一化分页参数并填充菜单查询的业务默认值。
+func ValidateMenuQueryParams(params *MenuQueryParams) {
+	params.Paginate()
 
 	// 设置业务默认值
 	if params.Type == "" {
-		params.Type = "menu"
+		params.Type = MenuTypeMenu
 	}
 	if params.Status == "" {
 		params.Status = constants.StatusSuccess
 	}
-
-	return nil
 }
 
 // Menu status constants

@@ -111,10 +111,8 @@ func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLog
 		baseQuery = baseQuery.Order(ent.Desc(loginlog.FieldLoginTime))
 	}
 
-	// 应用分页
-	if offset, limit, ok := filter.Paginate(); ok {
-		baseQuery = baseQuery.Offset(offset).Limit(limit)
-	}
+	offset, limit := filter.Paginate()
+	baseQuery = baseQuery.Offset(offset).Limit(limit)
 	logs, err := baseQuery.All(c)
 	if err != nil {
 		return nil, err

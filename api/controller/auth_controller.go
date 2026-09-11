@@ -108,24 +108,25 @@ func (lc *AuthController) Login(c *gin.Context) {
 
 	// 创建记录登录日志的辅助函数
 	recordLoginLog := func(status, failureReason string) {
-		if lc.LoginLogUsecase != nil {
-			logRequest := &domain.CreateLoginLogRequest{
-				Username:      request.Identifier,
-				LoginIP:       clientIP,
-				UserAgent:     userAgent,
-				Status:        status,
-				Source:        constants.UserSourceLocal,
-				FailureReason: failureReason,
-			}
-
-			// 异步记录日志，不阻塞登录流程
-			go func() {
-				_, logErr := lc.LoginLogUsecase.CreateLoginLog(c, logRequest)
-				if logErr != nil {
-					fmt.Printf("Failed to record login log: %v\n", logErr)
-				}
-			}()
+		if lc.LoginLogUsecase == nil {
+			return
 		}
+
+		logRequest := &domain.CreateLoginLogRequest{
+			Username:      request.Identifier,
+			LoginIP:       clientIP,
+			UserAgent:     userAgent,
+			Status:        status,
+			Source:        constants.UserSourceLocal,
+			FailureReason: failureReason,
+		}
+
+		ctx := context.WithoutCancel(c.Request.Context())
+		go func() {
+			if _, logErr := lc.LoginLogUsecase.CreateLoginLog(ctx, logRequest); logErr != nil {
+				fmt.Printf("Failed to record login log: %v\n", logErr)
+			}
+		}()
 	}
 
 	// 检查SecurityManager是否初始化

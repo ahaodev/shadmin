@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"shadmin/domain"
+	"slices"
 	"time"
 )
 
@@ -20,7 +21,7 @@ func NewMenuUsecase(menuRepository domain.MenuRepository, timeout time.Duration)
 	}
 }
 
-// Query operations
+// GetMenuTree Query operations
 func (mu *menuUsecase) GetMenuTree(ctx context.Context) ([]domain.MenuTreeNode, error) {
 	ctx, cancel := context.WithTimeout(ctx, mu.contextTimeout)
 	defer cancel()
@@ -31,8 +32,7 @@ func (mu *menuUsecase) GetMenus(ctx context.Context, params domain.MenuQueryPara
 	ctx, cancel := context.WithTimeout(ctx, mu.contextTimeout)
 	defer cancel()
 
-	// Validate query parameters
-	_ = domain.ValidateMenuQueryParams(&params)
+	domain.ValidateMenuQueryParams(&params)
 
 	return mu.menuRepository.GetMenus(ctx, params)
 }
@@ -51,13 +51,7 @@ func (mu *menuUsecase) CreateMenu(ctx context.Context, req *domain.CreateMenuReq
 
 	// Validate menu type
 	validTypes := []string{domain.MenuTypeMenu, domain.MenuTypeButton}
-	isValidType := false
-	for _, validType := range validTypes {
-		if req.Type == validType {
-			isValidType = true
-			break
-		}
-	}
+	isValidType := slices.Contains(validTypes, req.Type)
 	if !isValidType {
 		return nil, domain.ErrInvalidMenuType
 	}
@@ -91,13 +85,7 @@ func (mu *menuUsecase) UpdateMenu(ctx context.Context, id string, req *domain.Up
 
 	// Validate menu type
 	validTypes := []string{domain.MenuTypeMenu, domain.MenuTypeButton}
-	isValidType := false
-	for _, validType := range validTypes {
-		if req.Type == validType {
-			isValidType = true
-			break
-		}
-	}
+	isValidType := slices.Contains(validTypes, req.Type)
 	if !isValidType {
 		return nil, domain.ErrInvalidMenuType
 	}

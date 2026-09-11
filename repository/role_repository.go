@@ -105,11 +105,12 @@ func (rr *entRoleRepository) FetchPaged(c context.Context, params domain.QueryPa
 	}
 
 	// Apply pagination and ordering
+	offset, limit := params.Paginate()
 	query = query.
 		WithMenus().
 		Order(ent.Asc(role.FieldSequence)).
-		Offset((params.Page - 1) * params.PageSize).
-		Limit(params.PageSize)
+		Offset(offset).
+		Limit(limit)
 
 	entRoles, err := query.All(c)
 	if err != nil {
@@ -131,7 +132,7 @@ func (rr *entRoleRepository) GetByID(c context.Context, id string) (*domain.Role
 		Only(c)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, fmt.Errorf("role not found")
+			return nil, domain.ErrRoleNotFound
 		}
 		return nil, fmt.Errorf("failed to get role by ID: %w", err)
 	}
@@ -146,7 +147,7 @@ func (rr *entRoleRepository) GetByName(c context.Context, name string) (*domain.
 		Only(c)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, fmt.Errorf("role not found")
+			return nil, domain.ErrRoleNotFound
 		}
 		return nil, fmt.Errorf("failed to get role by name: %w", err)
 	}
@@ -179,7 +180,7 @@ func (rr *entRoleRepository) Delete(c context.Context, id string) error {
 	err := rr.client.Role.DeleteOneID(id).Exec(c)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return fmt.Errorf("role not found")
+			return domain.ErrRoleNotFound
 		}
 		return fmt.Errorf("failed to delete role: %w", err)
 	}
@@ -208,7 +209,7 @@ func (rr *entRoleRepository) DeleteIfUnused(c context.Context, id, name string) 
 
 	if err := tx.Role.DeleteOneID(id).Exec(c); err != nil {
 		if ent.IsNotFound(err) {
-			return fmt.Errorf("role not found")
+			return domain.ErrRoleNotFound
 		}
 		return fmt.Errorf("failed to delete role: %w", err)
 	}

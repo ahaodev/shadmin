@@ -90,50 +90,6 @@ func (dr *entDictRepository) convertEntDictItemToDomain(entItem *ent.DictItem) *
 	}
 }
 
-func (dr *entDictRepository) listPagedDictTypes(ctx context.Context, query *ent.DictTypeQuery, page int, pageSize int) ([]*domain.DictType, error) {
-	var entTypes []*ent.DictType
-	var err error
-
-	if page > 0 && pageSize > 0 {
-		offset := (page - 1) * pageSize
-		entTypes, err = query.Offset(offset).Limit(pageSize).All(ctx)
-	} else {
-		entTypes, err = query.All(ctx)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	result := make([]*domain.DictType, 0, len(entTypes))
-	for _, entType := range entTypes {
-		result = append(result, dr.convertEntDictTypeToDomain(entType))
-	}
-
-	return result, nil
-}
-
-func (dr *entDictRepository) listPagedDictItems(ctx context.Context, query *ent.DictItemQuery, page int, pageSize int) ([]*domain.DictItem, error) {
-	var entItems []*ent.DictItem
-	var err error
-
-	if page > 0 && pageSize > 0 {
-		offset := (page - 1) * pageSize
-		entItems, err = query.Offset(offset).Limit(pageSize).All(ctx)
-	} else {
-		entItems, err = query.All(ctx)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	result := make([]*domain.DictItem, 0, len(entItems))
-	for _, entItem := range entItems {
-		result = append(result, dr.convertEntDictItemToDomain(entItem))
-	}
-
-	return result, nil
-}
-
 // 字典类型相关实现
 
 func (dr *entDictRepository) CreateType(ctx context.Context, dictType *domain.DictType) error {
@@ -240,9 +196,16 @@ func (dr *entDictRepository) FetchTypes(ctx context.Context, params domain.DictT
 		query = query.Order(ent.Desc(dicttype.FieldCreatedAt))
 	}
 
-	result, err := dr.listPagedDictTypes(ctx, query, params.Page, params.PageSize)
+	// 应用统一分页窗口
+	offset, limit := params.Paginate()
+	entTypes, err := query.Offset(offset).Limit(limit).All(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	result := make([]*domain.DictType, 0, len(entTypes))
+	for _, entType := range entTypes {
+		result = append(result, dr.convertEntDictTypeToDomain(entType))
 	}
 
 	return domain.NewPagedResult(result, total, params.Page, params.PageSize), nil
@@ -456,9 +419,16 @@ func (dr *entDictRepository) FetchItems(ctx context.Context, params domain.DictI
 		query = query.Order(ent.Asc(dictitem.FieldSort), ent.Desc(dictitem.FieldCreatedAt))
 	}
 
-	result, err := dr.listPagedDictItems(ctx, query, params.Page, params.PageSize)
+	// 应用统一分页窗口
+	offset, limit := params.Paginate()
+	entItems, err := query.Offset(offset).Limit(limit).All(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	result := make([]*domain.DictItem, 0, len(entItems))
+	for _, entItem := range entItems {
+		result = append(result, dr.convertEntDictItemToDomain(entItem))
 	}
 
 	return domain.NewPagedResult(result, total, params.Page, params.PageSize), nil
