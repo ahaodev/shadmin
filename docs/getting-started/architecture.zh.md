@@ -255,7 +255,7 @@ Shadmin 使用 **Casbin RBAC** 进行权限控制：
 ```
 
 **后端**：Casbin 中间件检查 `(userID, requestPath, requestMethod)` 是否匹配策略。  
-**前端**：`auth-store` 提供 `hasPermission()` / `hasRole()` / `canAccessMenu()` 方法，`PermissionButton` / `PermissionGuard` 组件控制 UI 显隐。
+**前端**：`auth-store` 提供 `hasPermission()` / `hasRole()` / `canAccessMenu()` 方法，UI 显隐由 `usePermission()` hook 配合 `auth-store` 判定控制。
 
 ### 菜单与资源机制
 

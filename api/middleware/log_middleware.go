@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"shadmin/internal/constants"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+// maxLogBodyLen 日志中请求/响应体的最大展示长度，超出则截断
+const maxLogBodyLen = 1000
 
 // LogMiddleware 请求和响应日志中间件
 func LogMiddleware() gin.HandlerFunc {
@@ -29,58 +31,65 @@ func LogMiddleware() gin.HandlerFunc {
 		w := &responseBodyWriter{body: &bytes.Buffer{}, ResponseWriter: c.Writer}
 		c.Writer = w
 
-		// 构建请求日志信息
-		var logLines []string
-		logLines = append(logLines, fmt.Sprintf("> 📥 REQUEST: %s %s", c.Request.Method, c.Request.URL.Path))
-		logLines = append(logLines, "┌─────────────────────────────────────────────────────────────")
-
-		if len(c.Request.URL.RawQuery) > 0 {
-			logLines = append(logLines, fmt.Sprintf("│ 🔍 Query: %s", c.Request.URL.RawQuery))
-		}
-
-		// 只显示重要的请求头
-		importantHeaders := []string{"Content-Type", constants.Authorization, "Accept"}
-		for _, header := range importantHeaders {
-			if value := c.Request.Header.Get(header); value != "" {
-				// 对Authorization进行脱敏处理
-				if header == constants.Authorization && len(value) > 20 {
-					value = value[:20] + "..."
-				}
-				logLines = append(logLines, fmt.Sprintf("│ 📋 %s: %s", header, value))
-			}
-		}
-
-		if len(requestBody) > 0 {
-			logLines = append(logLines, fmt.Sprintf("│ 📦 Body: %s", string(requestBody)))
-		}
-
 		// 执行请求
 		c.Next()
 
-		// 计算请求耗时
 		duration := time.Since(start)
-
-		// 获取状态码颜色
 		statusCode := c.Writer.Status()
 		statusEmoji := getStatusEmoji(statusCode)
-
-		// 添加响应信息到日志
 		responseBody := w.body.String()
-		logLines = append(logLines, fmt.Sprintf("│ %s RESPONSE: [%d] - %s", statusEmoji, statusCode, duration))
 
-		if len(responseBody) > 0 {
-			// 限制响应体长度以提高可读性
-			if len(responseBody) > 5000 {
-				logLines = append(logLines, fmt.Sprintf("│ 📤 %s... (truncated)", responseBody[:500]))
-			} else {
-				logLines = append(logLines, fmt.Sprintf("│ 📤 %s", responseBody))
+		// 组装日志：标题行（Result 合并进首行）+ 缩进详情，无边框
+		var lines []string
+
+		target := c.Request.URL.Path
+		if c.Request.URL.RawQuery != "" {
+			target += "?" + c.Request.URL.RawQuery
+		}
+		result := fmt.Sprintf("[%d] %s %s", statusCode, statusEmoji, duration)
+
+		// ▶ 图标按状态码着色：2xx 绿、4xx/5xx 红，其余无色
+		icon := "▶"
+		switch {
+		case statusCode >= 200 && statusCode < 300:
+			icon = "\x1b[32m▶\x1b[0m"
+		case statusCode >= 400:
+			icon = "\x1b[31m▶\x1b[0m"
+		}
+		lines = append(lines, fmt.Sprintf("%s %s %s %s", icon, c.Request.Method, target, result))
+
+		// 只显示重要的请求头（Authorization 脱敏）
+		importantHeaders := []string{"Content-Type", constants.Authorization, "Accept"}
+		for _, header := range importantHeaders {
+			if value := c.Request.Header.Get(header); value != "" {
+				if header == constants.Authorization && len(value) > 20 {
+					value = value[:20] + "..."
+				}
+				lines = append(lines, fmt.Sprintf("    Header : %s: %s", header, value))
 			}
 		}
-		logLines = append(logLines, "└─────────────────────────────────────────────────────────────")
 
-		// 一次性打印完整日志，避免中断
-		log.Print(strings.Join(logLines, "\n"))
+		// 请求内容（请求体），仅在存在时输出，置于 Resp 之前
+		if len(requestBody) > 0 {
+			lines = append(lines, fmt.Sprintf("    Request : %s", truncateLog(requestBody)))
+		}
+
+		if len(responseBody) > 0 {
+			lines = append(lines, fmt.Sprintf("    Resp   : %s", truncateLog([]byte(responseBody))))
+		}
+
+		// 末尾空一行，便于在连续请求之间区分
+		lines = append(lines, "")
+		fmt.Print(strings.Join(lines, "\n"))
 	}
+}
+
+// truncateLog 截断超长内容，并标注原始长度
+func truncateLog(data []byte) string {
+	if len(data) <= maxLogBodyLen {
+		return string(data)
+	}
+	return fmt.Sprintf("%s... (truncated, %d chars)", string(data[:maxLogBodyLen]), len(data))
 }
 
 // responseBodyWriter 用于捕获响应体

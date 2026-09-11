@@ -1,6 +1,7 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { type User } from '@/types/user'
 import { cn } from '@/lib/utils'
+import { userSourceLabel } from '@/constants/user-source'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTableColumnHeader } from '@/components/data-table'
@@ -52,6 +53,14 @@ export const usersColumns: ColumnDef<User>[] = [
     enableHiding: false,
   },
   {
+    accessorKey: 'nickname',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='昵称' />
+    ),
+    cell: ({ row }) => <div>{row.getValue('nickname') || '-'}</div>,
+    enableSorting: false,
+  },
+  {
     accessorKey: 'email',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='邮箱' />
@@ -59,6 +68,18 @@ export const usersColumns: ColumnDef<User>[] = [
     cell: ({ row }) => (
       <div className='w-fit text-nowrap'>{row.getValue('email')}</div>
     ),
+  },
+  {
+    accessorKey: 'source',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title='来源' />
+    ),
+    cell: ({ row }) => (
+      <Badge variant='outline' className='text-xs'>
+        {userSourceLabel(row.getValue('source') as string | undefined)}
+      </Badge>
+    ),
+    enableSorting: false,
   },
   {
     accessorKey: 'phone',

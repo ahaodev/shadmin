@@ -49,15 +49,14 @@ func emptyToNil(s string) *string {
 	return &s
 }
 
-// entUserToDomainUser converts an ent.User to domain.User and extracts role IDs from edges
-func entUserToDomainUser(u *ent.User) *domain.User {
+// entUserToDomainUser converts an ent.User to domain.User and extracts role IDs from edges.
+func entUserToDomainUser(u *ent.User, withPassword bool) *domain.User {
 	domainUser := &domain.User{
 		ID:           u.ID,
 		Username:     u.Username,
 		Nickname:     u.Nickname,
 		Email:        derefString(u.Email),
 		Phone:        derefString(u.Phone),
-		Password:     derefString(u.Password),
 		Source:       string(u.Source),
 		Avatar:       u.Avatar,
 		IsAdmin:      u.IsAdmin,
@@ -65,6 +64,9 @@ func entUserToDomainUser(u *ent.User) *domain.User {
 		DepartmentID: u.DepartmentID,
 		CreatedAt:    u.CreatedAt,
 		UpdatedAt:    u.UpdatedAt,
+	}
+	if withPassword {
+		domainUser.Password = derefString(u.Password)
 	}
 
 	// Extract role IDs from database relationship
@@ -202,56 +204,23 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	// 构建数据查询 (移除租户信息预加载)
 	query := baseQuery
 
-	// 应用分页
-	if offset, limit, ok := filter.Paginate(); ok {
-		query = query.Offset(offset).Limit(limit)
+	// 需要角色时在基础查询上一次性预加载，避免逐行回查（N+1）
+	if filter.IncludeRoles {
+		query = query.WithRoles()
 	}
+
+	offset, limit := filter.Paginate()
+	query = query.Offset(offset).Limit(limit)
+
 	users, err := query.WithDepartment().All(c)
 	if err != nil {
 		return nil, err
 	}
 
-	// 转换为 domain.User (移除租户相关代码)
+	// 列表响应不携带密码哈希，与单条查询共用同一转换函数
 	var result []*domain.User
 	for _, u := range users {
-		domainUser := &domain.User{
-			ID:           u.ID,
-			Username:     u.Username,
-			Email:        derefString(u.Email),
-			Phone:        derefString(u.Phone),
-			Source:       string(u.Source),
-			Avatar:       u.Avatar,
-			IsAdmin:      u.IsAdmin,
-			Status:       entStatusToDomainStatus(u.Status),
-			DepartmentID: u.DepartmentID,
-			CreatedAt:    u.CreatedAt,
-			UpdatedAt:    u.UpdatedAt,
-		}
-		if u.Edges.Department != nil {
-			domainUser.DepartmentName = u.Edges.Department.Name
-		}
-
-		// 如果需要包含角色信息 (从数据库关系获取)
-		if filter.IncludeRoles {
-			// 重新查询包含角色信息的用户
-			userWithRoles, err := ur.client.User.
-				Query().
-				Where(user.ID(u.ID)).
-				WithRoles().
-				First(c)
-			if err == nil && userWithRoles.Edges.Roles != nil {
-				var roleIDs []string
-				for _, role := range userWithRoles.Edges.Roles {
-					roleIDs = append(roleIDs, role.ID)
-				}
-				domainUser.Roles = roleIDs
-				if len(roleIDs) > 0 {
-					domainUser.IsActive = true // 有角色说明是活跃的
-				}
-			}
-		}
-
-		result = append(result, domainUser)
+		result = append(result, entUserToDomainUser(u, false))
 	}
 
 	return domain.NewPagedResult(result, total, filter.Page, filter.PageSize), nil
@@ -278,7 +247,7 @@ func (ur *entUserRepository) GetByIdentifier(c context.Context, identifier strin
 		return nil, err
 	}
 
-	return entUserToDomainUser(u), nil
+	return entUserToDomainUser(u, true), nil
 }
 
 func (ur *entUserRepository) GetByID(c context.Context, id string) (*domain.User, error) {
@@ -293,7 +262,7 @@ func (ur *entUserRepository) GetByID(c context.Context, id string) (*domain.User
 		return nil, err
 	}
 
-	return entUserToDomainUser(u), nil
+	return entUserToDomainUser(u, true), nil
 }
 
 // Update 更新用户信息

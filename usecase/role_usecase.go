@@ -73,7 +73,7 @@ func (ru *roleUsecase) Update(c context.Context, id string, request *domain.Upda
 	// Get existing role
 	existingRole, err := ru.roleRepository.GetByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("role not found: %w", err)
+		return nil, fmt.Errorf("failed to get role: %w", err)
 	}
 
 	// 系统内置角色名称受保护，不允许修改
@@ -128,7 +128,7 @@ func (ru *roleUsecase) Delete(c context.Context, id string) error {
 	// 1. 检查角色是否存在
 	role, err := ru.roleRepository.GetByID(ctx, id)
 	if err != nil {
-		return fmt.Errorf("role not found: %w", err)
+		return fmt.Errorf("failed to get role: %w", err)
 	}
 
 	// 系统内置角色受保护，不允许删除

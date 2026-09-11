@@ -68,16 +68,16 @@ func (arr *entApiResourceRepository) FetchPaged(ctx context.Context, params doma
 		return nil, fmt.Errorf("failed to count API resources: %w", err)
 	}
 
-	// Apply pagination and ordering
+	offset, limit := params.Paginate()
 	query = query.
 		Order(ent.Asc(apiresource.FieldModule), ent.Asc(apiresource.FieldPath), ent.Asc(apiresource.FieldMethod)).
-		Offset((params.GetPage() - 1) * params.GetPageSize()).
-		Limit(params.GetPageSize())
+		Offset(offset).
+		Limit(limit)
 
 	entApiResources, err := query.All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch paged API resources: %w", err)
 	}
 
-	return domain.NewPagedResult(mapSlice(entApiResources, arr.convertEntApiResourceToDomain), total, params.GetPage(), params.GetPageSize()), nil
+	return domain.NewPagedResult(mapSlice(entApiResources, arr.convertEntApiResourceToDomain), total, params.Page, params.PageSize), nil
 }

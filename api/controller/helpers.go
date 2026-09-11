@@ -24,7 +24,6 @@ func BindQueryParams(c *gin.Context) domain.QueryParams {
 	}
 	params.SortBy = c.Query("sort_by")
 	params.Order = c.Query("order")
-	_ = domain.ValidateQueryParams(&params)
 	return params
 }
 
