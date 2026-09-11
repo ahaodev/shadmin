@@ -185,6 +185,7 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 		domainUser := &domain.User{
 			ID:           u.ID,
 			Username:     u.Username,
+			Nickname:     u.Nickname,
 			Email:        derefString(u.Email),
 			Phone:        derefString(u.Phone),
 			Source:       string(u.Source),
