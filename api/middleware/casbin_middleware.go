@@ -35,7 +35,7 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 		path := c.Request.URL.Path
 		method := c.Request.Method
 
-		fmt.Printf("🔍 user= %s method=%s path=%s\n", userID, method, path)
+		fmt.Printf("🔍 user=%s method=%s path=%s\n", userID, method, path)
 
 		// 跳过不需要权限校验的API
 		if m.shouldSkipPermissionCheck(path) {

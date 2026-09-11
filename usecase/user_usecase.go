@@ -273,7 +273,6 @@ func (uu *userUsecase) GetUserRoles(c context.Context, userID string) ([]string,
 		return nil, err
 	}
 
-	log.Printf("DEBUG: GetUserRoles - userID: %s, roles: %v", userID, roleIDs)
 	return roleIDs, nil
 }
 
