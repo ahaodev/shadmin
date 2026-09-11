@@ -62,7 +62,7 @@ go run .
 
 - **认证**：JWT 访问令牌 + 刷新令牌，通过 `Authorization: Bearer <token>` 传递
 - **API 鉴权**：Casbin 中间件对受保护路由检查 `(userID, path, method)`
-- **前端守卫**：权限感知组件（`PermissionButton`、`PermissionGuard`）
+- **前端守卫**：通过 `usePermission()` hook 与 `auth-store` 的 `hasPermission()` / `hasRole()` 判定控制 UI 显隐
 - **菜单系统**：通过 `/api/v1/resources` 获取动态菜单树，自动适配用户权限
 
 <details>

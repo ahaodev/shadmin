@@ -2,12 +2,15 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
+
 	"shadmin/domain"
 	"shadmin/internal/casbin"
 	"shadmin/internal/constants"
-	"strings"
+	"shadmin/pkg"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // CasbinMiddleware API权限鉴权中间件
@@ -39,12 +42,22 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 
 		hasPermission, err := m.CasManager.CheckPermission(userID, path, method)
 		if err != nil {
+			pkg.Log.WithFields(logrus.Fields{
+				"user_id": userID,
+				"method":  method,
+				"path":    path,
+			}).WithError(err).Error("API 权限检查失败")
 			c.JSON(http.StatusInternalServerError, domain.RespError("权限检查失败"))
 			c.Abort()
 			return
 		}
 
 		if !hasPermission {
+			pkg.Log.WithFields(logrus.Fields{
+				"user_id": userID,
+				"method":  method,
+				"path":    path,
+			}).Warn("API 权限不足")
 			c.JSON(http.StatusForbidden, domain.RespError("权限不足"))
 			c.Abort()
 			return

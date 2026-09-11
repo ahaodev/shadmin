@@ -29,34 +29,14 @@ func (ts *TokenService) CreateRefreshToken(user *domain.User, secret string, exp
 	return tokenutil.CreateRefreshToken(user, secret, expiry)
 }
 
-// ExtractIDFromToken 从令牌中提取用户ID
-func (ts *TokenService) ExtractIDFromToken(requestToken string, secret string) (string, error) {
-	return tokenutil.ExtractIDFromToken(requestToken, secret)
+// ParseAccessClaims 校验 access token 签名并解析全部 claims。
+func (ts *TokenService) ParseAccessClaims(requestToken string, secret string) (*domain.JwtCustomClaims, error) {
+	return tokenutil.ParseAccessClaims(requestToken, secret)
 }
 
-// IsAuthorized 验证令牌是否有效
-func (ts *TokenService) IsAuthorized(requestToken string, secret string) (bool, error) {
-	return tokenutil.IsAuthorized(requestToken, secret)
-}
-
-// ExtractEmailFromToken 从令牌中提取用户邮箱
-func (ts *TokenService) ExtractEmailFromToken(requestToken string, secret string) (string, error) {
-	return tokenutil.ExtractEmailFromToken(requestToken, secret)
-}
-
-// ExtractIsAdminFromToken 从令牌中提取用户管理员状态
-func (ts *TokenService) ExtractIsAdminFromToken(requestToken string, secret string) (bool, error) {
-	return tokenutil.ExtractIsAdminFromToken(requestToken, secret)
-}
-
-// ExtractAllClaimsFromToken 从令牌中提取所有自定义claims
-func (ts *TokenService) ExtractAllClaimsFromToken(requestToken string, secret string) (*domain.JwtCustomClaims, error) {
-	return tokenutil.ExtractAllClaimsFromToken(requestToken, secret)
-}
-
-// ExtractJTI 从令牌中提取 jti（用于服务端登出黑名单）
-func (ts *TokenService) ExtractJTI(requestToken string, secret string) (string, error) {
-	return tokenutil.ExtractJTI(requestToken, secret)
+// ParseRefreshClaims 校验 refresh token 签名并解析全部 claims。
+func (ts *TokenService) ParseRefreshClaims(requestToken string, secret string) (*domain.JwtCustomRefreshClaims, error) {
+	return tokenutil.ParseRefreshClaims(requestToken, secret)
 }
 
 // ExtractJTIAndExpiry 提取 jti 与过期时间（用于服务端登出黑名单）

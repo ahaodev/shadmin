@@ -136,11 +136,15 @@ func (lc *AuthController) Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, domain.RespSuccess("Logout successful"))
 }
 
-// extractBearerToken 从 Authorization 头中提取 Bearer token，未携带时返回空串。
+// extractBearerToken 从 Authorization 头中提取 Bearer token，未携带或格式不合法时返回空串。
+// 与 api/middleware 的 bearerToken 保持一致：scheme 大小写不敏感，令牌内不允许出现空格。
 func extractBearerToken(c *gin.Context) string {
-	parts := strings.Split(c.Request.Header.Get(constants.Authorization), " ")
-	if len(parts) == 2 && parts[0] == "Bearer" {
-		return parts[1]
+	scheme, token, found := strings.Cut(c.Request.Header.Get(constants.Authorization), " ")
+	if !found || token == "" || strings.Contains(token, " ") {
+		return ""
 	}
-	return ""
+	if !strings.EqualFold(scheme, "Bearer") {
+		return ""
+	}
+	return token
 }

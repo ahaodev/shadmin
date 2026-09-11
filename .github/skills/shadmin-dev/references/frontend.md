@@ -106,7 +106,7 @@ Manages dialog state and selected row for the entire feature page.
 
 ## Page Entry (`index.tsx`)
 
-Structure: `<ResourceProvider>` wraps `<Header>` + `<Main>` + `<ResourceDialogs>`.
+Structure: `<ResourceProvider>` wraps `<PageHeader fixed />` + `<Main>` + `<ResourceDialogs>`.
 
 - `getRouteApi()` for type-safe search params
 - Map URL params → API query params at the top of the component
@@ -150,7 +150,7 @@ Usage: `const { hasPermission } = usePermission()` then `hasPermission(PERMISSIO
 
 Admin users (`is_admin`) bypass all checks. Non-admin users are checked against the permissions array fetched from `/api/v1/resources` after login, stored in Zustand `auth-store`.
 
-For component-level gating: use `<PermissionGuard>` or `<PermissionButton>` from `@/components/auth/`.
+Component-level gating: `usePermission()` + conditional render — `hasPermission(key)`, `hasAnyPermission([...])`, `hasAllPermissions([...])`; no wrapper component.
 
 ## Naming Conventions
 
@@ -166,4 +166,4 @@ For component-level gating: use `<PermissionGuard>` or `<PermissionButton>` from
 
 Always use the `@/` alias. Never use relative paths beyond `./` within a feature module.
 
-Import order (enforced by Prettier plugin): React → third-party → Radix/form libs → TanStack → project aliases (`@/stores` → `@/lib` → `@/components` → `@/features`) → relative (`./`).
+Import order (enforced by Prettier plugin): React → third-party → Radix/form libs → TanStack → project aliases (`@/stores` → `@/lib` → `@/utils` → `@/constants` → `@/hooks` → `@/components` → `@/features`) → relative (`./`).

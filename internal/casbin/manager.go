@@ -61,21 +61,31 @@ func NewCasManager(adapter any) Manager {
 	}
 }
 
-// initializeCasbin 初始化Casbin组件
-func initializeCasbin(adapter any) error {
+// newEnforcer 构建一个独立的 enforcer。生产路径经 initializeCasbin 赋值给包级
+// 单例；测试用它构造彼此隔离的实例，避免共享状态相互污染。
+func newEnforcer(adapter any) (*casbin.Enforcer, error) {
 	m, err := model.NewModelFromString(ModelConf)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	enforcer, err = casbin.NewEnforcer(m, adapter)
+	e, err := casbin.NewEnforcer(m, adapter)
+	if err != nil {
+		return nil, err
+	}
+
+	e.EnableAutoSave(true)
+	e.SetLogger(newCasbinLogger())
+	return e, nil
+}
+
+// initializeCasbin 初始化Casbin组件
+func initializeCasbin(adapter any) error {
+	e, err := newEnforcer(adapter)
 	if err != nil {
 		return err
 	}
-
-	enforcer.EnableAutoSave(true)
-
-	enforcer.SetLogger(newCasbinLogger())
+	enforcer = e
 	return nil
 }
 

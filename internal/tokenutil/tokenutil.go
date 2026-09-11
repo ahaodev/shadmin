@@ -2,6 +2,7 @@ package tokenutil
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +11,16 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/xid"
 )
+
+// hmacKeyFunc 只接受 HS256。
+func hmacKeyFunc(secret string) jwt.Keyfunc {
+	return func(token *jwt.Token) (any, error) {
+		if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secret), nil
+	}
+}
 
 func CreateAccessToken(user *domain.User, secret string, expiry int) (accessToken string, err error) {
 	return CreateAccessTokenWithIdentity(user, secret, expiry, "shadmin", user.ID)
@@ -31,7 +42,7 @@ func CreateAccessTokenWithIdentity(user *domain.User, secret string, expiry int,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "shadmin",
 			ExpiresAt: exp,
-			ID:        xid.New().String(), // JTI，用于服务端登出黑名单
+			ID:        xid.New().String(), // jti：登出黑名单的键
 			Subject:   subject,
 		},
 	}
@@ -49,7 +60,7 @@ func CreateRefreshToken(user *domain.User, secret string, expiry int) (refreshTo
 		ID: user.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: exp,
-			ID:        xid.New().String(), // JTI
+			ID:        xid.New().String(),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsRefresh)
@@ -60,67 +71,35 @@ func CreateRefreshToken(user *domain.User, secret string, expiry int) (refreshTo
 	return rt, err
 }
 
-func IsAuthorized(requestToken string, secret string) (bool, error) {
-	_, err := jwt.Parse(requestToken, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(secret), nil
-	})
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func parseTokenClaims(requestToken string, secret string) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(requestToken, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(secret), nil
-	})
+// ParseAccessClaims 校验签名与 exp，并解析 access token 的全部 claims。
+func ParseAccessClaims(requestToken string, secret string) (*domain.JwtCustomClaims, error) {
+	claims := new(domain.JwtCustomClaims)
+	token, err := jwt.ParseWithClaims(requestToken, claims, hmacKeyFunc(secret))
 	if err != nil {
 		return nil, err
 	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		return nil, fmt.Errorf("invalid token")
+	if !token.Valid {
+		return nil, errors.New("invalid token")
 	}
-
 	return claims, nil
 }
 
-// ExtractJTI 从 token 的 jti 声明中提取唯一标识，用于服务端登出黑名单。
-// 老 token 无 jti 时返回空串（中间件视为不在黑名单，向后兼容）。
-func ExtractJTI(requestToken string, secret string) (string, error) {
-	token, err := jwt.Parse(requestToken, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(secret), nil
-	})
+// ParseRefreshClaims 校验签名与 exp，并解析 refresh token 的全部 claims。
+func ParseRefreshClaims(requestToken string, secret string) (*domain.JwtCustomRefreshClaims, error) {
+	claims := new(domain.JwtCustomRefreshClaims)
+	token, err := jwt.ParseWithClaims(requestToken, claims, hmacKeyFunc(secret))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		return "", fmt.Errorf("invalid token")
+	if !token.Valid {
+		return nil, errors.New("invalid token")
 	}
-	jti, _ := claims["jti"].(string)
-	return jti, nil
+	return claims, nil
 }
 
-// ExtractJTIAndExpiry 一次解析取出 jti 与过期时间，专供登出黑名单使用。
-// jti 为空串表示老令牌无 jti；ok=false 表示令牌不可解析或无 exp。
+// ExtractJTIAndExpiry 解析出 jti 与过期时间，供登出黑名单使用；ok=false 表示令牌不可用或无 exp。
 func ExtractJTIAndExpiry(requestToken string, secret string) (jti string, expiresAt time.Time, ok bool) {
-	token, err := jwt.Parse(requestToken, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(secret), nil
-	})
+	token, err := jwt.Parse(requestToken, hmacKeyFunc(secret))
 	if err != nil || !token.Valid {
 		return "", time.Time{}, false
 	}
@@ -145,130 +124,4 @@ func ExtractJTIAndExpiry(requestToken string, secret string) (jti string, expire
 		return jti, time.Time{}, false
 	}
 	return jti, expiresAt, true
-}
-
-func ExtractIDFromToken(requestToken string, secret string) (string, error) {
-	token, err := jwt.Parse(requestToken, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(secret), nil
-	})
-
-	if err != nil {
-		return "", err
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-
-	if !ok && !token.Valid {
-		return "", fmt.Errorf("invalid token")
-	}
-
-	return claims["id"].(string), nil
-}
-
-// ExtractEmailFromToken 从token中提取用户邮箱
-func ExtractEmailFromToken(requestToken string, secret string) (string, error) {
-	token, err := jwt.Parse(requestToken, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(secret), nil
-	})
-
-	if err != nil {
-		return "", err
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok && !token.Valid {
-		return "", fmt.Errorf("invalid token")
-	}
-
-	email, exists := claims["email"]
-	if !exists {
-		return "", nil // 邮箱不存在时返回空字符串
-	}
-
-	emailStr, ok := email.(string)
-	if !ok {
-		return "", fmt.Errorf("email claim is not a string")
-	}
-
-	return emailStr, nil
-}
-
-// ExtractIsAdminFromToken 从token中提取用户是否为管理员
-func ExtractIsAdminFromToken(requestToken string, secret string) (bool, error) {
-	claims, err := parseTokenClaims(requestToken, secret)
-	if err != nil {
-		return false, err
-	}
-
-	isAdmin, exists := claims["is_admin"]
-	if !exists {
-		return false, nil // is_admin不存在时返回false
-	}
-
-	isAdminBool, ok := isAdmin.(bool)
-	if !ok {
-		return false, fmt.Errorf("is_admin claim is not a boolean")
-	}
-
-	return isAdminBool, nil
-}
-
-// ExtractAllClaimsFromToken 从token中提取所有自定义claims
-func ExtractAllClaimsFromToken(requestToken string, secret string) (*domain.JwtCustomClaims, error) {
-	claims, err := parseTokenClaims(requestToken, secret)
-	if err != nil {
-		return nil, err
-	}
-
-	// 安全地提取各个字段
-	customClaims := &domain.JwtCustomClaims{}
-
-	if id, exists := claims["id"]; exists {
-		if idStr, ok := id.(string); ok {
-			customClaims.ID = idStr
-		}
-	}
-
-	if name, exists := claims["name"]; exists {
-		if nameStr, ok := name.(string); ok {
-			customClaims.Name = nameStr
-		}
-	}
-
-	if email, exists := claims["email"]; exists {
-		if emailStr, ok := email.(string); ok {
-			customClaims.Email = emailStr
-		}
-	}
-
-	if isAdmin, exists := claims["is_admin"]; exists {
-		if isAdminBool, ok := isAdmin.(bool); ok {
-			customClaims.IsAdmin = isAdminBool
-		}
-	}
-
-	if roles, exists := claims["roles"]; exists {
-		if rolesSlice, ok := roles.([]interface{}); ok {
-			customClaims.Roles = make([]string, len(rolesSlice))
-			for i, role := range rolesSlice {
-				if roleStr, ok := role.(string); ok {
-					customClaims.Roles[i] = roleStr
-				}
-			}
-		}
-	}
-
-	if subject, exists := claims["sub"]; exists {
-		if subjectStr, ok := subject.(string); ok {
-			customClaims.Subject = subjectStr
-		}
-	}
-
-	return customClaims, nil
 }

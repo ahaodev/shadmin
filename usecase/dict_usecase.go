@@ -67,9 +67,6 @@ func (du *dictUsecase) ListDictTypes(ctx context.Context, params domain.DictType
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
 
-	// 验证和设置默认分页参数
-	_ = domain.ValidateQueryParams(&params.QueryParams)
-
 	return du.dictRepository.FetchTypes(ctx, params)
 }
 
@@ -138,9 +135,6 @@ func (du *dictUsecase) GetDictItemByID(ctx context.Context, id string) (*domain.
 func (du *dictUsecase) ListDictItems(ctx context.Context, params domain.DictItemQueryParams) (*domain.PagedResult[*domain.DictItem], error) {
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
-
-	// 验证和设置默认分页参数
-	_ = domain.ValidateQueryParams(&params.QueryParams)
 
 	return du.dictRepository.FetchItems(ctx, params)
 }

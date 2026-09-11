@@ -22,25 +22,18 @@ func (rc *RoleController) getRoleIDOrBadRequest(c *gin.Context) (string, bool) {
 	return roleID, true
 }
 
+// writeRoleMutationError 把 role 领域错误映射为 HTTP 状态码。
 func (rc *RoleController) writeRoleMutationError(c *gin.Context, err error, forbiddenErr error) {
-	if errors.Is(err, forbiddenErr) {
+	switch {
+	case forbiddenErr != nil && errors.Is(err, forbiddenErr):
 		c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
-		return
-	}
-	if errors.Is(err, domain.ErrRoleNotFound) {
+	case errors.Is(err, domain.ErrRoleNotFound):
 		c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-		return
-	}
-	if errors.Is(err, domain.ErrRoleNameExists) {
+	case errors.Is(err, domain.ErrRoleNameExists), errors.Is(err, domain.ErrRoleInUse):
 		c.JSON(http.StatusConflict, domain.RespError(err.Error()))
-		return
+	default:
+		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 	}
-	if errors.Is(err, domain.ErrRoleInUse) {
-		c.JSON(http.StatusConflict, domain.RespError(err.Error()))
-		return
-	}
-
-	c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 }
 
 // GetRoles 获取所有角色
@@ -91,15 +84,11 @@ func (rc *RoleController) CreateRole(c *gin.Context) {
 	// Create the role
 	err := rc.RoleUseCase.Create(c.Request.Context(), &request)
 	if err != nil {
-		if errors.Is(err, domain.ErrRoleNameExists) {
-			c.JSON(http.StatusConflict, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		rc.writeRoleMutationError(c, err, nil)
 		return
 	}
 
-	c.JSON(http.StatusCreated, domain.RespSuccess(nil))
+	c.JSON(http.StatusCreated, domain.RespSuccess(request.Name))
 }
 
 // getRoleByID extracts the role ID from the path, fetches the role, and writes

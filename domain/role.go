@@ -15,9 +15,9 @@ const (
 var (
 	ErrCannotDeleteAdminRole = errors.New("不能删除系统管理员角色")
 	ErrCannotRenameAdminRole = errors.New("不能修改系统管理员角色名称")
-	ErrRoleNotFound          = errors.New("role not found")
-	ErrRoleNameExists        = errors.New("role name already exists")
-	ErrRoleInUse             = errors.New("role is still assigned to users")
+	ErrRoleNotFound          = errors.New("角色不存在")
+	ErrRoleNameExists        = errors.New("角色名称已存在")
+	ErrRoleInUse             = errors.New("角色仍被用户使用，无法删除")
 )
 
 // Role represents a custom role in the system

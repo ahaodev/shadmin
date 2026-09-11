@@ -112,9 +112,8 @@ func (mr *entMenuRepository) GetMenus(ctx context.Context, params domain.MenuQue
 	if err != nil {
 		return nil, err
 	}
-
-	// Apply pagination and ordering, and include API resources
-	offset := (params.Page - 1) * params.PageSize
+	// 不需要limit限制
+	offset, _ := params.Paginate()
 	menus, err := query.
 		WithAPIResources().
 		Order(menu.BySequence(), menu.ByCreatedAt()).

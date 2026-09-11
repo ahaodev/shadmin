@@ -196,11 +196,9 @@ func (dr *entDictRepository) FetchTypes(ctx context.Context, params domain.DictT
 		query = query.Order(ent.Desc(dicttype.FieldCreatedAt))
 	}
 
-	// 应用分页
-	if offset, limit, ok := params.Paginate(); ok {
-		query = query.Offset(offset).Limit(limit)
-	}
-	entTypes, err := query.All(ctx)
+	// 应用统一分页窗口
+	offset, limit := params.Paginate()
+	entTypes, err := query.Offset(offset).Limit(limit).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -416,11 +414,9 @@ func (dr *entDictRepository) FetchItems(ctx context.Context, params domain.DictI
 		query = query.Order(ent.Asc(dictitem.FieldSort), ent.Desc(dictitem.FieldCreatedAt))
 	}
 
-	// 应用分页
-	if offset, limit, ok := params.Paginate(); ok {
-		query = query.Offset(offset).Limit(limit)
-	}
-	entItems, err := query.All(ctx)
+	// 应用统一分页窗口
+	offset, limit := params.Paginate()
+	entItems, err := query.Offset(offset).Limit(limit).All(ctx)
 	if err != nil {
 		return nil, err
 	}
