@@ -62,7 +62,7 @@ go run .
 
 - **Authentication**: JWT access + refresh tokens via `Authorization: Bearer <token>`
 - **API Authorization**: Casbin middleware checks `(userID, path, method)` on protected routes
-- **Frontend Guards**: Permission‑aware components (`PermissionButton`, `PermissionGuard`)
+- **Frontend Guards**: Permission‑aware UI via the `usePermission()` hook and `auth-store` checks (`hasPermission()` / `hasRole()`)
 - **Menu System**: Dynamic menus from `/api/v1/resources`, auto‑adapted to user permissions
 
 <details>
