@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { USER_SOURCE_LOCAL, userSourceLabel } from '@/constants/user-source'
 import { Badge } from '@/components/ui/badge'
 import type { LoginLog } from '../data/schema'
 
@@ -54,13 +55,13 @@ export const loginLogsColumns: ColumnDef<LoginLog>[] = [
       displayName: '登录来源',
     },
     cell: ({ row }) => {
-      const source = (row.getValue('source') as string) || 'local'
+      const source = row.getValue('source') as string | undefined
       return (
         <Badge
-          variant={source === 'shadmin' ? 'secondary' : 'outline'}
+          variant={source === USER_SOURCE_LOCAL ? 'secondary' : 'outline'}
           className='text-xs'
         >
-          {source}
+          {userSourceLabel(source)}
         </Badge>
       )
     },
