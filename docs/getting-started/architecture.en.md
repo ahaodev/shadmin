@@ -255,7 +255,7 @@ User → Role → Permission Policy → API Resource (path + method)
 ```
 
 **Backend**: Casbin middleware checks whether `(userID, requestPath, requestMethod)` matches a policy.
-**Frontend**: `auth-store` provides `hasPermission()` / `hasRole()` / `canAccessMenu()` methods. `PermissionButton` / `PermissionGuard` components control UI visibility.
+**Frontend**: `auth-store` provides `hasPermission()` / `hasRole()` / `canAccessMenu()` methods. UI visibility is controlled by the `usePermission()` hook together with `auth-store` checks.
 
 ### Menu and Resource Mechanism
 
