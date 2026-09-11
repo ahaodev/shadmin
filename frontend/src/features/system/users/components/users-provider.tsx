@@ -29,7 +29,7 @@ export const useUsersDialog = () => {
   const usersContext = React.useContext(UsersContext)
 
   if (!usersContext) {
-    throw new Error('useUsers has to be used within <UsersContext>')
+    throw new Error('useUsersDialog has to be used within <UsersContext>')
   }
 
   return usersContext
