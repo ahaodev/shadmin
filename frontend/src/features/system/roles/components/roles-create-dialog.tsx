@@ -42,7 +42,7 @@ import { useMenuSelection } from '../hooks/use-menu-selection'
 import { type RoleFormData, useRoleForm } from '../hooks/use-role-form'
 import { MenuTreeSection } from './menu-tree-section'
 
-interface CreateRoleDialogProps {
+interface RolesCreateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   role?: Role | null // Optional role for edit mode
@@ -52,7 +52,7 @@ export function RolesCreateDialog({
   open,
   onOpenChange,
   role,
-}: CreateRoleDialogProps) {
+}: RolesCreateDialogProps) {
   const isEditMode = !!role
   const queryClient = useQueryClient()
 
