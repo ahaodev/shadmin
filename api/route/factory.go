@@ -1,13 +1,13 @@
 package route
 
 import (
-	"log"
 	"shadmin/api/controller"
 	"shadmin/bootstrap"
 	"shadmin/domain"
 	"shadmin/internal/auth"
 	captchapkg "shadmin/internal/captcha"
 	"shadmin/internal/tokenservice"
+	"shadmin/pkg"
 	"shadmin/repository"
 	"shadmin/usecase"
 	"time"
@@ -31,7 +31,7 @@ type ControllerFactory struct {
 // NewControllerFactory creates a new controller factory
 func NewControllerFactory(app *bootstrap.Application, timeout time.Duration, db *ent.Client) *ControllerFactory {
 	if app.CaptchaManager == nil {
-		log.Fatalf("bootstrap: captcha manager not initialized")
+		pkg.Log.Fatalf("bootstrap: captcha manager not initialized")
 	}
 	return &ControllerFactory{
 		app:            app,
