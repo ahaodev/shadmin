@@ -170,6 +170,14 @@ func (lu *loginUsecase) Refresh(c context.Context, refreshToken string) (*domain
 		return nil, fmt.Errorf("create refresh token: %w", err)
 	}
 
+	// 轮换：新令牌全部签发成功后吊销旧 refresh token，阻断旧令牌重放。
+	// 吊销失败时旧令牌仍有效，客户端重试即可，不会造成会话中断。
+	if lu.tokenBlacklist != nil && claims.JTI() != "" && claims.ExpiresAt != nil {
+		if err := lu.tokenBlacklist.Add(context.Background(), claims.JTI(), claims.ExpiresAt.Time); err != nil {
+			return nil, fmt.Errorf("revoke rotated refresh token: %w", err)
+		}
+	}
+
 	return &domain.RefreshTokenResponse{AccessToken: newAccessToken, RefreshToken: newRefreshToken}, nil
 }
 
