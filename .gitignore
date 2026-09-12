@@ -89,6 +89,4 @@ shadmin.exe
 .database
 .examples
 /cli/shadmin-cli
-CLAUDE.md
-AGENTS.md
 /.env.online
