@@ -447,7 +447,7 @@ func (u *projectUsecase) List(ctx context.Context, params domain.ProjectQueryPar
 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
 
-	domain.ValidateQueryParams(&params.QueryParams)
+	params.QueryParams.Paginate()
 	return u.projectRepository.Fetch(ctx, params)
 }
 
@@ -473,7 +473,7 @@ func (u *projectUsecase) Delete(ctx context.Context, id string) error {
 
 **要点：**
 - 每个方法都用 `context.WithTimeout` 包装上下文，防止长时间阻塞
-- `ValidateQueryParams` 校验并修正分页参数（Page < 1 设为 1，PageSize 超限截断）
+- `QueryParams.Paginate()` 校验并修正分页参数（Page < 1 设为 1，PageSize 超限截断），并返回 offset/limit
 - Usecase 不直接操作数据库，只调用 Repository 接口
 - 业务校验（枚举值、默认值）放在 Usecase 层
 

@@ -1,1 +1,1 @@
-../.agent/runbook.md
+../.agent/CONTRIBUTING.md

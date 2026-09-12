@@ -24,7 +24,7 @@ Define contracts first — everything else implements these.
 
 ### Built-in domain helpers
 
-`domain.QueryParams` embeds into resource query params; `domain.ValidateQueryParams()` sets defaults (Page=1, PageSize=10, Max=10000).
+`domain.QueryParams` embeds into resource query params; `qp.Paginate()` sets defaults (Page=1, PageSize=10, Max=10000) and returns `(offset, limit)`.
 
 `domain.NewPagedResult(items, total, page, pageSize)` builds paginated response.
 
@@ -45,7 +45,7 @@ Run `go generate ./ent` after any schema change.
 - Struct holds `*ent.Client`; constructor returns `domain.ResourceRepository`
 - `convertToDomain()` private method converts Ent entity to domain entity
 - **GetByID**: wrap `ent.IsNotFound(err)` → return domain sentinel error
-- **Fetch**: call `domain.ValidateQueryParams` first; clone query for count before applying offset/limit; default sort by `created_at` DESC
+- **Fetch**: call `params.Paginate()` first to get offset/limit; clone query for count before applying them; default sort by `created_at` DESC
 - **Update**: check each pointer field before calling `Set*()`; wrap `ent.IsNotFound` → sentinel error
 - All errors wrapped with `fmt.Errorf("...: %w", err)`
 
@@ -78,7 +78,7 @@ Run `go generate ./ent` after any schema change.
 
 ## Routes (`api/route/`)
 
-Add a `setup<Resource>Management(systemGroup *gin.RouterGroup, casbinMiddleware)` method in `protected.go` (or system routes file), then call it from `setupSystemRoutes`.
+Add a `setup<Resource>Management(systemGroup *gin.RouterGroup, casbinMiddleware)` method in `system_routes.go`, then call it from `setupSystemRoutes` (in `protected.go`).
 
 REST convention:
 - `GET    /system/resource`     — list (paginated)
@@ -100,7 +100,7 @@ func (f *ControllerFactory) Create<Resource>Controller() *controller.ResourceCon
 }
 ```
 
-Available factory fields: `f.db` (`*ent.Client`), `f.app` (`*bootstrap.Application` — has `CasManager`, `FileRepo`, `ApiEngine`), `f.timeout` (`time.Duration`).
+Available factory fields: `f.db` (`*ent.Client`), `f.app` (`*bootstrap.Application` — has `CasManager`, `FileStorage`, `ApiEngine`), `f.timeout` (`time.Duration`).
 
 ## Auth & Middleware
 

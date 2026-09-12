@@ -39,7 +39,7 @@ You are a cleanup specialist for Shadmin (Go/Gin/Ent backend, React 19 + TypeScr
 
 **Go backend:**
 - Remove unused functions, variables, imports, unreachable branches, commented-out code, and leftover debug prints
-- Consolidate duplicated domain↔ent converters, pagination (`domain.ValidateQueryParams()`), filter parsing, and HTTP status/error mapping
+- Consolidate duplicated domain↔ent converters, pagination (`domain.QueryParams.Paginate()`), filter parsing, and HTTP status/error mapping
 - Simplify over-nested logic; keep `context.WithTimeout` + `defer cancel()` and `fmt.Errorf("...: %w", err)` wrapping intact
 - Align naming with conventions: `lower_snake` files, PascalCase exports, short receivers
 

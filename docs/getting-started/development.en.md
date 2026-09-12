@@ -447,7 +447,7 @@ func (u *projectUsecase) List(ctx context.Context, params domain.ProjectQueryPar
 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
 
-	domain.ValidateQueryParams(&params.QueryParams)
+	params.QueryParams.Paginate()
 	return u.projectRepository.Fetch(ctx, params)
 }
 
@@ -473,7 +473,7 @@ func (u *projectUsecase) Delete(ctx context.Context, id string) error {
 
 **Key Points:**
 - Every method wraps the context with `context.WithTimeout` to prevent blocking
-- `ValidateQueryParams` validates and corrects pagination params (Page < 1 → 1, PageSize over limit → truncated)
+- `QueryParams.Paginate()` validates and corrects pagination params (Page < 1 → 1, PageSize over limit → truncated) and returns `(offset, limit)`
 - Usecase never touches the database directly — it only calls Repository interfaces
 - Business validation (enum values, defaults) belongs in the Usecase layer
 

@@ -164,7 +164,7 @@ sequenceDiagram
     CAS->>CTRL: 通过
     CTRL->>CTRL: 解析 Query 参数 (page, page_size, search...)
     CTRL->>UC: ListUsers(ctx, filter)
-    UC->>UC: context.WithTimeout + ValidateQueryParams
+    UC->>UC: context.WithTimeout + QueryParams.Paginate()
     UC->>REPO: Query(ctx, filter)
     REPO->>DB: Ent Query (Where + Offset + Limit)
     DB-->>REPO: 返回数据

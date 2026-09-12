@@ -97,7 +97,7 @@ Follow the layer order strictly — each layer depends on the one above.
 Quick reference for key conventions:
 - **IDs**: `xid.New().String()` in Ent schema `DefaultFunc`
 - **Partial updates**: pointer fields in `Update*Request` (`*string`)
-- **Pagination**: embed `domain.QueryParams`, call `domain.ValidateQueryParams()`
+- **Pagination**: embed `domain.QueryParams`, call `qp.Paginate()` (returns `offset, limit`)
 - **Response**: `domain.RespSuccess(data)` (code=0) / `domain.RespError(msg)` (code=1)
 - **Usecase**: every method starts with `context.WithTimeout` + `defer cancel()`
 - **Errors**: sentinel errors in domain, `%w` wrapping, map to HTTP status in controller

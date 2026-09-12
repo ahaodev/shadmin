@@ -31,5 +31,5 @@ This file holds **direction only**: the ideas that stay true as the code changes
 | Workflow, layer responsibilities, boundaries, permissions | `.agent/skills/shadmin-dev/SKILL.md` |
 | Backend patterns — domain, Ent, repository, usecase, controller, routes | `.agent/skills/shadmin-dev/references/backend.md` |
 | Frontend patterns — types, services, features, hooks, forms, routes | `.agent/skills/shadmin-dev/references/frontend.md` |
-| Runbook, bootstrap, commands, conventions | `.agent/runbook.md` |
+| Build/test/lint commands, bootstrap, config, conventions | `.agent/CONTRIBUTING.md` |
 | Architecture walkthrough | `docs/getting-started/architecture.en.md` |

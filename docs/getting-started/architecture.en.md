@@ -164,7 +164,7 @@ sequenceDiagram
     CAS->>CTRL: Pass
     CTRL->>CTRL: Parse Query params (page, page_size, search...)
     CTRL->>UC: ListUsers(ctx, filter)
-    UC->>UC: context.WithTimeout + ValidateQueryParams
+    UC->>UC: context.WithTimeout + QueryParams.Paginate()
     UC->>REPO: Query(ctx, filter)
     REPO->>DB: Ent Query (Where + Offset + Limit)
     DB-->>REPO: Return data

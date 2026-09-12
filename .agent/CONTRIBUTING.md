@@ -1,4 +1,4 @@
-# Shadmin Runbook
+# Contributing to Shadmin
 
 Shadmin is a full-stack RBAC admin dashboard with three main surfaces:
 - Go backend (`main.go`, `api/`, `domain/`, `repository/`, `usecase/`, `ent/`)
@@ -139,7 +139,7 @@ frontend/src/
 
 1. `domain/<resource>.go` — Entity struct, Create/Update request DTOs, QueryFilter (embed `domain.QueryParams`), Repository + UseCase interfaces, sentinel errors
 2. `ent/schema/<resource>.go` — DB schema → run `go generate ./ent`
-3. `repository/<resource>_repository.go` — Ent CRUD, domain↔ent converters, pagination via `domain.ValidateQueryParams()`
+3. `repository/<resource>_repository.go` — Ent CRUD, domain↔ent converters, pagination via `domain.QueryParams.Paginate()`
 4. `usecase/<resource>_usecase.go` — `context.WithTimeout`, validation, cross-repo orchestration, `fmt.Errorf("...: %w", err)`
 5. `api/controller/<resource>_controller.go` — Parse request, call usecase, return `domain.RespSuccess()`/`domain.RespError()` with proper HTTP status
 6. `api/route/` — Register routes (REST: GET list, POST create, GET :id, PUT :id, DELETE :id). Protected system routes use `casbinMiddleware.CheckAPIPermission()`
