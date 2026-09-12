@@ -24,12 +24,12 @@ This file holds **direction only**: the ideas that stay true as the code changes
 
 ## Specifics live in the skill
 
-`.github/skills/shadmin-dev/` is the authoritative, step-by-step source for how things are actually built — read it before writing feature code.
+`.agent/skills/shadmin-dev/` is the authoritative, step-by-step source for how things are actually built — read it before writing feature code. Everything under `.agent/` is the single source of truth; each agent's own directory (`.github/`, `.pi/`, `.claude/`) links back to it.
 
 | Need | Read |
 |---|---|
-| Workflow, layer responsibilities, boundaries, permissions | `.github/skills/shadmin-dev/SKILL.md` |
-| Backend patterns — domain, Ent, repository, usecase, controller, routes | `.github/skills/shadmin-dev/references/backend.md` |
-| Frontend patterns — types, services, features, hooks, forms, routes | `.github/skills/shadmin-dev/references/frontend.md` |
-| Runbook, bootstrap, commands, conventions | `.github/copilot-instructions.md` |
+| Workflow, layer responsibilities, boundaries, permissions | `.agent/skills/shadmin-dev/SKILL.md` |
+| Backend patterns — domain, Ent, repository, usecase, controller, routes | `.agent/skills/shadmin-dev/references/backend.md` |
+| Frontend patterns — types, services, features, hooks, forms, routes | `.agent/skills/shadmin-dev/references/frontend.md` |
+| Runbook, bootstrap, commands, conventions | `.agent/runbook.md` |
 | Architecture walkthrough | `docs/getting-started/architecture.en.md` |
