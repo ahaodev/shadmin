@@ -21,7 +21,7 @@ type User struct {
 	Nickname       string     `json:"nickname"`
 	Email          string     `json:"email"`
 	Phone          string     `json:"phone,omitempty"`
-	Password       string     `json:"password,omitempty"`
+	Password       string     `json:"-"`
 	Source         string     `json:"source,omitempty"` // local-本地用户，oauth-第三方来源用户
 	Avatar         string     `json:"avatar,omitempty"`
 	IsAdmin        bool       `json:"is_admin,omitempty"`
