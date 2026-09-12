@@ -71,7 +71,7 @@ go run .
 ```
 shadmin/
 ├── api/            # 控制器和路由（Gin）
-├── bootstarp/      # 应用引导、数据库、Casbin、种子数据
+├── bootstrap/      # 应用引导、数据库、Casbin、种子数据
 ├── domain/         # 实体、DTO、接口定义
 ├── ent/schema/     # Ent ORM 数据模型
 ├── repository/     # 数据访问层

@@ -80,7 +80,7 @@ Request flow: **Route → Middleware (JWT + Casbin) → Controller → Usecase �
 | Route | `api/route/` | `public.go` (auth, health) + `protected.go` (system/*); middleware wiring |
 | Factory | `api/route/factory.go` | DI: creates Repository → Usecase → Controller chains |
 | Internal | `internal/` | Casbin manager+adapter, token service, login security (3-strike lockout), 1h sync scheduler |
-| Bootstrap | `bootstrap/` | App init, DB, Casbin, storage, seed data. Note: some older docs spell this `bootstarp/` — the typo does not exist on disk |
+| Bootstrap | `bootstrap/` | App init, DB, Casbin, storage, seed data |
 | Shared | `pkg/` | Cross-package utilities (logging, etc.) |
 
 ### Frontend — Feature-Based Structure

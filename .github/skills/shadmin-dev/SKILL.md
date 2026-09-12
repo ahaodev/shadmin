@@ -34,7 +34,7 @@ Guide full-stack feature development through Shadmin's clean architecture, produ
 | Controller | `api/controller/` | HTTP parsing only, Swagger annotations, status code mapping |
 | Route | `api/route/` | Route registration, middleware wiring |
 | Factory | `api/route/factory.go` | DI: repo → usecase → controller construction |
-| Bootstrap | `bootstarp/` | App init, DB, Casbin, seeds (directory name typo is intentional) |
+| Bootstrap | `bootstrap/` | App init, DB, Casbin, seeds |
 
 **Frontend layers:**
 

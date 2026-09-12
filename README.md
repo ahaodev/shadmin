@@ -71,7 +71,7 @@ go run .
 ```
 shadmin/
 ├── api/            # Controllers & routes (Gin)
-├── bootstarp/      # App bootstrap, DB, Casbin, seed
+├── bootstrap/      # App bootstrap, DB, Casbin, seed
 ├── domain/         # Entities, DTOs, interfaces
 ├── ent/schema/     # Ent ORM schemas
 ├── repository/     # Data access layer

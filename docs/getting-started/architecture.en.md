@@ -45,7 +45,7 @@ graph TB
 shadmin/
 ├── main.go              # Entry point, calls cmd.Run()
 ├── cmd/                 # Application startup & version management
-├── bootstarp/           # Bootstrap wiring: DB, Casbin, storage, seed data (note: typo is intentional)
+├── bootstrap/           # Bootstrap wiring: DB, Casbin, storage, seed data
 ├── api/
 │   ├── controller/      # HTTP controllers (request parsing + response, no business logic)
 │   ├── route/           # Route registration + middleware mounting + DI factory

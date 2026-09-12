@@ -45,7 +45,7 @@ graph TB
 shadmin/
 ├── main.go              # 入口，调用 cmd.Run()
 ├── cmd/                 # 应用启动与版本管理
-├── bootstarp/           # 启动装配：DB、Casbin、存储、种子数据（注意拼写）
+├── bootstrap/           # 启动装配：DB、Casbin、存储、种子数据
 ├── api/
 │   ├── controller/      # HTTP 控制器（请求解析 + 响应，无业务逻辑）
 │   ├── route/           # 路由注册 + 中间件挂载 + DI 工厂
