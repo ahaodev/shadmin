@@ -65,8 +65,8 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 		return nil, err
 	}
 
-	// 复用既有 TokenService 签发 JWT 令牌对，并把第三方身份信息写入 access token。
-	accessToken, err := u.tokenService.CreateAccessTokenWithIdentity(user, u.accessTokenSecret, u.accessTokenExpiry, provider, profile.UserID, "oidc")
+	// 复用既有 TokenService 签发 JWT 令牌对（sub = provider:provider_subject）。
+	accessToken, err := u.tokenService.CreateAccessTokenWithIdentity(user, u.accessTokenSecret, u.accessTokenExpiry, provider, profile.UserID, provider)
 	if err != nil {
 		return nil, fmt.Errorf("create access token: %w", err)
 	}

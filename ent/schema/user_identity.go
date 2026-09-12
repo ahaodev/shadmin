@@ -12,7 +12,7 @@ import (
 )
 
 // UserIdentity holds the schema definition for the UserIdentity entity.
-// 用于把第三方身份（如 Google / GitHub 用户ID）绑定到 shadmin 用户。
+// 用于把第三方身份（如 Google / GitHub 用户ID）关联。
 type UserIdentity struct {
 	ent.Schema
 }
@@ -26,7 +26,7 @@ func (UserIdentity) Fields() []ent.Field {
 			}),
 		field.String("user_id").
 			MaxLen(32).
-			Comment("绑定的 shadmin 用户ID"),
+			Comment("关联的用户ID"),
 		field.String("provider").
 			MaxLen(32).
 			Comment("第三方 provider 标识，如 google、github"),

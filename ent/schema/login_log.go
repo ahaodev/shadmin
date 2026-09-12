@@ -52,7 +52,7 @@ func (LoginLog) Fields() []ent.Field {
 			MaxLen(32).
 			Optional().
 			Default("local").
-			Comment("登录来源：local-本地密码登录，oauth-第三方登录"),
+			Comment("登录来源：shadmin-本地密码登录，github/google-第三方 provider 登录"),
 		field.String("failure_reason").
 			MaxLen(255).
 			Optional().

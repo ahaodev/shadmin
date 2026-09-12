@@ -115,7 +115,7 @@ func (ur *entUserRepository) Create(c context.Context, u *domain.User) error {
 		SetNillableInvitedBy(&u.InvitedBy).
 		SetNillableDepartmentID(u.DepartmentID)
 
-	// 来源：默认 local，第三方登录用户由 usecase 显式置为 oauth
+	// 来源：默认 shadmin；第三方登录显式置为 provider name（github/google）
 	if u.Source != "" {
 		createQuery = createQuery.SetSource(user.Source(u.Source))
 	}

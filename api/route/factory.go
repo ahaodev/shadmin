@@ -86,7 +86,6 @@ func (f *ControllerFactory) CreateCaptchaController() *controller.CaptchaControl
 }
 
 // CreateUserIdentityController creates the identity login controller (Google/GitHub OAuth).
-// 复用既有 TokenService + env 令牌密钥签发 JWT，绑定记录走 UserIdentityRepository。
 func (f *ControllerFactory) CreateUserIdentityController() *controller.UserIdentityController {
 	tokenService := f.tokenService()
 	identityRepository := repository.NewUserIdentityRepository(f.db)

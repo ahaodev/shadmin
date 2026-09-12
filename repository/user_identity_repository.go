@@ -13,7 +13,7 @@ type entUserIdentityRepository struct {
 	client *ent.Client
 }
 
-// NewUserIdentityRepository 构造第三方账号绑定的 ent 仓储实现
+// NewUserIdentityRepository 构造第三方身份关联的 ent 仓储实现
 func NewUserIdentityRepository(client *ent.Client) domain.UserIdentityRepository {
 	return &entUserIdentityRepository{client: client}
 }
@@ -33,8 +33,9 @@ func entUserIdentityToDomain(a *ent.UserIdentity) *domain.UserIdentity {
 	}
 }
 
-// FindByProviderAndSubject 通过 provider + 第三方用户ID 查找绑定。
-// 未找到时返回 (nil, nil)，调用方据此决定是否走"按邮箱匹配/创建新用户"分支。
+// FindByProviderAndSubject 通过 provider + 第三方用户ID 查找关联记录。
+// 未找到时返回 (nil, nil)，调用方据此走"新建独立用户 + 建关联"分支；
+// 注意：不存在按 email 匹配已有用户的分支，这是刻意的隔离策略。
 func (r *entUserIdentityRepository) FindByProviderAndSubject(ctx context.Context, provider, subject string) (*domain.UserIdentity, error) {
 	if provider == "" || subject == "" {
 		return nil, nil
@@ -55,7 +56,7 @@ func (r *entUserIdentityRepository) FindByProviderAndSubject(ctx context.Context
 	return entUserIdentityToDomain(a), nil
 }
 
-// FindByUserID 查询某用户绑定的全部第三方账号
+// FindByUserID 查询某用户关联的全部第三方身份。
 func (r *entUserIdentityRepository) FindByUserID(ctx context.Context, userID string) ([]*domain.UserIdentity, error) {
 	if userID == "" {
 		return nil, nil
@@ -75,8 +76,8 @@ func (r *entUserIdentityRepository) FindByUserID(ctx context.Context, userID str
 	return result, nil
 }
 
-// Upsert 按 (provider, provider_subject) 创建或更新绑定。
-// 绑定存在时更新 user_id/email/name/avatar_url，不存在时新建。
+// Upsert 以 (provider, provider_subject) 为唯一键写入关联记录：
+// 不存在则新建；已存在则只更新 user_id（该表无 email/name/avatar 等资料列）。
 func (r *entUserIdentityRepository) Upsert(ctx context.Context, account *domain.UserIdentity) error {
 	if account == nil {
 		return fmt.Errorf("user identity is nil")

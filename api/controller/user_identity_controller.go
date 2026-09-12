@@ -105,8 +105,7 @@ func (sc *UserIdentityController) Callback(c *gin.Context) {
 	c.Redirect(http.StatusFound, target.String())
 }
 
-// recordIdentityLoginLog 异步记录第三方登录日志，来源固定为 oauth（按登录渠道判定，
-// 不依赖可能滞后的 users.source），不阻塞回调主流程；未配置 LoginLogUsecase 时静默跳过。
+// recordIdentityLoginLog 异步记录第三方登录日志，来源记为 provider 名（github/google），
 func (sc *UserIdentityController) recordIdentityLoginLog(c *gin.Context, provider, email, status, failureReason string) {
 	if sc.LoginLogUsecase == nil {
 		return

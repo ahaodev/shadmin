@@ -61,7 +61,7 @@ func (User) Fields() []ent.Field {
 		field.String("avatar").
 			MaxLen(255).
 			Optional().
-			Comment("系统内原生用户头像；第三方登录头像存储在 user_identity.avatar_url"),
+			Comment("用户头像；第三方登录头像在登录时同步写入此列（user_identity 为纯关联表，不存资料）"),
 		field.String("department_id").
 			Optional().
 			Nillable().
@@ -91,7 +91,7 @@ func (User) Edges() []ent.Edge {
 			Ref("users").
 			Field("department_id").
 			Unique(),
-		edge.To("identity_accounts", UserIdentity.Type).Comment("用户绑定的第三方账号"),
+		edge.To("identity_accounts", UserIdentity.Type).Comment("用户关联的第三方身份"),
 	}
 }
 
