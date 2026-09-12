@@ -1,9 +1,9 @@
 package api
 
 import (
-	"log"
 	"shadmin/api/route"
 	"shadmin/bootstrap"
+	"shadmin/pkg"
 	"time"
 )
 
@@ -13,7 +13,7 @@ func SetupRoutes(app *bootstrap.Application) {
 
 	// 设置路由
 	if err := route.Setup(app, timeout, app.ApiEngine); err != nil {
-		log.Printf("Failed to setup routes: %v", err)
+		pkg.Log.Printf("Failed to setup routes: %v", err)
 	}
 }
 
