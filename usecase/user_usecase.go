@@ -3,11 +3,11 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"log"
 	"shadmin/internal/constants"
 	"time"
 
 	"shadmin/domain"
+	"shadmin/pkg"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -64,12 +64,12 @@ func (uu *userUsecase) CreateUser(c context.Context, request *domain.CreateUserR
 		for _, roleID := range request.RoleIDs {
 			if err := uu.roleRepository.Assign(ctx, user.ID, roleID); err != nil {
 				// 如果角色分配失败，记录错误但不影响用户创建
-				log.Printf("Failed to assign role %s to user %s: %v", roleID, user.ID, err)
+				pkg.Log.Printf("Failed to assign role %s to user %s: %v", roleID, user.ID, err)
 			}
 		}
 	}
 
-	log.Printf("Successfully created user %s", user.Username)
+	pkg.Log.Printf("Successfully created user %s", user.Username)
 	return user, nil
 }
 func (uu *userUsecase) ListUsers(c context.Context, filter domain.UserQueryFilter) (*domain.PagedResult[*domain.User], error) {
@@ -104,14 +104,14 @@ func (uu *userUsecase) DeleteUser(c context.Context, id string, currentUserID st
 		return domain.ErrCannotDeleteAdmin
 	}
 
-	log.Printf("User %s starting deletion of user %s (ID: %s)", currentUserID, user.Username, id)
+	pkg.Log.Printf("User %s starting deletion of user %s (ID: %s)", currentUserID, user.Username, id)
 
 	if err := uu.userRepository.Delete(ctx, id); err != nil {
-		log.Printf("ERROR: Failed to delete user %s from database: %v", user.Username, err)
+		pkg.Log.Printf("ERROR: Failed to delete user %s from database: %v", user.Username, err)
 		return fmt.Errorf("failed to delete user from database: %w", err)
 	}
 
-	log.Printf("Successfully deleted user %s", user.Username)
+	pkg.Log.Printf("Successfully deleted user %s", user.Username)
 	return nil
 }
 
