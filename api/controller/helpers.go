@@ -29,7 +29,7 @@ func BindQueryParams(c *gin.Context) domain.QueryParams {
 
 // MustBindJSON binds JSON body to the target and writes a 400 error response on failure.
 // Returns true if binding succeeded, false if an error response was already written.
-func MustBindJSON(c *gin.Context, obj interface{}) bool {
+func MustBindJSON(c *gin.Context, obj any) bool {
 	if err := c.ShouldBindJSON(obj); err != nil {
 		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
 		return false
