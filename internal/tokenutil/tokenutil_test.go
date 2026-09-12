@@ -153,6 +153,7 @@ func TestParseClaims_OnlyAcceptsHS256(t *testing.T) {
 		Name:  "alice",
 		Email: "alice@example.com",
 		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    accessTokenIssuer,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 			ID:        "jti-hmac",
 		},
@@ -208,5 +209,50 @@ func TestExtractJTIAndExpiry(t *testing.T) {
 
 	if _, _, ok := ExtractJTIAndExpiry(token, otherSecret); ok {
 		t.Error("ok = true for a token signed with another secret, want false")
+	}
+}
+
+// access token 解析必须校验 iss：refresh token 不带 iss，
+// 不校验时会被当作 access token 接受，弱化两类令牌的隔离。
+func TestParseAccessClaims_RejectsRefreshTokenAndForeignIssuer(t *testing.T) {
+	user := newTestUser()
+	refreshToken, err := CreateRefreshToken(user, testSecret, 60)
+	if err != nil {
+		t.Fatalf("CreateRefreshToken: %v", err)
+	}
+
+	if _, err := ParseAccessClaims(refreshToken, testSecret); err == nil {
+		t.Fatal("ParseAccessClaims accepted a refresh token, want rejection")
+	}
+	// 刷新与登出流程仍依赖 refresh 解析器接受 refresh token
+	if _, err := ParseRefreshClaims(refreshToken, testSecret); err != nil {
+		t.Fatalf("ParseRefreshClaims rejected refresh token: %v", err)
+	}
+	if _, _, ok := ExtractJTIAndExpiry(refreshToken, testSecret); !ok {
+		t.Fatal("ExtractJTIAndExpiry rejected refresh token")
+	}
+
+	for _, issuer := range []string{"", "another-issuer"} {
+		name := issuer
+		if name == "" {
+			name = "missing"
+		}
+		t.Run("issuer="+name, func(t *testing.T) {
+			claims := &domain.JwtCustomClaims{
+				ID: user.ID,
+				RegisteredClaims: jwt.RegisteredClaims{
+					Issuer:    issuer,
+					ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+					ID:        "jti-issuer",
+				},
+			}
+			raw, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(testSecret))
+			if err != nil {
+				t.Fatalf("sign: %v", err)
+			}
+			if _, err := ParseAccessClaims(raw, testSecret); err == nil {
+				t.Fatal("ParseAccessClaims accepted a token with invalid issuer, want rejection")
+			}
+		})
 	}
 }

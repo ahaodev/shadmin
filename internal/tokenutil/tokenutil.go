@@ -12,6 +12,10 @@ import (
 	"github.com/rs/xid"
 )
 
+// accessTokenIssuer 是 access token 的签发者，解析时必须校验：
+// refresh token 不带 iss，缺少该校验时会被误判为 access token。
+const accessTokenIssuer = "shadmin"
+
 // hmacKeyFunc 只接受 HS256。
 func hmacKeyFunc(secret string) jwt.Keyfunc {
 	return func(token *jwt.Token) (any, error) {
@@ -40,7 +44,7 @@ func CreateAccessTokenWithIdentity(user *domain.User, secret string, expiry int,
 		IsAdmin: user.IsAdmin,
 		Roles:   user.Roles,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    "shadmin",
+			Issuer:    accessTokenIssuer,
 			ExpiresAt: exp,
 			ID:        xid.New().String(), // jti：登出黑名单的键
 			Subject:   subject,
@@ -71,10 +75,11 @@ func CreateRefreshToken(user *domain.User, secret string, expiry int) (refreshTo
 	return rt, err
 }
 
-// ParseAccessClaims 校验签名与 exp，并解析 access token 的全部 claims。
+// ParseAccessClaims 校验签名、exp 与 iss，并解析 access token 的全部 claims。
+// 必须校验 iss：refresh token 没有 iss，缺少该校验时会被当作 access token 接受。
 func ParseAccessClaims(requestToken string, secret string) (*domain.JwtCustomClaims, error) {
 	claims := new(domain.JwtCustomClaims)
-	token, err := jwt.ParseWithClaims(requestToken, claims, hmacKeyFunc(secret))
+	token, err := jwt.ParseWithClaims(requestToken, claims, hmacKeyFunc(secret), jwt.WithIssuer(accessTokenIssuer))
 	if err != nil {
 		return nil, err
 	}
