@@ -2,11 +2,11 @@ package middleware
 
 import (
 	"net/http"
-	"strings"
 
 	"shadmin/domain"
 	"shadmin/internal/auth"
 	"shadmin/internal/constants"
+	"shadmin/internal/contextutil"
 	"shadmin/internal/tokenservice"
 
 	"github.com/gin-gonic/gin"
@@ -17,7 +17,7 @@ func JwtAuthMiddleware(secret string, tokenBlacklist auth.JWTBlacklist) gin.Hand
 	tokenService := tokenservice.NewTokenService()
 
 	return func(c *gin.Context) {
-		authToken, ok := bearerToken(c.Request.Header.Get(constants.Authorization))
+		authToken, ok := contextutil.BearerToken(c.Request.Header.Get(constants.Authorization))
 		if !ok {
 			c.JSON(http.StatusUnauthorized, domain.RespError("Not authorized"))
 			c.Abort()
@@ -61,16 +61,4 @@ func JwtAuthMiddleware(secret string, tokenBlacklist auth.JWTBlacklist) gin.Hand
 
 		c.Next()
 	}
-}
-
-// bearerToken 从 Authorization 头中取出 Bearer 令牌。
-func bearerToken(header string) (string, bool) {
-	scheme, token, found := strings.Cut(header, " ")
-	if !found || token == "" || strings.Contains(token, " ") {
-		return "", false
-	}
-	if !strings.EqualFold(scheme, "Bearer") {
-		return "", false
-	}
-	return token, true
 }
