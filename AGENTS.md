@@ -1,40 +1,35 @@
 # AGENTS.md
 
-This repo is a **template for RBAC admin systems** — its value is the pattern, so extensions preserve the design below. This file carries **design intent only**; the step-by-step module recipe and layer tables live in `.github/skills/shadmin-dev/SKILL.md`, the runbook/bootstrap detail in `.github/copilot-instructions.md`. Keep it small — mechanics belong there.
+Shadmin is a **template for RBAC admin systems**. Its value is the pattern, not the feature set — so when extending it, preserve the shape below rather than reinvent it.
 
-## Design intent
+This file holds **direction only**: the ideas that stay true as the code changes. Recipes, layer tables, file paths and commands belong to the skill, which is where they can stay correct.
 
-- **Contract-first, dependencies inward.** `domain/` declares each module's entity, DTOs and `XxxRepository` / `XxxUseCase` interfaces. Controllers hold a `domain.XxxUseCase`, usecases hold a `domain.XxxRepository` (never `*ent.Client`), implementations are unexported structs returning the domain interface, wired only in `api/route/factory.go` — `route → controller → usecase → repository → ent`, one direction.
-- **One responsibility per layer.** Route = registration. Middleware = cross-cutting. Controller = HTTP parsing (`ShouldBindJSON`/`Query`/`Param`) + status mapping. Usecase = business logic, validation, `context.WithTimeout`, cross-repo orchestration. Repository = persistence + domain↔ent conversion. `bootstrap/` = startup wiring. Breaking this is the main way the template degrades.
-- **Explicit manual DI, no globals.** Infrastructure (DB, storage, cache, Casbin) sits behind domain interfaces and is selected by env (`DB_TYPE`, `STORAGE_TYPE`, `CACHE_TYPE`); swapping SQLite→Postgres or disk→MinIO must not touch business code.
-- **RBAC is data, never code.** Authorization is `(subject, object, action)`, enforced once by `CasbinMiddleware.CheckAPIPermission()` and persisted in `casbin_rules`. Lifecycle: register a route → startup scan writes an `apiresource` row → admin UI binds it to a menu and grants the menu to a role → enforcer resyncs. So a protected API means *registering a route*, not editing permission lists. Menus come from the backend (`/api/v1/resources`), never the frontend.
-- **Auth is defense-in-depth.** JWT validity → JTI blacklist → account state (`UserStateMiddleware`) → Casbin, each gate independent. Token creation/parsing stays in `internal/tokenservice` + `internal/tokenutil`.
-- **One envelope, one truth.** Every response is `domain.Response{Code,Msg,Data}` (`0` = success), pages via `domain.PagedResult[T]`; paging math lives once in `domain.QueryParams.Paginate()`, and only service wrappers (`services/*Api.ts`) unwrap `response.data.data`.
-- **Generated code is authoritative.** `ent/schema/` is the source of truth; run `go generate ./ent` after changes and treat `ent/` as a build artifact — never hand-edit it.
-- **Config over forks.** New configurable behavior belongs in `internal/conf/env.go` with a default, not a hardcoded branch.
+## Principles
 
-## Never
+**Dependencies point one way.** Each module declares its contracts first; every layer knows only the layer beneath it, and frameworks stay at the edges. When an inner layer starts reaching outward, the design has broken — that, not a missing feature, is what degrades this template. Change the pattern on purpose, never by accident.
 
-- Business logic in controllers or routes.
-- Bypass Casbin on `/system/*`.
-- Hardcode menus or permission strings in the frontend — they mirror backend `system:<resource>:<action>` exactly (`frontend/src/constants/permissions.ts`, gated through `usePermission()` → `lib/permissions.ts`).
-- Leak `ent` types past the repository boundary, or change the response envelope / `domain` interfaces.
-- Add a third-party dependency without strong justification.
-- Put CLI settings in the repo-root `.env` (server-only; CLI config lives under `cli/`).
+**Authorization is data, not code.** Permissions are facts in a database, resolved once at the boundary — not conditionals scattered through handlers. Adding a protected capability should mean *registering* it, never editing a permission list. The same instinct applies to menus: the backend owns them, the frontend only renders what it is given.
 
-## Conventions
+**Security composes from independent gates.** Authentication, token validity, account state and authorization each stand alone, so no single mistake is enough to grant access.
 
-- **Errors**: wrap with `%w` and context, sentinels in `domain/`, HTTP status mapped in the controller, not deeper.
-- **Commits**: Conventional Commits (`feat:`/`fix:`/`chore:`/`docs:`), subject ≤ 72 chars; branches `feat/*`, `fix/*`, `chore/*`, `docs/*`.
-- **Tests**: live beside the code (`internal/`, `api/middleware/`); no frontend test runner, so verify frontend changes with `pnpm build` + `pnpm lint`.
+**Every answer has one shape.** Requests, responses and pagination follow a single contract, defined once and reused everywhere. Uniformity here is a feature, not a style preference.
 
-## Commands
+**Infrastructure is a choice, not an assumption.** Databases, storage and caches sit behind contracts and are selected by configuration, so swapping one out never reaches business logic. New behavior should be configurable by default, not hardcoded.
 
-```bash
-go run .                                       # :55667; first run creates .env, .database/data.db, migrates, seeds admin+menus, scans routes
-go build -o shadmin .                          # embedded build needs frontend/dist/ (pnpm build first)
-go test ./...  |  go fmt ./... && go vet ./...  # gates mirrored in .githooks/pre-commit and CI
-go generate ./ent                              # after ent/schema/ changes
-pnpm dev | build | lint | format:check | knip  # frontend (pnpm only)
-cd cli && make build | test | lint             # CLI (separate module)
-```
+## Working here
+
+- Keep changes minimal and in-scope; follow the idiom already in the file you are touching.
+- Verify before you claim done. The gates are cheap — run them.
+- This file and the skill describe one design. If you change the design, update both.
+
+## Specifics live in the skill
+
+`.github/skills/shadmin-dev/` is the authoritative, step-by-step source for how things are actually built — read it before writing feature code.
+
+| Need | Read |
+|---|---|
+| Workflow, layer responsibilities, boundaries, permissions | `.github/skills/shadmin-dev/SKILL.md` |
+| Backend patterns — domain, Ent, repository, usecase, controller, routes | `.github/skills/shadmin-dev/references/backend.md` |
+| Frontend patterns — types, services, features, hooks, forms, routes | `.github/skills/shadmin-dev/references/frontend.md` |
+| Runbook, bootstrap, commands, conventions | `.github/copilot-instructions.md` |
+| Architecture walkthrough | `docs/getting-started/architecture.en.md` |
