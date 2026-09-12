@@ -6,7 +6,6 @@ import (
 	"shadmin/domain"
 	"shadmin/internal/constants"
 	"shadmin/internal/contextutil"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -126,7 +125,7 @@ func (lc *AuthController) Logout(c *gin.Context) {
 		return
 	}
 
-	accessToken := extractBearerToken(c)
+	accessToken, _ := contextutil.BearerToken(c.Request.Header.Get(constants.Authorization))
 
 	if err := lc.LoginUsecase.Logout(c.Request.Context(), accessToken, request.RefreshToken); err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError("注销失败"))
@@ -134,17 +133,4 @@ func (lc *AuthController) Logout(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, domain.RespSuccess("Logout successful"))
-}
-
-// extractBearerToken 从 Authorization 头中提取 Bearer token，未携带或格式不合法时返回空串。
-// 与 api/middleware 的 bearerToken 保持一致：scheme 大小写不敏感，令牌内不允许出现空格。
-func extractBearerToken(c *gin.Context) string {
-	scheme, token, found := strings.Cut(c.Request.Header.Get(constants.Authorization), " ")
-	if !found || token == "" || strings.Contains(token, " ") {
-		return ""
-	}
-	if !strings.EqualFold(scheme, "Bearer") {
-		return ""
-	}
-	return token
 }
