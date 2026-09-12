@@ -6,13 +6,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
 	"shadmin/internal/constants"
 	"strings"
 	"time"
 
 	"shadmin/domain"
 	"shadmin/internal/tokenservice"
+	"shadmin/pkg"
 )
 
 const (
@@ -131,7 +131,7 @@ func (u *deviceAuthUsecase) PollToken(ctx context.Context, req domain.DeviceToke
 		if session.LastPolledAt != nil && now.Sub(*session.LastPolledAt) < time.Duration(session.Interval)*time.Second {
 			nextInterval := session.Interval + 5
 			if err := u.repo.UpdatePollState(ctx, session.DeviceCode, now, nextInterval); err != nil {
-				log.Printf("WARN: update device poll interval on slow_down: %v", err)
+				pkg.Log.Printf("WARN: update device poll interval on slow_down: %v", err)
 			}
 			return nil, domain.ErrDeviceSlowDown
 		}
