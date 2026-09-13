@@ -22,27 +22,13 @@ func NewCaptchaUsecase(manager *captchapkg.SlideManager, timeout time.Duration) 
 	}
 }
 
-// GenerateSlide 生成新的 Slide 验证码挑战
+// GenerateSlide 生成新的 Slide 验证码挑战。
+// 直接同步调用：图像生成本身不可取消，起 goroutine 只会在超时后留下无法回收的残留工作。
 func (u *captchaUsecase) GenerateSlide(ctx context.Context, oldID string) (*domain.SlideCaptchaChallenge, error) {
 	ctx, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
-	type result struct {
-		challenge *domain.SlideCaptchaChallenge
-		err       error
-	}
-	ch := make(chan result, 1)
-	go func() {
-		challenge, err := u.manager.Generate(oldID)
-		ch <- result{challenge: challenge, err: err}
-	}()
-
-	select {
-	case r := <-ch:
-		return r.challenge, r.err
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
+	return u.manager.Generate(ctx, oldID)
 }
 
 // VerifySlide 校验用户提交的滑块坐标
@@ -50,20 +36,10 @@ func (u *captchaUsecase) VerifySlide(ctx context.Context, id string, x, y int) e
 	ctx, cancel := context.WithTimeout(ctx, u.timeout)
 	defer cancel()
 
-	ch := make(chan error, 1)
-	go func() {
-		ch <- u.manager.Verify(id, x, y)
-	}()
-
-	select {
-	case err := <-ch:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return u.manager.Verify(ctx, id, x, y)
 }
 
 // InvalidateSlide 主动失效一个 challenge
-func (u *captchaUsecase) InvalidateSlide(_ context.Context, id string) {
-	u.manager.Invalidate(id)
+func (u *captchaUsecase) InvalidateSlide(ctx context.Context, id string) {
+	u.manager.Invalidate(ctx, id)
 }
