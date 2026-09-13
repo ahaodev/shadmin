@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button'
 import { useRoles } from './roles-provider'
 
 export function RolesPrimaryButtons() {
-  const { setShowCreateDialog } = useRoles()
+  const { setOpen } = useRoles()
   const { hasPermission } = usePermission()
 
   const canAdd = hasPermission(PERMISSIONS.SYSTEM.ROLE.ADD)
 
   const handleCreateClick = () => {
-    setShowCreateDialog(true)
+    setOpen('add')
   }
 
   return (

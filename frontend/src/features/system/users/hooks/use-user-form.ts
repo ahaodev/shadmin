@@ -5,8 +5,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRoles } from '@/services/roleApi'
 import { getUserRoleList } from '@/services/userApi'
 import { type User, type UserStatus } from '@/types/user'
+import { ROLES_QUERY_KEY } from '@/features/system/roles/constants/query-keys'
 import { type UserFormData, userFormSchema } from '../data/schema'
-import { useCreateUser, useUpdateUser } from './use-users'
+import { USERS_QUERY_KEY, useCreateUser, useUpdateUser } from './use-users'
 
 interface UseUserFormProps {
   currentRow?: User
@@ -29,7 +30,7 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
 
   // Fetch all roles for selection
   const { data: allRoles = [] } = useQuery({
-    queryKey: ['roles'],
+    queryKey: [ROLES_QUERY_KEY],
     queryFn: getRoles,
   })
 
@@ -99,7 +100,7 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
         queryClient.invalidateQueries({
           queryKey: ['userRoles', currentRow!.id],
         })
-        queryClient.invalidateQueries({ queryKey: ['users'] })
+        queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
       } else {
         // Create mapping from role name to role ID
         const roleNameToIdMap = allRoles.reduce(
@@ -126,7 +127,7 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
           department_id: values.department_id || undefined,
         })
 
-        queryClient.invalidateQueries({ queryKey: ['users'] })
+        queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
       }
 
       form.reset()

@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Form } from '@/components/ui/form'
-import { MenuApiResources } from '@/features/system/menus/components/form-sections/menu-api-resources.tsx'
+import { MenuApiResources } from '@/features/system/menus/components/form-sections/menu-api-resources'
 import { useMenuData } from '../hooks/use-menu-data'
 import { useMenuForm } from '../hooks/use-menu-form'
 import { MenuBasicFields } from './form-sections/menu-basic-fields'

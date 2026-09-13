@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button'
 import { useDepartments } from './departments-provider'
 
 export function DepartmentsPrimaryButtons() {
-  const { setShowCreateDialog, setCurrentRow } = useDepartments()
+  const { setOpen, setCurrentRow } = useDepartments()
   const { hasPermission } = usePermission()
 
   const handleCreateClick = () => {
     setCurrentRow(null)
-    setShowCreateDialog(true)
+    setOpen('add')
   }
 
   return (

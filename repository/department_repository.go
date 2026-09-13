@@ -62,7 +62,11 @@ func (r *entDepartmentRepository) FetchTree(ctx context.Context) ([]domain.Depar
 	for _, d := range depts {
 		all = append(all, *entDepartmentToDomain(d))
 	}
-	return buildDepartmentTree(all), nil
+	return buildTree(all,
+		func(d domain.Department) string { return d.ID },
+		func(d domain.Department) *string { return d.ParentID },
+		func(d *domain.Department, children []domain.Department) { d.Children = children },
+	), nil
 }
 
 func (r *entDepartmentRepository) FetchList(ctx context.Context, filter domain.DepartmentQueryFilter) ([]domain.Department, error) {
@@ -212,30 +216,4 @@ func entDepartmentToDomain(d *ent.Department) *domain.Department {
 		CreatedAt: d.CreatedAt,
 		UpdatedAt: d.UpdatedAt,
 	}
-}
-
-// buildDepartmentTree constructs hierarchical tree from flat list.
-func buildDepartmentTree(nodes []domain.Department) []domain.Department {
-	roots := make([]domain.Department, 0)
-	for _, n := range nodes {
-		if n.ParentID == nil || *n.ParentID == "" {
-			roots = append(roots, n)
-		}
-	}
-	for i := range roots {
-		roots[i].Children = findDepartmentChildren(roots[i].ID, nodes)
-	}
-	return roots
-}
-
-func findDepartmentChildren(parentID string, all []domain.Department) []domain.Department {
-	children := make([]domain.Department, 0)
-	for _, n := range all {
-		if n.ParentID != nil && *n.ParentID == parentID {
-			child := n
-			child.Children = findDepartmentChildren(child.ID, all)
-			children = append(children, child)
-		}
-	}
-	return children
 }

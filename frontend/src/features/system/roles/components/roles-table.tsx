@@ -39,6 +39,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DataTablePagination } from '@/components/data-table'
+import { ROLES_QUERY_KEY } from '../constants/query-keys'
 import { useRoles } from './roles-provider'
 
 interface RolesTableProps {
@@ -55,7 +56,7 @@ export function RolesTable(_props: RolesTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [searchValue, setSearchValue] = useState('')
 
-  const { setCurrentRow, setShowEditDialog } = useRoles()
+  const { setCurrentRow, setOpen } = useRoles()
   const queryClient = useQueryClient()
   const { hasPermission } = usePermission()
 
@@ -65,7 +66,7 @@ export function RolesTable(_props: RolesTableProps) {
   // Fetch roles
   const { data: rolesData, isLoading } = useQuery({
     queryKey: [
-      'roles',
+      ROLES_QUERY_KEY,
       pagination.pageIndex + 1,
       pagination.pageSize,
       searchValue,
@@ -93,7 +94,7 @@ export function RolesTable(_props: RolesTableProps) {
     mutationFn: deleteRole,
     onSuccess: () => {
       toast.success('角色删除成功')
-      queryClient.invalidateQueries({ queryKey: ['roles'] })
+      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] })
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, '角色删除失败'))
@@ -112,9 +113,9 @@ export function RolesTable(_props: RolesTableProps) {
   const handleEditClick = useCallback(
     (role: Role) => {
       setCurrentRow(role)
-      setShowEditDialog(true)
+      setOpen('edit')
     },
-    [setCurrentRow, setShowEditDialog]
+    [setCurrentRow, setOpen]
   )
 
   const getStatusBadgeVariant = useCallback((status: string) => {

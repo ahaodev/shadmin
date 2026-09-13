@@ -41,14 +41,6 @@ func derefString(s *string) string {
 	return *s
 }
 
-// emptyToNil 把空串转为 nil 指针，用于可空唯一字段写入 NULL 而非空串。
-func emptyToNil(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
 // entUserToDomainUser converts an ent.User to domain.User and extracts role IDs from edges.
 func entUserToDomainUser(u *ent.User, withPassword bool) *domain.User {
 	domainUser := &domain.User{

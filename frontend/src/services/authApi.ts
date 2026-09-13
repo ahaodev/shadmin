@@ -1,5 +1,5 @@
-import { apiClient, getApiBaseURL } from '@/services/config.ts'
-import { type ApiResponse } from '@/types/api.ts'
+import { apiClient, getApiBaseURL } from '@/services/config'
+import { type ApiResponse } from '@/types/api'
 import { getRefreshToken } from '@/lib/token-storage'
 
 // 登录请求类型

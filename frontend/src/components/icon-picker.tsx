@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { Search, X } from 'lucide-react'
-import { availableIconNames, availableIcons } from '@/lib/icons.ts'
-import { cn } from '@/lib/utils.ts'
-import { Button } from '@/components/ui/button.tsx'
+import { availableIconNames, availableIcons } from '@/lib/icons'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog.tsx'
-import { Input } from '@/components/ui/input.tsx'
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 // Use centralized available icons
 const allIcons = availableIconNames

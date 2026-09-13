@@ -14,14 +14,6 @@ type QueryParams struct {
 	Order    string `json:"order" form:"order"` // asc, desc
 }
 
-// SystemQueryParams 系统级查询参数，用于管理员跨租户操作
-type SystemQueryParams struct {
-	Page     int    `json:"page" form:"page"`
-	PageSize int    `json:"page_size" form:"page_size"`
-	SortBy   string `json:"sort_by" form:"sort_by"`
-	Order    string `json:"order" form:"order"` // asc, desc
-}
-
 func (qp *QueryParams) Paginate() (offset, limit int) {
 	if qp.Page < DefaultPage {
 		qp.Page = DefaultPage

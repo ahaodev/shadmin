@@ -3,36 +3,43 @@ import { MenusDeleteDialog } from './menus-delete-dialog'
 import { useMenus } from './menus-provider'
 
 export function MenusDialogs() {
-  const {
-    showCreateDialog,
-    setShowCreateDialog,
-    showEditDialog,
-    setShowEditDialog,
-    showDeleteDialog,
-    setShowDeleteDialog,
-    currentRow,
-  } = useMenus()
+  const { open, setOpen, currentRow, setCurrentRow } = useMenus()
+
   return (
     <>
+      {/* create 模式下 currentRow 作为父级菜单，因此不放入 currentRow 守卫内 */}
       <MenusCreateDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
+        key='menu-add'
+        open={open === 'add'}
+        onOpenChange={() => setOpen('add')}
         menu={currentRow}
         mode='create'
       />
 
-      <MenusCreateDialog
-        open={showEditDialog}
-        onOpenChange={setShowEditDialog}
-        menu={currentRow}
-        mode='edit'
-      />
+      {currentRow && (
+        <>
+          <MenusCreateDialog
+            key={`menu-edit-${currentRow.id}`}
+            open={open === 'edit'}
+            onOpenChange={() => {
+              setOpen('edit')
+              setTimeout(() => setCurrentRow(null), 500)
+            }}
+            menu={currentRow}
+            mode='edit'
+          />
 
-      <MenusDeleteDialog
-        open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
-        menu={currentRow}
-      />
+          <MenusDeleteDialog
+            key={`menu-delete-${currentRow.id}`}
+            open={open === 'delete'}
+            onOpenChange={() => {
+              setOpen('delete')
+              setTimeout(() => setCurrentRow(null), 500)
+            }}
+            menu={currentRow}
+          />
+        </>
+      )}
     </>
   )
 }

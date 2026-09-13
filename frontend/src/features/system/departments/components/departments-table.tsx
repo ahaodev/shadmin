@@ -82,8 +82,7 @@ function findDepartmentById(
 }
 
 export function DepartmentsTable() {
-  const { setCurrentRow, setShowEditDialog, setShowDeleteDialog } =
-    useDepartments()
+  const { setCurrentRow, setOpen } = useDepartments()
   const { hasPermission } = usePermission()
   const { data: treeData, isLoading, error } = useDepartmentTree()
 
@@ -117,7 +116,7 @@ export function DepartmentsTable() {
     const original = findDepartmentById(treeData, dept.id)
     if (original) {
       setCurrentRow(original)
-      setShowEditDialog(true)
+      setOpen('edit')
     }
   }
 
@@ -126,7 +125,7 @@ export function DepartmentsTable() {
     const original = findDepartmentById(treeData, dept.id)
     if (original) {
       setCurrentRow(original)
-      setShowDeleteDialog(true)
+      setOpen('delete')
     }
   }
 

@@ -7,16 +7,15 @@ import {
   useState,
 } from 'react'
 import type { Department } from '@/types/department'
+import useDialogState from '@/hooks/use-dialog-state'
+
+type DepartmentsDialogType = 'add' | 'edit' | 'delete'
 
 interface DepartmentsContext {
+  open: DepartmentsDialogType | null
+  setOpen: (str: DepartmentsDialogType | null) => void
   currentRow: Department | null
   setCurrentRow: Dispatch<SetStateAction<Department | null>>
-  showCreateDialog: boolean
-  setShowCreateDialog: Dispatch<SetStateAction<boolean>>
-  showEditDialog: boolean
-  setShowEditDialog: Dispatch<SetStateAction<boolean>>
-  showDeleteDialog: boolean
-  setShowDeleteDialog: Dispatch<SetStateAction<boolean>>
 }
 
 const DepartmentsContext = createContext<DepartmentsContext | null>(null)
@@ -26,26 +25,13 @@ interface DepartmentsProviderProps {
 }
 
 export function DepartmentsProvider({ children }: DepartmentsProviderProps) {
+  const [open, setOpen] = useDialogState<DepartmentsDialogType>(null)
   const [currentRow, setCurrentRow] = useState<Department | null>(null)
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [showEditDialog, setShowEditDialog] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   return (
-    <DepartmentsContext.Provider
-      value={{
-        currentRow,
-        setCurrentRow,
-        showCreateDialog,
-        setShowCreateDialog,
-        showEditDialog,
-        setShowEditDialog,
-        showDeleteDialog,
-        setShowDeleteDialog,
-      }}
-    >
+    <DepartmentsContext value={{ open, setOpen, currentRow, setCurrentRow }}>
       {children}
-    </DepartmentsContext.Provider>
+    </DepartmentsContext>
   )
 }
 

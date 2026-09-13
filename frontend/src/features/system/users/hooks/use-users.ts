@@ -16,7 +16,7 @@ import { getErrorMessage } from '@/lib/error'
 import { useCrudMutation } from '@/hooks/use-crud-mutation'
 
 // Query keys for React Query
-const USERS_QUERY_KEY = 'users'
+export const USERS_QUERY_KEY = 'users'
 const USER_QUERY_KEY = 'user'
 
 // Custom hook for fetching users with pagination and filters

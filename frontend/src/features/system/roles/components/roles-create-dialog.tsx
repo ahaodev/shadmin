@@ -38,6 +38,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import {
+  MENUS_FOR_ROLE_QUERY_KEY,
+  ROLE_MENUS_QUERY_KEY,
+  ROLES_QUERY_KEY,
+} from '../constants/query-keys'
 import type { RoleFormData } from '../data/schema'
 import { useMenuSelection } from '../hooks/use-menu-selection'
 import { useRoleForm } from '../hooks/use-role-form'
@@ -61,7 +66,7 @@ export function RolesCreateDialog({
 
   // Fetch menus for role selection
   const { data: menuData, isLoading: menusLoading } = useQuery({
-    queryKey: ['menus-for-role'],
+    queryKey: [MENUS_FOR_ROLE_QUERY_KEY],
     queryFn: () => {
       return getMenus({
         status: 'active',
@@ -74,7 +79,7 @@ export function RolesCreateDialog({
 
   // Fetch role menus when in edit mode
   const { data: roleMenus } = useQuery({
-    queryKey: ['roleMenus', role?.id],
+    queryKey: [ROLE_MENUS_QUERY_KEY, role?.id],
     queryFn: () => getRoleMenus(role!.id),
     enabled: !!(open && isEditMode && role?.id),
   })
@@ -110,7 +115,7 @@ export function RolesCreateDialog({
     },
     onSuccess: () => {
       toast.success(isEditMode ? '角色更新成功' : '角色创建成功')
-      queryClient.invalidateQueries({ queryKey: ['roles'] })
+      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] })
       closeDialog()
     },
     onError: (e: unknown) => {

@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button'
 import { useMenus } from './menus-provider'
 
 export function MenusPrimaryButtons() {
-  const { setShowCreateDialog, setCurrentRow } = useMenus()
+  const { setOpen, setCurrentRow } = useMenus()
   const { hasPermission } = usePermission()
 
   const handleCreateClick = () => {
     setCurrentRow(null)
-    setShowCreateDialog(true)
+    setOpen('add')
   }
 
   return (

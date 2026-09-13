@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { MENUS_QUERY_KEY } from '../constants/query-keys'
 import { useMenuDrag } from '../hooks/use-menu-drag'
 import { useMenuTableState } from '../hooks/use-menu-table-state'
 import { tableMenuItemToMenu } from '../utils/menu-converter'
@@ -36,12 +37,7 @@ interface MenusTableProps {
 }
 
 export function MenusTable({ onMenuSelect }: MenusTableProps) {
-  const {
-    setCurrentRow,
-    setShowEditDialog,
-    setShowDeleteDialog,
-    setShowCreateDialog,
-  } = useMenus()
+  const { setCurrentRow, setOpen } = useMenus()
   const { hasPermission } = usePermission()
   // Fetch menu data from backend (including buttons)
   const {
@@ -49,7 +45,7 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['menus'],
+    queryKey: [MENUS_QUERY_KEY],
     queryFn: () => {
       return getMenus({
         status: 'active',
@@ -104,17 +100,17 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
 
   const handleAddClick = (parentMenu?: TableMenuItem) => {
     setCurrentRow(parentMenu ? tableMenuItemToMenu(parentMenu) : null)
-    setShowCreateDialog(true)
+    setOpen('add')
   }
 
   const handleEditClick = (menu: TableMenuItem) => {
     setCurrentRow(tableMenuItemToMenu(menu))
-    setShowEditDialog(true)
+    setOpen('edit')
   }
 
   const handleDeleteClick = (menu: TableMenuItem) => {
     setCurrentRow(tableMenuItemToMenu(menu))
-    setShowDeleteDialog(true)
+    setOpen('delete')
   }
 
   const handleRowClick = (menu: TableMenuItem) => {

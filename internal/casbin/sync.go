@@ -423,6 +423,14 @@ func uniqueStrings(values []string) []string {
 	return unique
 }
 
+// MergeUniqueIDs 将 src 去重后合并进 dst，丢弃空串；src 为空时原样返回 dst。
+func MergeUniqueIDs(dst, src []string) []string {
+	if len(src) == 0 {
+		return dst
+	}
+	return uniqueStrings(append(dst, src...))
+}
+
 // GetSyncStats gets sync statistics
 func (s *SyncService) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 	stats := &SyncStats{}

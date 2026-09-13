@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getMenuTree } from '@/services/menuApi'
 import type { MenuTreeNode } from '@/types/menu'
+import { PARENT_MENUS_QUERY_KEY } from '../constants/query-keys'
 
 interface UseMenuDataProps {
   open: boolean
@@ -8,7 +9,7 @@ interface UseMenuDataProps {
 
 export function useMenuData({ open }: UseMenuDataProps) {
   const { data: parentMenuOptions } = useQuery({
-    queryKey: ['parent-menus'],
+    queryKey: [PARENT_MENUS_QUERY_KEY],
     queryFn: async () => {
       const menuTree = await getMenuTree('active')
 

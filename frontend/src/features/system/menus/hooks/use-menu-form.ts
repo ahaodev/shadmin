@@ -7,6 +7,10 @@ import { createMenu, updateMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
 import { toast } from 'sonner'
 import {
+  MENUS_QUERY_KEY,
+  PARENT_MENUS_QUERY_KEY,
+} from '../constants/query-keys'
+import {
   type CreateMenuFormData,
   createMenuSchema,
   defaultFormValues,
@@ -106,8 +110,8 @@ export function useMenuForm({
     },
     onSuccess: () => {
       toast.success(isEditMode ? '菜单更新成功' : '菜单创建成功')
-      queryClient.invalidateQueries({ queryKey: ['menus'] })
-      queryClient.invalidateQueries({ queryKey: ['parent-menus'] })
+      queryClient.invalidateQueries({ queryKey: [MENUS_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [PARENT_MENUS_QUERY_KEY] })
       menuService.clearCache()
       onSuccess?.()
       if (!isEditMode) {

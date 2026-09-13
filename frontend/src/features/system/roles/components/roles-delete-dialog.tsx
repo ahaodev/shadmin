@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { ROLES_QUERY_KEY } from '../constants/query-keys'
 
 interface RolesDeleteDialogProps {
   open: boolean
@@ -30,7 +31,7 @@ export function RolesDeleteDialog({
     mutationFn: deleteRole,
     onSuccess: () => {
       toast.success('角色删除成功')
-      queryClient.invalidateQueries({ queryKey: ['roles'] })
+      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] })
       onOpenChange(false)
     },
     onError: (error: unknown) => {

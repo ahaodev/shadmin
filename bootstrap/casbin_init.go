@@ -150,29 +150,10 @@ func (t casbinSyncTarget) empty() bool {
 }
 
 func (t *casbinSyncTarget) merge(other casbinSyncTarget) {
-	t.userIDs = mergeIDs(t.userIDs, other.userIDs)
-	t.roleIDs = mergeIDs(t.roleIDs, other.roleIDs)
-	t.menuIDs = mergeIDs(t.menuIDs, other.menuIDs)
-	t.apiResourceIDs = mergeIDs(t.apiResourceIDs, other.apiResourceIDs)
-}
-
-func mergeIDs(dst, src []string) []string {
-	if len(src) == 0 {
-		return dst
-	}
-	seen := make(map[string]struct{}, len(dst)+len(src))
-	merged := make([]string, 0, len(dst)+len(src))
-	for _, id := range append(dst, src...) {
-		if id == "" {
-			continue
-		}
-		if _, ok := seen[id]; ok {
-			continue
-		}
-		seen[id] = struct{}{}
-		merged = append(merged, id)
-	}
-	return merged
+	t.userIDs = casbin.MergeUniqueIDs(t.userIDs, other.userIDs)
+	t.roleIDs = casbin.MergeUniqueIDs(t.roleIDs, other.roleIDs)
+	t.menuIDs = casbin.MergeUniqueIDs(t.menuIDs, other.menuIDs)
+	t.apiResourceIDs = casbin.MergeUniqueIDs(t.apiResourceIDs, other.apiResourceIDs)
 }
 
 // triggerHookSync triggers targeted Casbin refresh after permission-related table changes.
@@ -211,7 +192,7 @@ func (ci *CasbinInitializer) syncTarget(ctx context.Context, target casbinSyncTa
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to query roles associated with menus: %w", err))
 		} else {
-			target.roleIDs = mergeIDs(target.roleIDs, roleIDs)
+			target.roleIDs = casbin.MergeUniqueIDs(target.roleIDs, roleIDs)
 		}
 	}
 
@@ -220,7 +201,7 @@ func (ci *CasbinInitializer) syncTarget(ctx context.Context, target casbinSyncTa
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to query roles associated with API resources: %w", err))
 		} else {
-			target.roleIDs = mergeIDs(target.roleIDs, roleIDs)
+			target.roleIDs = casbin.MergeUniqueIDs(target.roleIDs, roleIDs)
 		}
 	}
 
@@ -297,7 +278,7 @@ func (ci *CasbinInitializer) collectHookTarget(ctx context.Context, m ent.Mutati
 		if err != nil {
 			log.WithError(err).Warn("Failed to collect roles associated with menus")
 		} else {
-			target.roleIDs = mergeIDs(target.roleIDs, roleIDs)
+			target.roleIDs = casbin.MergeUniqueIDs(target.roleIDs, roleIDs)
 		}
 	case ent.TypeApiResource:
 		target.apiResourceIDs = ids
@@ -305,7 +286,7 @@ func (ci *CasbinInitializer) collectHookTarget(ctx context.Context, m ent.Mutati
 		if err != nil {
 			log.WithError(err).Warn("Failed to collect roles associated with API resources")
 		} else {
-			target.roleIDs = mergeIDs(target.roleIDs, roleIDs)
+			target.roleIDs = casbin.MergeUniqueIDs(target.roleIDs, roleIDs)
 		}
 	}
 

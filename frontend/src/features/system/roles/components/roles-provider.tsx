@@ -4,22 +4,18 @@ import {
   type ReactNode,
   type SetStateAction,
   useContext,
-  useMemo,
   useState,
 } from 'react'
 import type { Role } from '@/types/role'
+import useDialogState from '@/hooks/use-dialog-state'
+
+type RolesDialogType = 'add' | 'edit' | 'delete'
 
 interface RolesContext {
-  open: boolean
-  setOpen: Dispatch<SetStateAction<boolean>>
+  open: RolesDialogType | null
+  setOpen: (str: RolesDialogType | null) => void
   currentRow: Role | null
   setCurrentRow: Dispatch<SetStateAction<Role | null>>
-  showDeleteDialog: boolean
-  setShowDeleteDialog: Dispatch<SetStateAction<boolean>>
-  showCreateDialog: boolean
-  setShowCreateDialog: Dispatch<SetStateAction<boolean>>
-  showEditDialog: boolean
-  setShowEditDialog: Dispatch<SetStateAction<boolean>>
 }
 
 const RolesContext = createContext<RolesContext | null>(null)
@@ -29,42 +25,13 @@ interface RolesProviderProps {
 }
 
 export function RolesProvider({ children }: RolesProviderProps) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useDialogState<RolesDialogType>(null)
   const [currentRow, setCurrentRow] = useState<Role | null>(null)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [showEditDialog, setShowEditDialog] = useState(false)
-
-  const contextValue: RolesContext = useMemo(
-    () => ({
-      open,
-      setOpen,
-      currentRow,
-      setCurrentRow,
-      showDeleteDialog,
-      setShowDeleteDialog,
-      showCreateDialog,
-      setShowCreateDialog,
-      showEditDialog,
-      setShowEditDialog,
-    }),
-    [open, currentRow, showDeleteDialog, showCreateDialog, showEditDialog]
-  )
-
-  if (import.meta.env.DEV) {
-    // 简单渲染次数日志
-    console.debug('🧪 RolesProvider render', {
-      open,
-      showCreateDialog,
-      showEditDialog,
-      showDeleteDialog,
-    })
-  }
 
   return (
-    <RolesContext.Provider value={contextValue}>
+    <RolesContext value={{ open, setOpen, currentRow, setCurrentRow }}>
       {children}
-    </RolesContext.Provider>
+    </RolesContext>
   )
 }
 

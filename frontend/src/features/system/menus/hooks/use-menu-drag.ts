@@ -4,6 +4,7 @@ import { menuService } from '@/services/menu-resource-service'
 import { updateMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
 import type { TableMenuItem } from '@/lib/menu-utils'
+import { MENUS_QUERY_KEY } from '../constants/query-keys'
 
 export function useMenuDrag(
   tableData: TableMenuItem[],
@@ -44,7 +45,7 @@ export function useMenuDrag(
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['menus'] })
+      queryClient.invalidateQueries({ queryKey: [MENUS_QUERY_KEY] })
       menuService.clearCache()
     },
   })
@@ -124,7 +125,7 @@ export function useMenuDrag(
     })
 
     // Optimistic update
-    queryClient.setQueryData(['menus'], (old: unknown) => {
+    queryClient.setQueryData([MENUS_QUERY_KEY], (old: unknown) => {
       if (!old || typeof old !== 'object' || !('list' in old)) return old
       const oldData = old as { list: Menu[] }
       const updatedList = oldData.list.map((m: Menu) => {

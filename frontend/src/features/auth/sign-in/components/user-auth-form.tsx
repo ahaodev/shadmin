@@ -30,7 +30,7 @@ import { PasswordInput } from '@/components/password-input'
 import {
   type SlideCaptchaHandle,
   type SlideCaptchaResult,
-} from '@/features/auth/sign-in/hooks/use-slide-captcha.ts'
+} from '@/features/auth/sign-in/hooks/use-slide-captcha'
 import { SlideCaptcha } from './slide-captcha'
 
 const formSchema = z.object({

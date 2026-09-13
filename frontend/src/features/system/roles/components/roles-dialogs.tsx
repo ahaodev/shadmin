@@ -3,34 +3,39 @@ import { RolesDeleteDialog } from './roles-delete-dialog'
 import { useRoles } from './roles-provider'
 
 export function RolesDialogs() {
-  const {
-    showCreateDialog,
-    setShowCreateDialog,
-    showEditDialog,
-    setShowEditDialog,
-    showDeleteDialog,
-    setShowDeleteDialog,
-    currentRow,
-  } = useRoles()
+  const { open, setOpen, currentRow, setCurrentRow } = useRoles()
 
   return (
     <>
       <RolesCreateDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
+        key='role-add'
+        open={open === 'add'}
+        onOpenChange={() => setOpen('add')}
       />
 
-      <RolesCreateDialog
-        open={showEditDialog}
-        onOpenChange={setShowEditDialog}
-        role={currentRow}
-      />
+      {currentRow && (
+        <>
+          <RolesCreateDialog
+            key={`role-edit-${currentRow.id}`}
+            open={open === 'edit'}
+            onOpenChange={() => {
+              setOpen('edit')
+              setTimeout(() => setCurrentRow(null), 500)
+            }}
+            role={currentRow}
+          />
 
-      <RolesDeleteDialog
-        open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
-        roleAssignment={currentRow}
-      />
+          <RolesDeleteDialog
+            key={`role-delete-${currentRow.id}`}
+            open={open === 'delete'}
+            onOpenChange={() => {
+              setOpen('delete')
+              setTimeout(() => setCurrentRow(null), 500)
+            }}
+            roleAssignment={currentRow}
+          />
+        </>
+      )}
     </>
   )
 }

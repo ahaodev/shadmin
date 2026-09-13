@@ -13,6 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  MENUS_QUERY_KEY,
+  MENU_TREE_QUERY_KEY,
+  PARENT_MENUS_QUERY_KEY,
+} from '../constants/query-keys'
 
 interface MenusDeleteDialogProps {
   open: boolean
@@ -32,9 +37,9 @@ export function MenusDeleteDialog({
     onSuccess: () => {
       toast.success('菜单删除成功')
       // Invalidate all menu-related queries to ensure data consistency
-      queryClient.invalidateQueries({ queryKey: ['menu-tree'] })
-      queryClient.invalidateQueries({ queryKey: ['menus'] })
-      queryClient.invalidateQueries({ queryKey: ['parent-menus'] })
+      queryClient.invalidateQueries({ queryKey: [MENU_TREE_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [MENUS_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [PARENT_MENUS_QUERY_KEY] })
       // Clear sidebar menu cache to refresh navigation menu
       menuService.clearCache()
       onOpenChange(false)

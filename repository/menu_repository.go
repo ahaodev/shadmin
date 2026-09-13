@@ -41,14 +41,14 @@ func (mr *entMenuRepository) GetMenuTree(ctx context.Context) ([]domain.MenuTree
 			Name:        m.Name,
 			Sequence:    m.Sequence,
 			Type:        m.Type,
-			Path:        stringToPtr(m.Path),
+			Path:        emptyToNil(m.Path),
 			Icon:        m.Icon,
-			Component:   stringToPtr(m.Component),
-			RouteName:   stringToPtr(m.RouteName),
-			Query:       stringToPtr(m.Query),
+			Component:   emptyToNil(m.Component),
+			RouteName:   emptyToNil(m.RouteName),
+			Query:       emptyToNil(m.Query),
 			IsFrame:     m.IsFrame,
 			Visible:     m.Visible,
-			Permissions: stringToPtr(m.Permissions),
+			Permissions: emptyToNil(m.Permissions),
 			Status:      m.Status,
 			ParentID:    m.ParentID,
 			Children:    []domain.MenuTreeNode{},
@@ -57,41 +57,11 @@ func (mr *entMenuRepository) GetMenuTree(ctx context.Context) ([]domain.MenuTree
 	}
 
 	// Build tree structure
-	return buildMenuTree(allNodes), nil
-}
-
-// buildMenuTree constructs hierarchical tree structure from flat menu list
-func buildMenuTree(nodes []domain.MenuTreeNode) []domain.MenuTreeNode {
-	// Step 1: Find L1 directories (nodes without ParentID)
-	var rootNodes []domain.MenuTreeNode
-	for _, node := range nodes {
-		if node.ParentID == nil || *node.ParentID == "" {
-			rootNodes = append(rootNodes, node)
-		}
-	}
-
-	// Step 2: For each L1 directory, find its children through ParentID
-	for i := range rootNodes {
-		rootNodes[i].Children = findChildren(rootNodes[i].ID, nodes)
-	}
-
-	return rootNodes
-}
-
-// findChildren recursively finds all children for a given parent ID
-func findChildren(parentID string, allNodes []domain.MenuTreeNode) []domain.MenuTreeNode {
-	var children []domain.MenuTreeNode
-
-	for _, node := range allNodes {
-		if node.ParentID != nil && *node.ParentID == parentID {
-			child := node
-			// Recursively find children of this child
-			child.Children = findChildren(child.ID, allNodes)
-			children = append(children, child)
-		}
-	}
-
-	return children
+	return buildTree(allNodes,
+		func(n domain.MenuTreeNode) string { return n.ID },
+		func(n domain.MenuTreeNode) *string { return n.ParentID },
+		func(n *domain.MenuTreeNode, children []domain.MenuTreeNode) { n.Children = children },
+	), nil
 }
 
 // GetMenus retrieves paginated menus with filtering
@@ -138,14 +108,14 @@ func (mr *entMenuRepository) GetMenus(ctx context.Context, params domain.MenuQue
 			Name:         m.Name,
 			Sequence:     m.Sequence,
 			Type:         m.Type,
-			Path:         stringToPtr(m.Path),
+			Path:         emptyToNil(m.Path),
 			Icon:         m.Icon,
-			Component:    stringToPtr(m.Component),
-			RouteName:    stringToPtr(m.RouteName),
-			Query:        stringToPtr(m.Query),
+			Component:    emptyToNil(m.Component),
+			RouteName:    emptyToNil(m.RouteName),
+			Query:        emptyToNil(m.Query),
 			IsFrame:      m.IsFrame,
 			Visible:      m.Visible,
-			Permissions:  stringToPtr(m.Permissions),
+			Permissions:  emptyToNil(m.Permissions),
 			Status:       m.Status,
 			ParentID:     m.ParentID,
 			ApiResources: apiResourceIDs,
@@ -180,14 +150,14 @@ func (mr *entMenuRepository) GetMenuByID(ctx context.Context, id string) (*domai
 		Name:         m.Name,
 		Sequence:     m.Sequence,
 		Type:         m.Type,
-		Path:         stringToPtr(m.Path),
+		Path:         emptyToNil(m.Path),
 		Icon:         m.Icon,
-		Component:    stringToPtr(m.Component),
-		RouteName:    stringToPtr(m.RouteName),
-		Query:        stringToPtr(m.Query),
+		Component:    emptyToNil(m.Component),
+		RouteName:    emptyToNil(m.RouteName),
+		Query:        emptyToNil(m.Query),
 		IsFrame:      m.IsFrame,
 		Visible:      m.Visible,
-		Permissions:  stringToPtr(m.Permissions),
+		Permissions:  emptyToNil(m.Permissions),
 		Status:       m.Status,
 		ParentID:     m.ParentID,
 		CreatedAt:    m.CreatedAt,
@@ -305,14 +275,14 @@ func (mr *entMenuRepository) GetChildrenMenus(ctx context.Context, parentID stri
 			Name:        m.Name,
 			Sequence:    m.Sequence,
 			Type:        m.Type,
-			Path:        stringToPtr(m.Path),
+			Path:        emptyToNil(m.Path),
 			Icon:        m.Icon,
-			Component:   stringToPtr(m.Component),
-			RouteName:   stringToPtr(m.RouteName),
-			Query:       stringToPtr(m.Query),
+			Component:   emptyToNil(m.Component),
+			RouteName:   emptyToNil(m.RouteName),
+			Query:       emptyToNil(m.Query),
 			IsFrame:     m.IsFrame,
 			Visible:     m.Visible,
-			Permissions: stringToPtr(m.Permissions),
+			Permissions: emptyToNil(m.Permissions),
 			Status:      m.Status,
 			ParentID:    m.ParentID,
 			CreatedAt:   m.CreatedAt,
@@ -370,12 +340,4 @@ func deleteMenuTree(ctx context.Context, client *ent.Client, id string) error {
 		return fmt.Errorf("failed to delete menu %s from database: %w", id, err)
 	}
 	return nil
-}
-
-// stringToPtr converts a string to *string, returning nil for empty strings
-func stringToPtr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
 }
