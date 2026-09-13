@@ -166,6 +166,7 @@ type MenuRepository interface {
 	GetMenuTree(ctx context.Context) ([]MenuTreeNode, error)
 	GetMenus(ctx context.Context, params MenuQueryParams) (*PagedResult[Menu], error)
 	GetMenuByID(ctx context.Context, id string) (*Menu, error)
+	GetMenuPermissionsByIDs(ctx context.Context, ids []string) ([]*Menu, error)
 	GetChildrenMenus(ctx context.Context, parentID string) ([]*Menu, error)
 
 	CreateMenu(ctx context.Context, menu *CreateMenuRequest) (*Menu, error)

@@ -103,60 +103,56 @@ func (ru *resourceUsecase) collectAllPermissions(menuTree []domain.MenuTreeNode)
 	return permissions
 }
 
-// getUserRoles 批量获取用户角色信息
+// getUserRoles 批量获取用户角色信息。
 func (ru *resourceUsecase) getUserRoles(c context.Context, roleIDs []string) ([]*domain.Role, error) {
-	var roles []*domain.Role
-	var failedRoles []string
-
-	for _, roleID := range roleIDs {
-		role, err := ru.roleRepository.GetByID(c, roleID)
-		if err != nil {
-			failedRoles = append(failedRoles, roleID)
-			pkg.Log.WithField("roleID", roleID).WithError(err).Warn("Failed to get role information")
-			continue
-		}
-		roles = append(roles, role)
+	if len(roleIDs) == 0 {
+		return nil, nil
 	}
 
-	if len(failedRoles) > 0 {
-		pkg.Log.WithField("failedRoles", failedRoles).Warn("Some roles could not be retrieved")
+	roles, err := ru.roleRepository.GetByIDs(c, roleIDs)
+	if err != nil {
+		pkg.Log.WithField("roleIDs", roleIDs).WithError(err).Warn("Failed to get role information")
+		return nil, err
+	}
+
+	if len(roles) < len(roleIDs) {
+		pkg.Log.WithField("requested", len(roleIDs)).WithField("found", len(roles)).
+			Warn("Some roles could not be retrieved")
 	}
 
 	return roles, nil
 }
 
-// collectUserPermissions 收集用户菜单ID和权限
+// collectUserPermissions 收集用户菜单ID和权限。菜单按 ID 批量查询，
 func (ru *resourceUsecase) collectUserPermissions(c context.Context, roles []*domain.Role) ([]string, []string) {
-	var userMenuIDs []string
-	var userPermissions []string
-	permissionMap := make(map[string]bool)
+	total := 0
+	for _, role := range roles {
+		total += len(role.MenusIds)
+	}
+	if total == 0 {
+		return nil, nil
+	}
 
-	// 收集所有菜单ID
+	userMenuIDs := make([]string, 0, total)
 	for _, role := range roles {
 		userMenuIDs = append(userMenuIDs, role.MenusIds...)
 	}
 
-	// 收集权限标识
-	var failedMenus []string
-	for _, role := range roles {
-		for _, menuID := range role.MenusIds {
-			menu, err := ru.menuRepository.GetMenuByID(c, menuID)
-			if err != nil {
-				failedMenus = append(failedMenus, menuID)
-				pkg.Log.WithField("menuID", menuID).WithError(err).Warn("Failed to get menu information")
-				continue
-			}
-			if menu.Type == domain.MenuTypeButton && menu.Permissions != nil && *menu.Permissions != "" {
-				if !permissionMap[*menu.Permissions] {
-					permissionMap[*menu.Permissions] = true
-					userPermissions = append(userPermissions, *menu.Permissions)
-				}
-			}
-		}
+	menus, err := ru.menuRepository.GetMenuPermissionsByIDs(c, userMenuIDs)
+	if err != nil {
+		pkg.Log.WithField("menuIDs", userMenuIDs).WithError(err).Warn("Failed to load menus for permission collection")
+		return userMenuIDs, nil
 	}
 
-	if len(failedMenus) > 0 {
-		pkg.Log.WithField("failedMenus", failedMenus).Warn("Some menus could not be retrieved for permission collection")
+	permissionMap := make(map[string]bool)
+	var userPermissions []string
+	for _, menu := range menus {
+		if menu.Type == domain.MenuTypeButton && menu.Permissions != nil && *menu.Permissions != "" {
+			if !permissionMap[*menu.Permissions] {
+				permissionMap[*menu.Permissions] = true
+				userPermissions = append(userPermissions, *menu.Permissions)
+			}
+		}
 	}
 
 	return userMenuIDs, userPermissions

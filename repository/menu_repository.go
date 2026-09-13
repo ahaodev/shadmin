@@ -19,6 +19,34 @@ func NewMenuRepository(client *ent.Client) domain.MenuRepository {
 	}
 }
 
+// entMenuToDomain 把 ent.Menu 映射为 domain.Menu。
+func entMenuToDomain(m *ent.Menu) *domain.Menu {
+	var apiResourceIDs []string
+	for _, apiResource := range m.Edges.APIResources {
+		apiResourceIDs = append(apiResourceIDs, apiResource.ID)
+	}
+
+	return &domain.Menu{
+		ID:           m.ID,
+		Name:         m.Name,
+		Sequence:     m.Sequence,
+		Type:         m.Type,
+		Path:         emptyToNil(m.Path),
+		Icon:         m.Icon,
+		Component:    emptyToNil(m.Component),
+		RouteName:    emptyToNil(m.RouteName),
+		Query:        emptyToNil(m.Query),
+		IsFrame:      m.IsFrame,
+		Visible:      m.Visible,
+		Permissions:  emptyToNil(m.Permissions),
+		Status:       m.Status,
+		ParentID:     m.ParentID,
+		ApiResources: apiResourceIDs,
+		CreatedAt:    m.CreatedAt,
+		UpdatedAt:    m.UpdatedAt,
+	}
+}
+
 // GetMenuTree retrieves menu tree structure
 func (mr *entMenuRepository) GetMenuTree(ctx context.Context) ([]domain.MenuTreeNode, error) {
 	// Query all active menus, ordered by sequence, include API resources
@@ -82,7 +110,7 @@ func (mr *entMenuRepository) GetMenus(ctx context.Context, params domain.MenuQue
 	if err != nil {
 		return nil, err
 	}
-	// 不需要limit限制
+	// 注意:这里不需要limit限制,获取有限的完整菜单
 	offset, _ := params.Paginate()
 	menus, err := query.
 		WithAPIResources().
@@ -95,33 +123,9 @@ func (mr *entMenuRepository) GetMenus(ctx context.Context, params domain.MenuQue
 	}
 
 	// Convert to domain menus
-	var result []domain.Menu
+	result := make([]domain.Menu, 0, len(menus))
 	for _, m := range menus {
-		// Extract API resource IDs
-		var apiResourceIDs []string
-		for _, apiResource := range m.Edges.APIResources {
-			apiResourceIDs = append(apiResourceIDs, apiResource.ID)
-		}
-
-		result = append(result, domain.Menu{
-			ID:           m.ID,
-			Name:         m.Name,
-			Sequence:     m.Sequence,
-			Type:         m.Type,
-			Path:         emptyToNil(m.Path),
-			Icon:         m.Icon,
-			Component:    emptyToNil(m.Component),
-			RouteName:    emptyToNil(m.RouteName),
-			Query:        emptyToNil(m.Query),
-			IsFrame:      m.IsFrame,
-			Visible:      m.Visible,
-			Permissions:  emptyToNil(m.Permissions),
-			Status:       m.Status,
-			ParentID:     m.ParentID,
-			ApiResources: apiResourceIDs,
-			CreatedAt:    m.CreatedAt,
-			UpdatedAt:    m.UpdatedAt,
-		})
+		result = append(result, *entMenuToDomain(m))
 	}
 
 	return domain.NewPagedResult(result, total, params.Page, params.PageSize), nil
@@ -139,31 +143,33 @@ func (mr *entMenuRepository) GetMenuByID(ctx context.Context, id string) (*domai
 		return nil, err
 	}
 
-	// Extract API resource IDs
-	var apiResourceIDs []string
-	for _, apiResource := range m.Edges.APIResources {
-		apiResourceIDs = append(apiResourceIDs, apiResource.ID)
+	return entMenuToDomain(m), nil
+}
+
+// GetMenuPermissionsByIDs 批量按 ID 查询菜单，只取"是否按钮 + 权限标识"判断所需字段。
+func (mr *entMenuRepository) GetMenuPermissionsByIDs(ctx context.Context, ids []string) ([]*domain.Menu, error) {
+	if len(ids) == 0 {
+		return nil, nil
 	}
 
-	return &domain.Menu{
-		ID:           m.ID,
-		Name:         m.Name,
-		Sequence:     m.Sequence,
-		Type:         m.Type,
-		Path:         emptyToNil(m.Path),
-		Icon:         m.Icon,
-		Component:    emptyToNil(m.Component),
-		RouteName:    emptyToNil(m.RouteName),
-		Query:        emptyToNil(m.Query),
-		IsFrame:      m.IsFrame,
-		Visible:      m.Visible,
-		Permissions:  emptyToNil(m.Permissions),
-		Status:       m.Status,
-		ParentID:     m.ParentID,
-		CreatedAt:    m.CreatedAt,
-		UpdatedAt:    m.UpdatedAt,
-		ApiResources: apiResourceIDs,
-	}, nil
+	menus, err := mr.client.Menu.
+		Query().
+		Where(menu.IDIn(ids...)).
+		Select(menu.FieldID, menu.FieldType, menu.FieldPermissions).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*domain.Menu, 0, len(menus))
+	for _, m := range menus {
+		result = append(result, &domain.Menu{
+			ID:          m.ID,
+			Type:        m.Type,
+			Permissions: emptyToNil(m.Permissions),
+		})
+	}
+	return result, nil
 }
 
 // CreateMenu creates a new menu
@@ -268,26 +274,9 @@ func (mr *entMenuRepository) GetChildrenMenus(ctx context.Context, parentID stri
 		return nil, err
 	}
 
-	var result []*domain.Menu
+	result := make([]*domain.Menu, 0, len(menus))
 	for _, m := range menus {
-		result = append(result, &domain.Menu{
-			ID:          m.ID,
-			Name:        m.Name,
-			Sequence:    m.Sequence,
-			Type:        m.Type,
-			Path:        emptyToNil(m.Path),
-			Icon:        m.Icon,
-			Component:   emptyToNil(m.Component),
-			RouteName:   emptyToNil(m.RouteName),
-			Query:       emptyToNil(m.Query),
-			IsFrame:     m.IsFrame,
-			Visible:     m.Visible,
-			Permissions: emptyToNil(m.Permissions),
-			Status:      m.Status,
-			ParentID:    m.ParentID,
-			CreatedAt:   m.CreatedAt,
-			UpdatedAt:   m.UpdatedAt,
-		})
+		result = append(result, entMenuToDomain(m))
 	}
 
 	return result, nil
