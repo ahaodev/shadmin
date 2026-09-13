@@ -435,24 +435,17 @@ func MergeUniqueIDs(dst, src []string) []string {
 func (s *SyncService) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 	stats := &SyncStats{}
 
-	// Count the database's active user-role pairs (not user count)
-	users, err := s.entClient.User.Query().
+	userRoleCount, err := s.entClient.Role.Query().
+		Where(role.StatusEQ("active")).
+		QueryUsers().
 		Where(user.StatusEQ("active")).
-		WithRoles(func(q *ent.RoleQuery) {
-			q.Where(role.StatusEQ("active"))
-		}).
-		All(ctx)
+		Count(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count user-role relationships: %w", err)
-	}
-	userRoleCount := 0
-	for _, u := range users {
-		userRoleCount += len(u.Edges.Roles)
 	}
 
 	rolePermCount, err := s.entClient.Role.Query().
 		Where(role.StatusEQ("active")).
-		WithMenus().
 		Count(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count role permission policies: %w", err)
