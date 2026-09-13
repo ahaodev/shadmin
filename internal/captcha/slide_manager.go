@@ -83,10 +83,10 @@ func NewSlideManager(cacher cacher.Cacher) (*SlideManager, error) {
 	}, nil
 }
 
-// Generate 生成新的 Slide 验证码挑战；oldID 非空时会主动失效旧 challenge
-func (m *SlideManager) Generate(oldID string) (*domain.SlideCaptchaChallenge, error) {
+// Generate 生成新的 Slide 验证码挑战；oldID 非空时会主动失效旧 challenge。
+func (m *SlideManager) Generate(ctx context.Context, oldID string) (*domain.SlideCaptchaChallenge, error) {
 	if oldID != "" {
-		_ = m.cacher.Delete(context.Background(), captchaNS, oldID)
+		_ = m.cacher.Delete(ctx, captchaNS, oldID)
 	}
 
 	captData, err := m.captcha.Generate()
@@ -115,7 +115,7 @@ func (m *SlideManager) Generate(oldID string) (*domain.SlideCaptchaChallenge, er
 		Y:         block.Y,
 		ExpiresAt: time.Now().Add(m.ttl),
 	}
-	if err := m.saveChallenge(id, rec, m.ttl); err != nil {
+	if err := m.saveChallenge(ctx, id, rec, m.ttl); err != nil {
 		return nil, err
 	}
 
@@ -136,12 +136,12 @@ func (m *SlideManager) Generate(oldID string) (*domain.SlideCaptchaChallenge, er
 }
 
 // Verify 校验用户提交的滑块坐标，校验成功或失败次数耗尽后会消费掉该 challenge。
-func (m *SlideManager) Verify(id string, x, y int) error {
+func (m *SlideManager) Verify(ctx context.Context, id string, x, y int) error {
 	if id == "" {
 		return domain.ErrCaptchaRequired
 	}
 
-	v, ok, err := m.cacher.GetAndDelete(context.Background(), captchaNS, id)
+	v, ok, err := m.cacher.GetAndDelete(ctx, captchaNS, id)
 	if err != nil {
 		return fmt.Errorf("load challenge: %w", err)
 	}
@@ -161,7 +161,7 @@ func (m *SlideManager) Verify(id string, x, y int) error {
 	if !slide.Validate(x, y, rec.X, rec.Y, m.padding) {
 		// 仍有剩余次数则写回自增后的计数；否则保持已删除（次数耗尽即失效）。
 		if rec.Attempts < m.maxAttempt {
-			if err := m.saveChallenge(id, rec, time.Until(rec.ExpiresAt)); err != nil {
+			if err := m.saveChallenge(ctx, id, rec, time.Until(rec.ExpiresAt)); err != nil {
 				return domain.ErrCaptchaInvalid
 			}
 		}
@@ -172,7 +172,7 @@ func (m *SlideManager) Verify(id string, x, y int) error {
 	return nil
 }
 
-func (m *SlideManager) saveChallenge(id string, rec challengeRecord, ttl time.Duration) error {
+func (m *SlideManager) saveChallenge(ctx context.Context, id string, rec challengeRecord, ttl time.Duration) error {
 	if ttl < 0 {
 		ttl = 0
 	}
@@ -183,16 +183,16 @@ func (m *SlideManager) saveChallenge(id string, rec challengeRecord, ttl time.Du
 	if err != nil {
 		return fmt.Errorf("marshal challenge: %w", err)
 	}
-	if err := m.cacher.Set(context.Background(), captchaNS, id, string(b), ttl); err != nil {
+	if err := m.cacher.Set(ctx, captchaNS, id, string(b), ttl); err != nil {
 		return fmt.Errorf("save challenge: %w", err)
 	}
 	return nil
 }
 
 // Invalidate 主动失效一个 challenge
-func (m *SlideManager) Invalidate(id string) {
+func (m *SlideManager) Invalidate(ctx context.Context, id string) {
 	if id == "" {
 		return
 	}
-	_ = m.cacher.Delete(context.Background(), captchaNS, id)
+	_ = m.cacher.Delete(ctx, captchaNS, id)
 }
