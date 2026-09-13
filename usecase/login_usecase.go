@@ -71,13 +71,13 @@ func (lu *loginUsecase) Login(c context.Context, req *domain.LoginRequest, meta 
 	if lu.securityManager == nil {
 		return nil, errors.New("security manager not initialized")
 	}
-	if lu.securityManager.IsLocked(req.Identifier) {
-		return nil, lu.accountLockedError(req.Identifier)
+	if lu.securityManager.IsLocked(ctx, req.Identifier) {
+		return nil, lu.accountLockedError()
 	}
 
 	user, err := lu.userRepository.GetByIdentifier(ctx, req.Identifier)
 	if err != nil || user == nil {
-		lu.securityManager.RecordFailedAttempt(req.Identifier)
+		lu.securityManager.RecordFailedAttempt(ctx, req.Identifier)
 		lu.recordLoginLog(c, meta, constants.StatusFailed, "用户不存在", "")
 		return nil, domain.ErrInvalidCredentials
 	}
@@ -95,22 +95,16 @@ func (lu *loginUsecase) Login(c context.Context, req *domain.LoginRequest, meta 
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		lu.securityManager.RecordFailedAttempt(req.Identifier)
+		attempts := lu.securityManager.RecordFailedAttempt(ctx, req.Identifier)
 		lu.recordLoginLog(c, meta, constants.StatusFailed, "密码错误", user.Email)
 
-		if lu.securityManager.IsLocked(req.Identifier) {
-			return nil, lu.accountLockedError(req.Identifier)
+		if attempts >= lu.securityManager.MaxFailures {
+			return nil, lu.accountLockedError()
 		}
-
-		failedAttempts := lu.securityManager.GetFailedAttempts(req.Identifier)
-		remainingAttempts := lu.securityManager.MaxFailures - failedAttempts
-		if remainingAttempts > 0 {
-			return nil, fmt.Errorf("%w，还可尝试 %d 次", domain.ErrInvalidCredentials, remainingAttempts)
-		}
-		return nil, domain.ErrInvalidCredentials
+		return nil, fmt.Errorf("%w，还可尝试 %d 次", domain.ErrInvalidCredentials, lu.securityManager.MaxFailures-attempts)
 	}
 
-	lu.securityManager.RecordSuccessfulLogin(req.Identifier)
+	lu.securityManager.RecordSuccessfulLogin(ctx, req.Identifier)
 
 	accessToken, err := lu.tokenService.CreateAccessToken(user, lu.accessTokenSecret, lu.accessTokenExpiryMinute)
 	if err != nil {
@@ -212,9 +206,9 @@ func (lu *loginUsecase) revokeTokenJTI(token, secret string) error {
 	return lu.tokenBlacklist.Add(context.Background(), jti, exp)
 }
 
-func (lu *loginUsecase) accountLockedError(identifier string) error {
-	remaining := lu.securityManager.GetRemainingLockTime(identifier)
-	return &domain.AccountLockedError{RemainingSeconds: int(remaining.Seconds())}
+// accountLockedError 返回锁定错误
+func (lu *loginUsecase) accountLockedError() error {
+	return &domain.AccountLockedError{RemainingSeconds: int(lu.securityManager.LockDuration.Seconds())}
 }
 
 // recordLoginLog 异步记录登录日志，不阻塞登录流程。

@@ -66,7 +66,7 @@ func (f *ControllerFactory) CreateAuthController() *controller.AuthController {
 			ur,
 			usecase.NewCaptchaUsecase(f.captchaManager, f.timeout),
 			f.loginLogUsecase(),
-			auth.NewLoginSecurityManager(),
+			auth.NewLoginSecurityManager(f.app.Cacher),
 			f.tokenService(),
 			f.app.TokenBlacklist,
 			f.app.Env.AccessTokenSecret,

@@ -1,148 +1,71 @@
 package auth
 
 import (
-	"sync"
+	"context"
+	"strconv"
 	"time"
+
+	"shadmin/internal/cacher"
 )
 
-// LoginAttempt 记录登录尝试信息
-type LoginAttempt struct {
-	FailCount   int       // 失败次数
-	LastAttempt time.Time // 最后尝试时间
-	LockedUntil time.Time // 锁定到什么时候
-}
+const loginFailNS = "auth:login:fail"
 
-// LoginSecurityManager 管理登录安全
+// LoginSecurityManager 按 identifier 统计连续登录失败次数，达到上限后短期拒绝登录。
 type LoginSecurityManager struct {
-	attempts map[string]*LoginAttempt
-	mutex    sync.RWMutex
+	cacher cacher.Cacher
 
-	MaxFailures   int           // 最大失败次数
-	LockDuration  time.Duration // 锁定时间
-	CleanInterval time.Duration // 清理过期记录的间隔
+	MaxFailures  int           // 最大失败次数
+	LockDuration time.Duration // 计数的有效期，即锁定窗口
 }
 
-// NewLoginSecurityManager 创建新的登录安全管理器
-func NewLoginSecurityManager() *LoginSecurityManager {
-	manager := &LoginSecurityManager{
-		attempts:      make(map[string]*LoginAttempt),
-		MaxFailures:   3,               // 最大失败3次
-		LockDuration:  time.Minute,     // 锁定1分钟
-		CleanInterval: 5 * time.Minute, // 5分钟清理一次过期记录
+// NewLoginSecurityManager 创建登录安全管理器，计数的过期由 cacher 负责。
+func NewLoginSecurityManager(c cacher.Cacher) *LoginSecurityManager {
+	if c == nil {
+		panic("login security manager: cacher is required")
 	}
-
-	// 启动定期清理
-	go manager.startCleanup()
-
-	return manager
-}
-
-// IsLocked 检查用户是否被锁定
-func (lsm *LoginSecurityManager) IsLocked(identifier string) bool {
-	lsm.mutex.RLock()
-	defer lsm.mutex.RUnlock()
-
-	attempt, exists := lsm.attempts[identifier]
-	if !exists {
-		return false
+	return &LoginSecurityManager{
+		cacher:       c,
+		MaxFailures:  3,           // 最大失败3次
+		LockDuration: time.Minute, // 锁定1分钟
 	}
-
-	// 检查是否仍在锁定期内
-	return time.Now().Before(attempt.LockedUntil)
 }
 
-// GetRemainingLockTime 获取剩余锁定时间
-func (lsm *LoginSecurityManager) GetRemainingLockTime(identifier string) time.Duration {
-	lsm.mutex.RLock()
-	defer lsm.mutex.RUnlock()
-
-	attempt, exists := lsm.attempts[identifier]
-	if !exists {
+// failCount 读取窗口内的失败次数
+func (lsm *LoginSecurityManager) failCount(ctx context.Context, identifier string) int {
+	raw, ok, err := lsm.cacher.Get(ctx, loginFailNS, identifier)
+	if err != nil {
+		log.Printf("login security: read fail count for %q failed: %v", identifier, err)
+		return 0
+	}
+	if !ok {
 		return 0
 	}
 
-	remaining := time.Until(attempt.LockedUntil)
-	if remaining < 0 {
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		log.Printf("login security: discard corrupt fail count for %q: %v", identifier, err)
 		return 0
 	}
-
-	return remaining
+	return n
 }
 
-// RecordFailedAttempt 记录失败的登录尝试
-func (lsm *LoginSecurityManager) RecordFailedAttempt(identifier string) {
-	lsm.mutex.Lock()
-	defer lsm.mutex.Unlock()
-
-	now := time.Now()
-
-	attempt, exists := lsm.attempts[identifier]
-	if !exists {
-		attempt = &LoginAttempt{}
-		lsm.attempts[identifier] = attempt
-	}
-
-	// 如果上次失败超过锁定时间且曾经被锁定过，重置计数
-	if !attempt.LockedUntil.IsZero() && now.After(attempt.LockedUntil) {
-		attempt.FailCount = 0
-		attempt.LockedUntil = time.Time{} // 重置锁定时间
-	}
-
-	attempt.FailCount++
-	attempt.LastAttempt = now
-
-	// 如果失败次数达到最大值，进行锁定
-	if attempt.FailCount >= lsm.MaxFailures {
-		attempt.LockedUntil = now.Add(lsm.LockDuration)
-	}
+// IsLocked 检查该 identifier 是否已达失败上限。缓存不可用时返回 false（放行）。
+func (lsm *LoginSecurityManager) IsLocked(ctx context.Context, identifier string) bool {
+	return lsm.failCount(ctx, identifier) >= lsm.MaxFailures
 }
 
-// RecordSuccessfulLogin 记录成功的登录，清除失败记录
-func (lsm *LoginSecurityManager) RecordSuccessfulLogin(identifier string) {
-	lsm.mutex.Lock()
-	defer lsm.mutex.Unlock()
-
-	delete(lsm.attempts, identifier)
+// RecordFailedAttempt 记录一次失败并返回累计次数；返回值 >= MaxFailures 即已锁定。
+func (lsm *LoginSecurityManager) RecordFailedAttempt(ctx context.Context, identifier string) int {
+	n := lsm.failCount(ctx, identifier) + 1
+	if err := lsm.cacher.Set(ctx, loginFailNS, identifier, strconv.Itoa(n), lsm.LockDuration); err != nil {
+		log.Printf("login security: store fail count for %q failed: %v", identifier, err)
+	}
+	return n
 }
 
-// GetFailedAttempts 获取失败尝试次数
-func (lsm *LoginSecurityManager) GetFailedAttempts(identifier string) int {
-	lsm.mutex.RLock()
-	defer lsm.mutex.RUnlock()
-
-	attempt, exists := lsm.attempts[identifier]
-	if !exists {
-		return 0
-	}
-
-	// 如果已过锁定时间且曾经被锁定过，返回0
-	if !attempt.LockedUntil.IsZero() && time.Now().After(attempt.LockedUntil) {
-		return 0
-	}
-
-	return attempt.FailCount
-}
-
-// startCleanup 定期清理过期的记录
-func (lsm *LoginSecurityManager) startCleanup() {
-	ticker := time.NewTicker(lsm.CleanInterval)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		lsm.cleanupExpiredRecords()
-	}
-}
-
-// cleanupExpiredRecords 清理过期的记录
-func (lsm *LoginSecurityManager) cleanupExpiredRecords() {
-	lsm.mutex.Lock()
-	defer lsm.mutex.Unlock()
-
-	now := time.Now()
-	for identifier, attempt := range lsm.attempts {
-		// 如果锁定时间已过且最后尝试时间超过清理间隔，删除记录
-		if now.After(attempt.LockedUntil) && now.Sub(attempt.LastAttempt) > lsm.CleanInterval {
-			delete(lsm.attempts, identifier)
-		}
+// RecordSuccessfulLogin 清除失败计数。
+func (lsm *LoginSecurityManager) RecordSuccessfulLogin(ctx context.Context, identifier string) {
+	if err := lsm.cacher.Delete(ctx, loginFailNS, identifier); err != nil {
+		log.Printf("login security: clear fail count for %q failed: %v", identifier, err)
 	}
 }
