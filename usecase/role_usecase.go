@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"shadmin/domain"
 	"shadmin/pkg"
@@ -19,11 +18,11 @@ func (ru *roleUsecase) Create(c context.Context, request *domain.CreateRoleReque
 	defer cancel()
 
 	// Check if role with same name already exists
-	existingRole, err := ru.roleRepository.GetByName(ctx, request.Name)
-	if err != nil && !errors.Is(err, domain.ErrRoleNotFound) {
+	exists, err := ru.roleRepository.ExistsByName(ctx, request.Name)
+	if err != nil {
 		return fmt.Errorf("check role name: %w", err)
 	}
-	if existingRole != nil {
+	if exists {
 		return domain.ErrRoleNameExists
 	}
 
