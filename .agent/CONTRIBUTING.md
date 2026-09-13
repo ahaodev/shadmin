@@ -114,7 +114,7 @@ frontend/src/
 - **Authentication**: JWT access + refresh tokens. Middleware extracts claims into Gin context (`x-user-*` keys).
 - **Authorization**: Casbin checks `(userID, path, method)` on `/api/v1/system/*` routes via `CheckAPIPermission()` middleware.
 - **Frontend**: `frontend/src/lib/permissions.ts` defines `hasPermission()`, `hasRole()`, `canAccessMenu()`; the `usePermission()` hook exposes them against the auth-store's `permissions`. Gate UI with `usePermission()` (e.g. `departments-table.tsx`).
-- **Login security**: 3 failed attempts → 1-minute lockout (`internal/auth/login_security.go`).
+- **Login security**: 3 failed attempts within 1 minute → 1-minute lockout (`internal/auth/login_security.go`). The manager stores only a counter in the shared `cacher`; the key's TTL *is* the lock window. With the memory backend the window is per-replica; with Redis it is shared.
 
 ### Database & Storage
 
