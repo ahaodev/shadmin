@@ -66,7 +66,10 @@ func (ru *resourceUsecase) GetUserResources(c context.Context, userID string, is
 		return nil, err
 	}
 
-	userMenuIDs, userPermissions := ru.collectUserPermissions(ctx, roles)
+	userMenuIDs, userPermissions, err := ru.collectUserPermissions(ctx, roles)
+	if err != nil {
+		return nil, err
+	}
 
 	// 提取角色名称列表
 	roleNames := make([]string, 0, len(roles))
@@ -123,25 +126,20 @@ func (ru *resourceUsecase) getUserRoles(c context.Context, roleIDs []string) ([]
 	return roles, nil
 }
 
-// collectUserPermissions 收集用户菜单ID和权限。菜单按 ID 批量查询，
-func (ru *resourceUsecase) collectUserPermissions(c context.Context, roles []*domain.Role) ([]string, []string) {
-	total := 0
-	for _, role := range roles {
-		total += len(role.MenusIds)
-	}
-	if total == 0 {
-		return nil, nil
-	}
-
-	userMenuIDs := make([]string, 0, total)
+// collectUserPermissions 收集用户菜单 ID 与按钮权限；菜单按 ID 批量查询。
+func (ru *resourceUsecase) collectUserPermissions(c context.Context, roles []*domain.Role) ([]string, []string, error) {
+	var userMenuIDs []string
 	for _, role := range roles {
 		userMenuIDs = append(userMenuIDs, role.MenusIds...)
+	}
+	if len(userMenuIDs) == 0 {
+		return nil, nil, nil
 	}
 
 	menus, err := ru.menuRepository.GetMenuPermissionsByIDs(c, userMenuIDs)
 	if err != nil {
-		pkg.Log.WithField("menuIDs", userMenuIDs).WithError(err).Warn("Failed to load menus for permission collection")
-		return userMenuIDs, nil
+		pkg.Log.WithField("menuIDs", userMenuIDs).WithError(err).Error("Failed to load menus for permission collection")
+		return nil, nil, fmt.Errorf("failed to load menu permissions: %w", err)
 	}
 
 	permissionMap := make(map[string]bool)
@@ -155,7 +153,7 @@ func (ru *resourceUsecase) collectUserPermissions(c context.Context, roles []*do
 		}
 	}
 
-	return userMenuIDs, userPermissions
+	return userMenuIDs, userPermissions, nil
 }
 
 // filterMenuTree 过滤菜单树
