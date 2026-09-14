@@ -58,7 +58,7 @@ func (c *Client) Logout(ctx context.Context) error {
 // Profile 调用 /profile，返回原始 data
 func (c *Client) Profile(ctx context.Context) (json.RawMessage, error) {
 	var raw json.RawMessage
-	if err := c.Do(ctx, "GET", "/api/v1/profile/", nil, nil, &raw); err != nil {
+	if err := c.Do(ctx, "GET", "/api/v1/profile", nil, nil, &raw); err != nil {
 		return nil, err
 	}
 	return raw, nil
