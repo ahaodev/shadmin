@@ -46,7 +46,7 @@ func App() *Application {
 			DB:       app.Env.RedisDB,
 		}
 	}
-	cacher, err := cacher.NewForRuntime(cacher.RuntimeConfig{
+	app.Cacher, err = cacher.NewForRuntime(cacher.RuntimeConfig{
 		UseRedis: app.Env.RedisEnabled(),
 		Redis:    redisCfg,
 		Memory:   cacher.MemoryConfig{CleanupInterval: 2 * time.Minute},
@@ -54,7 +54,7 @@ func App() *Application {
 	if err != nil {
 		panic(err)
 	}
-	app.Cacher = cacher
+
 	if app.Env.RedisEnabled() {
 		log.Printf("Cacher: Redis mode")
 	} else {
@@ -72,7 +72,7 @@ func App() *Application {
 	if err != nil {
 		panic(err)
 	}
-	// 初始化 Casbin 管理器（启用 Redis 时走 redis-adapter，否则内存模式）
+	// 初始化 Casbin 管理器（启用 Redis 时走 redis-adapter，否则投影到同库的 casbin_rule 表）
 	app.CasManager = casbin.NewCasManager(casAdapter)
 
 	// JWT 登出黑名单：复用共享 Cacher，ns="jwt:blacklist"。
@@ -90,7 +90,7 @@ func App() *Application {
 
 	// 初始化Casbin定时同步调度器（每1小时同步一次作为兜底），启动时机在默认数据和全量同步完成之后
 	syncService := app.CasbinInitializer.GetSyncService()
-	app.CasbinScheduler = scheduler.NewCasbinSyncScheduler(syncService, 1*time.Minute)
+	app.CasbinScheduler = scheduler.NewCasbinSyncScheduler(syncService, 1*time.Hour)
 
 	// 初始化文件存储
 	storageConfig := InitStorage(app.Env)
@@ -119,35 +119,54 @@ func (app *Application) CloseDBConnection() {
 	CloseEntConnection(app.DB)
 }
 
-// registerUserStatusCacheHook 在 User 表的 UpdateOne / Update / Delete 上注册
-// 一个 ent hook，变更提交后调用 UserStatusCache.Invalidate(id)。
+// registerUserStatusCacheHook 注册 ent hook：User 变更提交成功后失效 UserStatusCache。
+// ID 必须在 next.Mutate 之前解析——批量 Delete 生效后 predicate 已查不到这些行；
+// 失效时机交给 afterCommit，事务内立即失效会被并发请求用旧值回填。
 func (app *Application) registerUserStatusCacheHook() {
 	cache := app.UserStatusCache
 	app.DB.Use(func(next ent.Mutator) ent.Mutator {
 		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if m.Type() != ent.TypeUser {
+				return next.Mutate(ctx, m)
+			}
+
+			ids := userIDsForCacheInvalidation(ctx, m)
+
 			v, err := next.Mutate(ctx, m)
 			if err != nil {
 				return nil, err
 			}
-			if m.Type() != ent.TypeUser {
+			if len(ids) == 0 {
 				return v, nil
 			}
-
-			// ent.Mutation 接口没有 ID()，需要用具体类型拿到目标用户 ID。
-			um, ok := m.(*ent.UserMutation)
-			if !ok {
-				return v, nil
-			}
-			id, idExists := um.ID()
 
 			invalidate := func() {
-				if idExists && id != "" {
+				for _, id := range ids {
 					cache.Invalidate(id)
 				}
 			}
 
-			invalidate()
+			afterCommit(m, invalidate)
+
 			return v, nil
 		})
 	})
+}
+
+// userIDsForCacheInvalidation 解析涉及的用户 ID；Create 没有可失效的缓存，直接返回空。
+func userIDsForCacheInvalidation(ctx context.Context, m ent.Mutation) []string {
+	um, ok := m.(*ent.UserMutation)
+	if !ok {
+		return nil
+	}
+	if um.Op().Is(ent.OpCreate) {
+		return nil
+	}
+
+	ids, err := mutationIDs(ctx, um)
+	if err != nil {
+		log.WithError(err).Warn("Failed to resolve user IDs for status cache invalidation")
+		return nil
+	}
+	return ids
 }

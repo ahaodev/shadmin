@@ -72,9 +72,9 @@ func (ci *CasbinInitializer) InitializeCasbin(ctx context.Context) error {
 			if statsErr != nil {
 				log.WithError(statsErr).Warn("failed to get sync statistics")
 			} else {
-				log.Infof("Casbin sync statistics: database user-role relationships: %d, database role-permission relationships: %d, Casbin role mappings: %d, Casbin permission policies: %d",
+				log.Infof("Casbin sync statistics: database user-role relationships: %d, database active roles: %d, Casbin role mappings: %d, Casbin permission policies: %d",
 					stats.DatabaseUserRoles,
-					stats.DatabaseRolePermissions,
+					stats.DatabaseRoles,
 					stats.CasbinRoles,
 					stats.CasbinPolicies)
 
@@ -142,7 +142,7 @@ type casbinSyncTarget struct {
 	apiResourceIDs []string
 }
 
-func (t casbinSyncTarget) empty() bool {
+func (t *casbinSyncTarget) empty() bool {
 	return len(t.userIDs) == 0 &&
 		len(t.roleIDs) == 0 &&
 		len(t.menuIDs) == 0 &&
@@ -157,7 +157,8 @@ func (t *casbinSyncTarget) merge(other casbinSyncTarget) {
 }
 
 // triggerHookSync triggers targeted Casbin refresh after permission-related table changes.
-// It runs in a background goroutine and waits briefly for transaction propagation.
+// 后台同步带 100ms 延迟，等事务提交完成；Casbin 侧写入由 SyncService 的锁串行化，
+// 因此并发触发只是排队，不会互相覆盖。
 func (ci *CasbinInitializer) triggerHookSync(schemaType string, target casbinSyncTarget) {
 	if target.empty() {
 		log.Debugf("Skipping targeted Casbin sync (source: %s change, no target objects)", schemaType)
@@ -166,6 +167,7 @@ func (ci *CasbinInitializer) triggerHookSync(schemaType string, target casbinSyn
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
+
 		syncCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 		defer cancel()
 
@@ -188,6 +190,8 @@ func (ci *CasbinInitializer) syncTarget(ctx context.Context, target casbinSyncTa
 	}
 
 	if len(target.menuIDs) > 0 {
+		// 变更后再查一次角色：关联可能被"扩大"（如给 menu 新增 api_resource），
+		// 变更前的快照里没有这些角色。
 		roleIDs, err := ci.syncService.RoleIDsForMenus(ctx, target.menuIDs)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to query roles associated with menus: %w", err))
@@ -197,6 +201,7 @@ func (ci *CasbinInitializer) syncTarget(ctx context.Context, target casbinSyncTa
 	}
 
 	if len(target.apiResourceIDs) > 0 {
+		// 同上。
 		roleIDs, err := ci.syncService.RoleIDsForAPIResources(ctx, target.apiResourceIDs)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to query roles associated with API resources: %w", err))
@@ -217,13 +222,9 @@ func (ci *CasbinInitializer) syncTarget(ctx context.Context, target casbinSyncTa
 
 // SetupHooks registers Ent hooks so that User/Role/Menu/APIResource changes trigger targeted Casbin sync after commit
 func (ci *CasbinInitializer) SetupHooks() {
-	ci.mu.Lock()
-	if ci.hooksRegistered {
-		ci.mu.Unlock()
+	if !ci.markHooksRegistered() {
 		return
 	}
-	ci.hooksRegistered = true
-	ci.mu.Unlock()
 
 	ci.entClient.Use(func(next ent.Mutator) ent.Mutator {
 		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
@@ -240,23 +241,25 @@ func (ci *CasbinInitializer) SetupHooks() {
 			}
 			target.merge(ci.collectValueTarget(v))
 
-			if tx := ent.TxFromContext(ctx); tx != nil {
-				tx.OnCommit(func(next ent.Committer) ent.Committer {
-					return ent.CommitFunc(func(ctx context.Context, tx *ent.Tx) error {
-						err := next.Commit(ctx, tx)
-						if err == nil {
-							ci.triggerHookSync(schemaType, target)
-						}
-						return err
-					})
-				})
-			} else {
+			afterCommit(m, func() {
 				ci.triggerHookSync(schemaType, target)
-			}
+			})
 
 			return v, nil
 		})
 	})
+}
+
+// markHooksRegistered 标记 hook 已注册；返回 false 表示非首次。
+func (ci *CasbinInitializer) markHooksRegistered() bool {
+	ci.mu.Lock()
+	defer ci.mu.Unlock()
+
+	if ci.hooksRegistered {
+		return false
+	}
+	ci.hooksRegistered = true
+	return true
 }
 
 func (ci *CasbinInitializer) collectHookTarget(ctx context.Context, m ent.Mutation) casbinSyncTarget {
@@ -274,6 +277,8 @@ func (ci *CasbinInitializer) collectHookTarget(ctx context.Context, m ent.Mutati
 		target.roleIDs = ids
 	case ent.TypeMenu:
 		target.menuIDs = ids
+		// 变更前解析关联角色：变更可能“收缩”关联（解除 menu↔role 或级联删除），
+		// 生效后再查就找不到这些角色了，而它们正是需要被回收权限的对象。
 		roleIDs, err := ci.syncService.RoleIDsForMenus(ctx, ids)
 		if err != nil {
 			log.WithError(err).Warn("Failed to collect roles associated with menus")
@@ -282,6 +287,7 @@ func (ci *CasbinInitializer) collectHookTarget(ctx context.Context, m ent.Mutati
 		}
 	case ent.TypeApiResource:
 		target.apiResourceIDs = ids
+		// 同上：级联删除后关联关系不可再查，必须在变更前取快照。
 		roleIDs, err := ci.syncService.RoleIDsForAPIResources(ctx, ids)
 		if err != nil {
 			log.WithError(err).Warn("Failed to collect roles associated with API resources")
@@ -291,28 +297,6 @@ func (ci *CasbinInitializer) collectHookTarget(ctx context.Context, m ent.Mutati
 	}
 
 	return target
-}
-
-func mutationIDs(ctx context.Context, m ent.Mutation) ([]string, error) {
-	switch mutation := m.(type) {
-	case *ent.UserMutation:
-		return idsFromMutation(ctx, mutation.ID, mutation.IDs)
-	case *ent.RoleMutation:
-		return idsFromMutation(ctx, mutation.ID, mutation.IDs)
-	case *ent.MenuMutation:
-		return idsFromMutation(ctx, mutation.ID, mutation.IDs)
-	case *ent.ApiResourceMutation:
-		return idsFromMutation(ctx, mutation.ID, mutation.IDs)
-	default:
-		return nil, nil
-	}
-}
-
-func idsFromMutation(ctx context.Context, id func() (string, bool), ids func(context.Context) ([]string, error)) ([]string, error) {
-	if singleID, ok := id(); ok {
-		return []string{singleID}, nil
-	}
-	return ids(ctx)
 }
 
 func (ci *CasbinInitializer) collectValueTarget(v ent.Value) casbinSyncTarget {
@@ -354,14 +338,15 @@ func (ci *CasbinInitializer) collectValueTarget(v ent.Value) casbinSyncTarget {
 	}
 }
 
-// InitCasbinHooks is called after application startup completes: run a full sync (idempotent), register hooks, and start the incremental scheduler
-func InitCasbinHooks(app *Application) {
+// InitCasbinHooks is called after application startup completes: run a full sync (idempotent), register hooks, and start the incremental scheduler.
+func InitCasbinHooks(app *Application) error {
 	ctx := context.Background()
 	if err := app.CasbinInitializer.InitializeCasbin(ctx); err != nil {
-		log.WithError(err).Error("initial casbin sync failed")
+		return fmt.Errorf("initial casbin sync failed: %w", err)
 	}
 	app.CasbinInitializer.SetupHooks()
 	if app.CasbinScheduler != nil {
 		app.CasbinScheduler.Start(ctx)
 	}
+	return nil
 }
