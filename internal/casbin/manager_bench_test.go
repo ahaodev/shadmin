@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/casbin/casbin/v3"
 	casbinlog "github.com/casbin/casbin/v3/log"
 )
 
 // silentLogger 抑制 casbin 的 deny 告警日志，避免 benchmark 输出刷屏。
-// 只用在本文件；单测保持生产 logger 不动。
 type silentLogger struct{}
 
 func (silentLogger) SetEventTypes([]casbinlog.EventType) error            { return nil }
@@ -23,10 +23,9 @@ const benchUser = "bench-user"
 const benchObj = "/api/v1/system/bench-res119/:id"
 
 // setupBenchPolicy 为每个 benchmark 构建独立的策略集并预热一次，
-// 排除首查的表达式编译开销。
-func setupBenchPolicy(tb testing.TB) Manager {
+func setupBenchPolicy(tb testing.TB) (Manager, *casbin.SyncedEnforcer) {
 	tb.Helper()
-	m := testManager(tb)
+	m, e := testManagerWithEnforcer(tb)
 
 	for _, role := range benchRoles {
 		for i := range 120 {
@@ -52,11 +51,11 @@ func setupBenchPolicy(tb testing.TB) Manager {
 	if allowed, err := m.CheckPermission(benchUser, benchObj, "GET"); err != nil || !allowed {
 		tb.Fatalf("warmup CheckPermission: allowed=%v err=%v", allowed, err)
 	}
-	return m
+	return m, e
 }
 
 func BenchmarkCheckPermission_AllowAssignedRole(b *testing.B) {
-	m := setupBenchPolicy(b)
+	m, _ := setupBenchPolicy(b)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -71,7 +70,7 @@ func BenchmarkCheckPermission_AllowAssignedRole(b *testing.B) {
 }
 
 func BenchmarkCheckPermission_AllowAssignedRoleParallel(b *testing.B) {
-	m := setupBenchPolicy(b)
+	m, _ := setupBenchPolicy(b)
 	b.ReportAllocs()
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -92,8 +91,7 @@ func BenchmarkCheckPermission_AllowAssignedRoleParallel(b *testing.B) {
 // 直接调用 Enforce 绕开 CheckPermission 的角色查询，且该 subject 无任何策略，
 // 必须扫完整个策略集才能得出 deny —— 这是权限结果缓存要消除的开销。
 func BenchmarkEnforce_DenyNoMatchingSubject(b *testing.B) {
-	m := setupBenchPolicy(b)
-	e := m.GetEnforcer()
+	_, e := setupBenchPolicy(b)
 	e.SetLogger(silentLogger{}) // deny 路径每迭代打一条告警日志，静默后才可比
 
 	b.ReportAllocs()

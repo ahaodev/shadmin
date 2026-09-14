@@ -9,6 +9,7 @@ import (
 	"shadmin/ent/menu"
 	"shadmin/ent/role"
 	"shadmin/ent/user"
+	"sync"
 	"time"
 )
 
@@ -16,6 +17,7 @@ import (
 type SyncService struct {
 	entClient *ent.Client
 	manager   Manager
+	mu        sync.Mutex
 }
 
 // NewSyncService creates a new sync service instance
@@ -27,15 +29,18 @@ func NewSyncService(entClient *ent.Client, manager Manager) *SyncService {
 }
 
 // SyncFromDatabase syncs all Casbin data from the database.
-// This is the primary sync method; it clears existing Casbin data and reloads it from the database.
 func (s *SyncService) SyncFromDatabase(ctx context.Context) error {
+	// 全量重建（清空 + 重写 + SavePolicy）必须整体互斥，否则可能被 hook 触发的定向同步穿插。
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	logger.Info("Starting Casbin data sync from database")
 
 	startTime := time.Now()
 
-	// 1. Clear existing Casbin policies
-	if err := s.clearCasbinPolicies(ctx); err != nil {
-		return fmt.Errorf("failed to clear Casbin policies: %w", err)
+	// 1. Clear existing Casbin policies.
+	if err := s.clearCasbinPolicies(); err != nil {
+		return fmt.Errorf("failed to clear existing casbin policies: %w", err)
 	}
 
 	// 2. Sync user-role relationships
@@ -53,9 +58,7 @@ func (s *SyncService) SyncFromDatabase(ctx context.Context) error {
 		return fmt.Errorf("failed to save Casbin policies: %w", err)
 	}
 
-	duration := time.Since(startTime)
-	logger.Infof("Sync completed, elapsed: %v", duration)
-
+	logger.Infof("Sync completed, elapsed: %v", time.Since(startTime))
 	return nil
 }
 
@@ -149,9 +152,11 @@ func (s *SyncService) changedAPIResourceIDs(ctx context.Context, since time.Time
 		Strings(ctx)
 }
 
-// clearCasbinPolicies clears all Casbin policies
-func (s *SyncService) clearCasbinPolicies(_ context.Context) error {
+// clearCasbinPolicies clears all Casbin policies.
+func (s *SyncService) clearCasbinPolicies() error {
 	logger.Info("Clearing existing Casbin policies")
+
+	var errs []error
 
 	// Clear all permission policies (p rules): collect unique subs and delete them in batches
 	subs := make(map[string]struct{})
@@ -163,6 +168,7 @@ func (s *SyncService) clearCasbinPolicies(_ context.Context) error {
 	for sub := range subs {
 		if _, err := s.manager.RemoveFilteredPolicy(0, sub); err != nil {
 			logger.WithField("sub", sub).Warnf("Failed to remove policies in batch: %v", err)
+			errs = append(errs, fmt.Errorf("failed to remove policies for subject %s: %w", sub, err))
 		}
 	}
 
@@ -176,11 +182,12 @@ func (s *SyncService) clearCasbinPolicies(_ context.Context) error {
 	for uid := range users {
 		if _, err := s.manager.DeleteRolesForUser(uid); err != nil {
 			logger.WithField("user", uid).Warnf("Failed to remove role mappings in batch: %v", err)
+			errs = append(errs, fmt.Errorf("failed to remove role mappings for user %s: %w", uid, err))
 		}
 	}
 
 	logger.Info("Cleared policies")
-	return nil
+	return errors.Join(errs...)
 }
 
 // syncUserRoles syncs user-role relationships
@@ -200,11 +207,13 @@ func (s *SyncService) syncUserRoles(ctx context.Context) error {
 	}
 
 	userRoleCount := 0
+	var errs []error
 
 	for _, u := range users {
 		for _, r := range u.Edges.Roles {
 			if _, err := s.manager.AddRoleForUser(u.ID, r.ID); err != nil {
 				logger.WithError(err).Warnf("Failed to add user role: user=%s, role=%s", u.ID, r.ID)
+				errs = append(errs, fmt.Errorf("failed to add role %s for user %s: %w", r.ID, u.ID, err))
 				continue
 			}
 			userRoleCount++
@@ -212,7 +221,7 @@ func (s *SyncService) syncUserRoles(ctx context.Context) error {
 	}
 
 	logger.Infof("Completed user-role sync, processed %d relationships", userRoleCount)
-	return nil
+	return errors.Join(errs...)
 }
 
 // syncRolePermissions syncs role permission policies
@@ -223,10 +232,7 @@ func (s *SyncService) syncRolePermissions(ctx context.Context) error {
 	roles, err := s.entClient.Role.Query().
 		Where(role.StatusEQ("active")).
 		WithMenus(func(q *ent.MenuQuery) {
-			q.Where().
-				WithAPIResources(func(ar *ent.ApiResourceQuery) {
-					ar.Where(apiresource.IsPublicEQ(false)) // Only sync API resources that require permission validation
-				})
+			q.WithAPIResources()
 		}).
 		All(ctx)
 
@@ -235,120 +241,209 @@ func (s *SyncService) syncRolePermissions(ctx context.Context) error {
 	}
 
 	policyCount := 0
+	var errs []error
 	for _, r := range roles {
 		n, err := s.applyRolePolicies(r.ID, r.Name, r.Edges.Menus)
 		if err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("failed to apply policies for role %s: %w", r.ID, err))
 		}
 		policyCount += n
 	}
 
 	logger.Infof("Completed role permission policy sync, processed %d policies", policyCount)
-	return nil
+	return errors.Join(errs...)
 }
 
-// applyRolePolicies writes a role's permissions to Casbin.
-// The admin role receives a wildcard policy; other roles receive policies based on the API resources of their associated menus.
-// Returns the number of policies actually written.
+// applyRolePolicies 把一个角色的权限写进 Casbin，返回实际写入条数与聚合的写失败。
 func (s *SyncService) applyRolePolicies(roleID, roleName string, menus []*ent.Menu) (int, error) {
 	log := logger.WithField("role", roleID)
 
-	if roleName == "admin" {
-		if _, err := s.manager.AddPolicy(roleID, "*", "*"); err != nil {
-			log.WithError(err).Warn("Failed to add admin wildcard permission")
-			return 0, nil
-		}
-		log.Info("Added wildcard permission for admin role")
-		return 1, nil
-	}
-
 	count := 0
-	for _, menu := range menus {
-		for _, apiRes := range menu.Edges.APIResources {
-			if _, err := s.manager.AddPolicy(roleID, apiRes.Path, apiRes.Method); err != nil {
-				log.WithError(err).Warnf("Failed to add API permission: %s %s", apiRes.Method, apiRes.Path)
-				continue
-			}
-			count++
+	var errs []error
+	for _, rule := range desiredRolePolicies(roleName, menus) {
+		if _, err := s.manager.AddPolicy(roleID, rule.obj, rule.act); err != nil {
+			log.WithError(err).Warnf("Failed to add API permission: %s %s", rule.act, rule.obj)
+			errs = append(errs, fmt.Errorf("failed to add policy %s %s for role %s: %w", rule.act, rule.obj, roleID, err))
+			continue
 		}
+		count++
 	}
-	return count, nil
+	return count, errors.Join(errs...)
 }
 
-// SyncUserRole syncs a single user's role relationships
+// policyRule 是 p 规则里除 subject 之外的部分。
+type policyRule struct {
+	obj string
+	act string
+}
+
+// desiredRolePolicies 计算角色应有的 p 规则集合（不含 subject）：
+func desiredRolePolicies(roleName string, menus []*ent.Menu) []policyRule {
+	if roleName == "admin" {
+		return []policyRule{{obj: "*", act: "*"}}
+	}
+
+	rules := make([]policyRule, 0)
+	seen := make(map[policyRule]struct{})
+	for _, menu := range menus {
+		for _, apiRes := range menu.Edges.APIResources {
+			if apiRes.IsPublic { // 公开资源不经鉴权，不进策略
+				continue
+			}
+			rule := policyRule{obj: apiRes.Path, act: apiRes.Method}
+			if _, ok := seen[rule]; ok {
+				continue
+			}
+			seen[rule] = struct{}{}
+			rules = append(rules, rule)
+		}
+	}
+	return rules
+}
+
+// diffKeys 返回 toAdd = desired \ current、toRemove = current \ desired；均去重并保持入参顺序。
+func diffKeys[K comparable](current, desired []K) (toAdd, toRemove []K) {
+	inCurrent := make(map[K]struct{}, len(current))
+	for _, k := range current {
+		inCurrent[k] = struct{}{}
+	}
+	inDesired := make(map[K]struct{}, len(desired))
+	for _, k := range desired {
+		inDesired[k] = struct{}{}
+	}
+
+	seenAdd := make(map[K]struct{}, len(desired))
+	for _, k := range desired {
+		if _, ok := inCurrent[k]; ok {
+			continue
+		}
+		if _, ok := seenAdd[k]; ok {
+			continue
+		}
+		seenAdd[k] = struct{}{}
+		toAdd = append(toAdd, k)
+	}
+
+	seenRemove := make(map[K]struct{}, len(current))
+	for _, k := range current {
+		if _, ok := inDesired[k]; ok {
+			continue
+		}
+		if _, ok := seenRemove[k]; ok {
+			continue
+		}
+		seenRemove[k] = struct{}{}
+		toRemove = append(toRemove, k)
+	}
+
+	return toAdd, toRemove
+}
+
+// currentRolePolicies 提取某角色当前的 (obj, act) 策略集合。
+func currentRolePolicies(m Manager, roleID string) []policyRule {
+	rules := make([]policyRule, 0)
+	for _, row := range m.GetFilteredPolicies(0, roleID) {
+		if len(row) < 3 { // p 规则形如 [sub, obj, act]
+			continue
+		}
+		rules = append(rules, policyRule{obj: row[1], act: row[2]})
+	}
+	return rules
+}
+
+// SyncUserRole syncs a single user's role relationships, applying only the diff between
 func (s *SyncService) SyncUserRole(ctx context.Context, userID string) error {
 	logger.Infof("Syncing user roles: %s", userID)
 
-	// Clear the user's existing roles
-	if _, err := s.manager.DeleteRolesForUser(userID); err != nil {
-		logger.WithError(err).Warnf("Failed to clear user roles: user=%s", userID)
-	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	// Query the user's current roles (only active users are valid)
+	// 只认活跃用户：缺失或非活跃 → desired 为空，即撤销其全部角色。
+	desired := make([]string, 0)
 	u, err := s.entClient.User.Query().
 		Where(user.IDEQ(userID), user.StatusEQ("active")).
 		WithRoles(func(q *ent.RoleQuery) {
 			q.Where(role.StatusEQ("active"))
 		}).
 		Only(ctx)
-
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return s.manager.SavePolicy()
+	switch {
+	case err == nil:
+		for _, r := range u.Edges.Roles {
+			desired = append(desired, r.ID)
 		}
+	case !ent.IsNotFound(err):
 		return fmt.Errorf("failed to query user roles: %w", err)
 	}
 
-	// Re-add user roles
-	for _, r := range u.Edges.Roles {
-		if _, err := s.manager.AddRoleForUser(userID, r.ID); err != nil {
-			logger.WithError(err).Warnf("Failed to add user role: user=%s, role=%s", userID, r.ID)
+	return s.applyUserRoleDiff(userID, desired)
+}
+
+// applyUserRoleDiff 把用户的 g 规则调整为 desired，只增删差集。不触碰 DB，便于单测。
+func (s *SyncService) applyUserRoleDiff(userID string, desired []string) error {
+	current := s.manager.GetRolesForUser(userID)
+	toAdd, toRemove := diffKeys(current, desired)
+
+	var errs []error
+	for _, roleID := range toAdd {
+		if _, err := s.manager.AddRoleForUser(userID, roleID); err != nil {
+			logger.WithError(err).Warnf("Failed to add user role: user=%s, role=%s", userID, roleID)
+			errs = append(errs, fmt.Errorf("failed to add role %s for user %s: %w", roleID, userID, err))
+		}
+	}
+	for _, roleID := range toRemove {
+		if _, err := s.manager.DeleteRoleForUser(userID, roleID); err != nil {
+			logger.WithError(err).Warnf("Failed to delete user role: user=%s, role=%s", userID, roleID)
+			errs = append(errs, fmt.Errorf("failed to delete role %s for user %s: %w", roleID, userID, err))
 		}
 	}
 
-	return s.manager.SavePolicy()
+	return errors.Join(errs...)
 }
 
-// SyncRolePermissions syncs a single role's permission policies
+// SyncRolePermissions syncs a single role's permission policies, applying only the diff
 func (s *SyncService) SyncRolePermissions(ctx context.Context, roleID string) error {
 	logger.Infof("Syncing role permissions: %s", roleID)
 
-	// Clear the role's existing permission policies
-	if err := s.clearRolePolicies(ctx, roleID); err != nil {
-		return fmt.Errorf("failed to clear existing role permissions: %w", err)
-	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	// Query the role's current menus and API resources
+	desired := make([]policyRule, 0)
 	r, err := s.entClient.Role.Query().
 		Where(role.IDEQ(roleID), role.StatusEQ("active")).
 		WithMenus(func(q *ent.MenuQuery) {
-			q.Where().
-				WithAPIResources(func(ar *ent.ApiResourceQuery) {
-					ar.Where(apiresource.IsPublicEQ(false))
-				})
+			q.WithAPIResources()
 		}).
 		Only(ctx)
-
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return s.manager.SavePolicy()
-		}
+	switch {
+	case err == nil:
+		desired = desiredRolePolicies(r.Name, r.Edges.Menus)
+	case !ent.IsNotFound(err):
 		return fmt.Errorf("failed to query role permissions: %w", err)
 	}
 
-	if _, err := s.applyRolePolicies(roleID, r.Name, r.Edges.Menus); err != nil {
-		return err
-	}
-
-	return s.manager.SavePolicy()
+	return s.applyRolePolicyDiff(roleID, desired)
 }
 
-// clearRolePolicies clears all permission policies for a specific role
-func (s *SyncService) clearRolePolicies(_ context.Context, roleID string) error {
-	if _, err := s.manager.RemoveFilteredPolicy(0, roleID); err != nil {
-		logger.WithField("role", roleID).Warnf("Failed to remove role policies: %v", err)
+// applyRolePolicyDiff 把角色的 p 策略调整为 desired，只增删差集。不触碰 DB，便于单测。
+func (s *SyncService) applyRolePolicyDiff(roleID string, desired []policyRule) error {
+	current := currentRolePolicies(s.manager, roleID)
+	toAdd, toRemove := diffKeys(current, desired)
+
+	var errs []error
+	for _, rule := range toAdd {
+		if _, err := s.manager.AddPolicy(roleID, rule.obj, rule.act); err != nil {
+			logger.WithError(err).Warnf("Failed to add API permission: %s %s", rule.act, rule.obj)
+			errs = append(errs, fmt.Errorf("failed to add policy %s %s for role %s: %w", rule.act, rule.obj, roleID, err))
+		}
 	}
-	return nil
+	for _, rule := range toRemove {
+		if _, err := s.manager.RemovePolicy(roleID, rule.obj, rule.act); err != nil {
+			logger.WithError(err).Warnf("Failed to remove API permission: %s %s", rule.act, rule.obj)
+			errs = append(errs, fmt.Errorf("failed to remove policy %s %s for role %s: %w", rule.act, rule.obj, roleID, err))
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 func (s *SyncService) RoleIDsForMenus(ctx context.Context, menuIDs []string) ([]string, error) {
@@ -369,16 +464,9 @@ func (s *SyncService) roleIDsForMenus(ctx context.Context, menuIDs []string) ([]
 		WithRoles().
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query menus by IDs: %w", err)
 	}
-
-	roleIDs := make([]string, 0)
-	for _, m := range menus {
-		for _, r := range m.Edges.Roles {
-			roleIDs = append(roleIDs, r.ID)
-		}
-	}
-	return uniqueStrings(roleIDs), nil
+	return uniqueRoleIDs(menus), nil
 }
 
 func (s *SyncService) roleIDsForAPIResources(ctx context.Context, apiResourceIDs []string) ([]string, error) {
@@ -391,16 +479,20 @@ func (s *SyncService) roleIDsForAPIResources(ctx context.Context, apiResourceIDs
 		WithRoles().
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query menus by API resources: %w", err)
 	}
+	return uniqueRoleIDs(menus), nil
+}
 
+// uniqueRoleIDs 汇总 menus 关联的角色 ID（去重、去空）。
+func uniqueRoleIDs(menus []*ent.Menu) []string {
 	roleIDs := make([]string, 0)
 	for _, m := range menus {
 		for _, r := range m.Edges.Roles {
 			roleIDs = append(roleIDs, r.ID)
 		}
 	}
-	return uniqueStrings(roleIDs), nil
+	return uniqueStrings(roleIDs)
 }
 
 func uniqueStrings(values []string) []string {
@@ -444,16 +536,16 @@ func (s *SyncService) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 		return nil, fmt.Errorf("failed to count user-role relationships: %w", err)
 	}
 
-	rolePermCount, err := s.entClient.Role.Query().
+	roleCount, err := s.entClient.Role.Query().
 		Where(role.StatusEQ("active")).
 		Count(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count role permission policies: %w", err)
+		return nil, fmt.Errorf("failed to count active roles: %w", err)
 	}
 
 	// Count the data in Casbin
 	stats.DatabaseUserRoles = userRoleCount
-	stats.DatabaseRolePermissions = rolePermCount
+	stats.DatabaseRoles = roleCount
 	stats.CasbinRoles = len(s.manager.GetAllRoles())
 	stats.CasbinPolicies = len(s.manager.GetAllPolicies())
 
@@ -462,14 +554,16 @@ func (s *SyncService) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 
 // SyncStats sync statistics
 type SyncStats struct {
-	DatabaseUserRoles       int `json:"database_user_roles"`
-	DatabaseRolePermissions int `json:"database_role_permissions"`
-	CasbinRoles             int `json:"casbin_roles"`
-	CasbinPolicies          int `json:"casbin_policies"`
+	DatabaseUserRoles int `json:"database_user_roles"`
+	DatabaseRoles     int `json:"database_roles"`
+	CasbinRoles       int `json:"casbin_roles"`
+	CasbinPolicies    int `json:"casbin_policies"`
 }
 
-// IsHealthy checks whether the sync status is healthy
+// IsHealthy 只报它真正能判断的一件事：DB 侧为空时 Casbin 不该有残留（有残留说明清理不完整）。
 func (stats *SyncStats) IsHealthy() bool {
-	// A simple health check: the data in Casbin should not be empty
-	return stats.CasbinRoles > 0 && stats.CasbinPolicies > 0
+	if stats.DatabaseUserRoles != 0 || stats.DatabaseRoles != 0 {
+		return true
+	}
+	return stats.CasbinRoles == 0 && stats.CasbinPolicies == 0
 }

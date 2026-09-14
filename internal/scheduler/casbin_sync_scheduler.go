@@ -18,7 +18,7 @@ type CasbinSyncScheduler struct {
 	lastSync    time.Time
 	running     bool
 	stopChan    chan struct{}
-	wg          sync.WaitGroup
+	doneChan    chan struct{}
 	mutex       sync.RWMutex
 }
 
@@ -28,7 +28,6 @@ func NewCasbinSyncScheduler(syncService *casbin.SyncService, interval time.Durat
 		syncService: syncService,
 		interval:    interval,
 		lastSync:    time.Now(),
-		stopChan:    make(chan struct{}),
 	}
 }
 
@@ -42,13 +41,18 @@ func (s *CasbinSyncScheduler) Start(ctx context.Context) {
 		return
 	}
 
+	// stopChan/doneChan 每次启动重建，Stop 之后可以再次 Start。
+	// interval 与通道一样在锁内取快照后传给 run，避免运行中 SetInterval 造成数据竞争。
+	stopChan := make(chan struct{})
+	doneChan := make(chan struct{})
+	s.stopChan = stopChan
+	s.doneChan = doneChan
 	s.running = true
-	s.wg.Add(1)
 
-	go s.run(ctx)
+	go s.run(ctx, s.interval, stopChan, doneChan)
 }
 
-// Stop 停止定时同步任务
+// Stop 停止定时同步任务。可重复调用（含并发调用）：重复调用是安全的空操作。
 func (s *CasbinSyncScheduler) Stop() {
 	s.mutex.Lock()
 	if !s.running {
@@ -56,14 +60,14 @@ func (s *CasbinSyncScheduler) Stop() {
 		return
 	}
 
-	close(s.stopChan)
-	s.mutex.Unlock()
-
-	s.wg.Wait()
-
-	s.mutex.Lock()
+	stopChan := s.stopChan
+	doneChan := s.doneChan
+	// 先置 running=false 再释放锁：并发/重复的 Stop 会直接返回，不会重复 close。
 	s.running = false
 	s.mutex.Unlock()
+
+	close(stopChan)
+	<-doneChan // 等待本次运行的 goroutine 真正退出
 
 	log.Printf(" Casbin同步调度器已停止")
 }
@@ -75,16 +79,16 @@ func (s *CasbinSyncScheduler) IsRunning() bool {
 	return s.running
 }
 
-// run 执行定时同步任务的主循环
-func (s *CasbinSyncScheduler) run(ctx context.Context) {
-	defer s.wg.Done()
+// run 执行定时同步任务的主循环。interval 与通道由 Start 快照传入，不读取可变字段。
+func (s *CasbinSyncScheduler) run(ctx context.Context, interval time.Duration, stop <-chan struct{}, done chan<- struct{}) {
+	defer close(done)
 
-	ticker := time.NewTicker(s.interval)
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-s.stopChan:
+		case <-stop:
 			log.Printf(" 收到停止信号，退出Casbin同步定时任务")
 			return
 
@@ -160,11 +164,11 @@ type SchedulerStatus struct {
 	LastSync time.Time     `json:"last_sync"`
 }
 
-// SetInterval 更新同步间隔（需要重启调度器才能生效）
+// SetInterval 更新同步间隔（只影响下一次 Start；运行中的 ticker 不重建）
 func (s *CasbinSyncScheduler) SetInterval(interval time.Duration) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	s.interval = interval
-	log.Printf(" Casbin同步间隔已更新为: %v（重启调度器后生效）", interval)
+	log.Printf(" Casbin同步间隔已更新为: %v（下次 Start 生效）", interval)
 }

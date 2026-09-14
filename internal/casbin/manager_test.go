@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/casbin/casbin/v3"
 	"github.com/casbin/casbin/v3/model"
 )
 
@@ -22,11 +23,20 @@ func (a *memAdapter) RemoveFilteredPolicy(string, string, int, ...string) error 
 // 因此夹具无需命名空间前缀，也支持 -shuffle / -count 重复运行。
 func testManager(tb testing.TB) Manager {
 	tb.Helper()
+	m, _ := testManagerWithEnforcer(tb)
+	return m
+}
+
+// testManagerWithEnforcer 额外返回底层 SyncedEnforcer，供需要直接 Enforce 的用例使用
+// （benchmark 绕开 CheckPermission 的角色查询）。刻意不经 Manager 接口暴露：
+// 那会让调用方绕过加锁约定，重开 SyncedEnforcer 本要消除的竞态。
+func testManagerWithEnforcer(tb testing.TB) (Manager, *casbin.SyncedEnforcer) {
+	tb.Helper()
 	e, err := newEnforcer(&memAdapter{})
 	if err != nil {
 		tb.Fatalf("newEnforcer: %v", err)
 	}
-	return &CasManager{enforcer: e}
+	return &CasManager{enforcer: e}, e
 }
 
 func mustAddPolicy(t *testing.T, m Manager, role, obj, act string) {
@@ -283,6 +293,38 @@ func TestManagerRoleMappingReadback(t *testing.T) {
 	for _, r := range got {
 		if len(r) != 2 || !want[strings.Join(r, ",")] {
 			t.Errorf("GetAllRoles: unexpected mapping %v", r)
+		}
+	}
+}
+
+func TestManagerGetFilteredPolicies(t *testing.T) {
+	m := testManager(t)
+
+	mustAddPolicy(t, m, "role-a", "/api/v1/a", "GET")
+	mustAddPolicy(t, m, "role-a", "/api/v1/b", "POST")
+	mustAddPolicy(t, m, "role-b", "/api/v1/a", "GET")
+
+	got := m.GetFilteredPolicies(0, "role-a")
+	if len(got) != 2 {
+		t.Fatalf("GetFilteredPolicies(role-a) = %v, want 2 rules", got)
+	}
+	for _, p := range got {
+		if p[0] != "role-a" {
+			t.Errorf("GetFilteredPolicies(role-a) leaked another subject: %v", p)
+		}
+	}
+
+	if got := m.GetFilteredPolicies(0, "role-missing"); len(got) != 0 {
+		t.Fatalf("GetFilteredPolicies(role-missing) = %v, want empty", got)
+	}
+
+	// 返回副本：改动结果不得影响 enforcer 内部状态。
+	for _, p := range got {
+		p[1] = "/mutated"
+	}
+	for _, p := range m.GetFilteredPolicies(0, "role-a") {
+		if p[1] == "/mutated" {
+			t.Fatal("GetFilteredPolicies returned a view into casbin's internal policy slice")
 		}
 	}
 }
