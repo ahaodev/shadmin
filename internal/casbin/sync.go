@@ -277,7 +277,7 @@ type policyRule struct {
 	act string
 }
 
-// desiredRolePolicies 计算角色应有的 p 规则集合（不含 subject）：
+// desiredRolePolicies 计算角色应有的 p 规则集合（不含 subject）。
 func desiredRolePolicies(roleName string, menus []*ent.Menu) []policyRule {
 	if roleName == "admin" {
 		return []policyRule{{obj: "*", act: "*"}}
@@ -352,6 +352,7 @@ func currentRolePolicies(m Manager, roleID string) []policyRule {
 }
 
 // SyncUserRole syncs a single user's role relationships, applying only the diff between
+// the current g rules and the user's active roles in the DB.
 func (s *SyncService) SyncUserRole(ctx context.Context, userID string) error {
 	logger.Infof("Syncing user roles: %s", userID)
 
@@ -401,6 +402,7 @@ func (s *SyncService) applyUserRoleDiff(userID string, desired []string) error {
 }
 
 // SyncRolePermissions syncs a single role's permission policies, applying only the diff
+// between the current p rules and the role's menu-derived API permissions.
 func (s *SyncService) SyncRolePermissions(ctx context.Context, roleID string) error {
 	logger.Infof("Syncing role permissions: %s", roleID)
 

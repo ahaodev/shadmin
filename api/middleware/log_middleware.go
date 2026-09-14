@@ -98,7 +98,7 @@ func (r *responseBodyWriter) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
-// WriteString 覆盖 gin 的 WriteString：c.String 与 io.WriteString 不经过 Write，
+// WriteString 覆盖 gin 的 WriteString：c.String 与 io.WriteString 不经过 Write，需单独转发。
 func (r *responseBodyWriter) WriteString(s string) (int, error) {
 	r.body.WriteString(s)
 	return r.ResponseWriter.WriteString(s)

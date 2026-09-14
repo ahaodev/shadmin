@@ -10,6 +10,3 @@ export const MENUS_QUERY_KEY = 'menus'
 
 /** 父级菜单选项（由菜单树扁平化而来）。 */
 export const PARENT_MENUS_QUERY_KEY = 'parent-menus'
-
-/** 菜单树。当前由 roles 侧的角色菜单选择使用。 */
-export const MENU_TREE_QUERY_KEY = 'menu-tree'

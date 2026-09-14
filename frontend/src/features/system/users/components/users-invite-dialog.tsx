@@ -25,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SelectDropdown } from '@/components/select-dropdown'
+import { ROLES_QUERY_KEY } from '@/features/system/roles/constants/query-keys'
 import { useInviteUser } from '../hooks/use-users'
 
 const formSchema = z.object({
@@ -50,7 +51,7 @@ export function UsersInviteDialog({
 
   // Fetch roles from API
   const { data: roles = [], isLoading: rolesLoading } = useQuery({
-    queryKey: ['roles'],
+    queryKey: [ROLES_QUERY_KEY],
     queryFn: getRoles,
     enabled: open,
   })

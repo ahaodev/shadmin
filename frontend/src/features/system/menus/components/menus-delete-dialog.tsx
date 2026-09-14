@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dialog'
 import {
   MENUS_QUERY_KEY,
-  MENU_TREE_QUERY_KEY,
   PARENT_MENUS_QUERY_KEY,
 } from '../constants/query-keys'
 
@@ -37,7 +36,6 @@ export function MenusDeleteDialog({
     onSuccess: () => {
       toast.success('菜单删除成功')
       // Invalidate all menu-related queries to ensure data consistency
-      queryClient.invalidateQueries({ queryKey: [MENU_TREE_QUERY_KEY] })
       queryClient.invalidateQueries({ queryKey: [MENUS_QUERY_KEY] })
       queryClient.invalidateQueries({ queryKey: [PARENT_MENUS_QUERY_KEY] })
       // Clear sidebar menu cache to refresh navigation menu

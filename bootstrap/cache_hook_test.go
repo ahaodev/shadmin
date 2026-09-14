@@ -44,7 +44,6 @@ func (l *countingLoader) GetStatusByID(context.Context, string) (string, error) 
 func (l *countingLoader) callCount() int32 { return l.calls.Load() }
 
 type cacheFixture struct {
-	app    *Application
 	cache  *auth.Cache
 	loader *countingLoader
 	client *ent.Client
@@ -61,7 +60,7 @@ func newCacheFixture(t *testing.T) *cacheFixture {
 	app := &Application{DB: client, UserStatusCache: cache}
 	app.registerUserStatusCacheHook()
 
-	return &cacheFixture{app: app, cache: cache, loader: loader, client: client, ctx: context.Background()}
+	return &cacheFixture{cache: cache, loader: loader, client: client, ctx: context.Background()}
 }
 
 func (f *cacheFixture) createUser(t *testing.T, id string) {

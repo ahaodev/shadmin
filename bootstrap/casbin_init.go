@@ -126,7 +126,8 @@ func (ci *CasbinInitializer) GetSyncService() *casbin.SyncService {
 	return ci.syncService
 }
 
-// HealthCheck checks whether Casbin has role mappings and permission policies and is therefore healthy
+// HealthCheck reports whether the synced state is consistent: when the database holds no
+// user-role or role rows, Casbin must hold no residual roles or policies.
 func (ci *CasbinInitializer) HealthCheck(ctx context.Context) (bool, error) {
 	stats, err := ci.syncService.GetSyncStats(ctx)
 	if err != nil {
