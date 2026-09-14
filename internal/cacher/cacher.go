@@ -12,6 +12,10 @@ import (
 type Cacher interface {
 	// Set 写入（或覆盖）一对键值；expiration 取首个非空值，未传则永不过期。
 	Set(ctx context.Context, ns, key, value string, expiration ...time.Duration) error
+	// Incr 把键的整数值加一，返回加一后的值；键不存在或已过期时从 1 开始。
+	// 必须是原子操作：调用方（登录失败计数等）靠它避免并发读改写丢计数。
+	// expiration 语义同 Set，自增会刷新计数窗口。
+	Incr(ctx context.Context, ns, key string, expiration ...time.Duration) (int64, error)
 	// Get 读取键值；ok=false 表示未命中。
 	Get(ctx context.Context, ns, key string) (string, bool, error)
 	// GetAndDelete 原子地读取并删除键值；ok=false 表示未命中。

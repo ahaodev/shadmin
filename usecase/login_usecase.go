@@ -208,7 +208,7 @@ func (lu *loginUsecase) revokeTokenJTI(token, secret string) error {
 
 // accountLockedError 返回锁定错误
 func (lu *loginUsecase) accountLockedError() error {
-	return &domain.AccountLockedError{RemainingSeconds: int(lu.securityManager.LockDuration.Seconds())}
+	return &domain.AccountLockedError{}
 }
 
 // recordLoginLog 异步记录登录日志，不阻塞登录流程。

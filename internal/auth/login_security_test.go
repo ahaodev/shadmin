@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -87,6 +88,9 @@ func (brokenCacher) Get(context.Context, string, string) (string, bool, error) {
 func (brokenCacher) GetAndDelete(context.Context, string, string) (string, bool, error) {
 	return "", false, errCacheDown
 }
+func (brokenCacher) Incr(context.Context, string, string, ...time.Duration) (int64, error) {
+	return 0, errCacheDown
+}
 func (brokenCacher) Exists(context.Context, string, string) (bool, error) {
 	return false, errCacheDown
 }
@@ -106,5 +110,29 @@ func TestLoginSecurityManager_CacheFailureFailsOpen(t *testing.T) {
 
 	if m.IsLocked(ctx, "alice") {
 		t.Fatal("cache failure must not lock users out")
+	}
+}
+
+// 并发失败必须逐一计入：读改写会让多个 goroutine 读到同一个旧值互相覆盖，
+// 使攻击者用并发请求绕过失败上限。
+func TestLoginSecurityManager_ConcurrentFailuresAreCounted(t *testing.T) {
+	ctx := context.Background()
+	m := newTestManager()
+	m.MaxFailures = 1 << 30 // 只验证计数，不在中途触发锁定
+
+	const writers, perWriter = 8, 25
+
+	var wg sync.WaitGroup
+	for range writers {
+		wg.Go(func() {
+			for range perWriter {
+				m.RecordFailedAttempt(ctx, "alice")
+			}
+		})
+	}
+	wg.Wait()
+
+	if got := m.failCount(ctx, "alice"); got != writers*perWriter {
+		t.Fatalf("fail count = %d, want %d", got, writers*perWriter)
 	}
 }

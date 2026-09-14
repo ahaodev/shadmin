@@ -56,11 +56,12 @@ func (lsm *LoginSecurityManager) IsLocked(ctx context.Context, identifier string
 
 // RecordFailedAttempt 记录一次失败并返回累计次数；返回值 >= MaxFailures 即已锁定。
 func (lsm *LoginSecurityManager) RecordFailedAttempt(ctx context.Context, identifier string) int {
-	n := lsm.failCount(ctx, identifier) + 1
-	if err := lsm.cacher.Set(ctx, loginFailNS, identifier, strconv.Itoa(n), lsm.LockDuration); err != nil {
-		log.Printf("login security: store fail count for %q failed: %v", identifier, err)
+	n, err := lsm.cacher.Incr(ctx, loginFailNS, identifier, lsm.LockDuration)
+	if err != nil {
+		log.Printf("login security: record fail count for %q failed: %v", identifier, err)
+		return 0
 	}
-	return n
+	return int(n)
 }
 
 // RecordSuccessfulLogin 清除失败计数。

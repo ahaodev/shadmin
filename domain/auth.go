@@ -3,7 +3,6 @@ package domain
 import (
 	"context"
 	"errors"
-	"fmt"
 )
 
 // LoginRequest 登录请求
@@ -60,13 +59,11 @@ var (
 	ErrRefreshTokenRevoked = errors.New("令牌已登出")
 )
 
-// AccountLockedError 账户因连续登录失败被锁定的错误，携带剩余锁定秒数。
-type AccountLockedError struct {
-	RemainingSeconds int
-}
+// AccountLockedError 账户因连续登录失败被锁定。
+type AccountLockedError struct{}
 
 func (e *AccountLockedError) Error() string {
-	return fmt.Sprintf("账户已被锁定，请在 %d 秒后重试", e.RemainingSeconds)
+	return "账户已被锁定，请稍后重试"
 }
 
 type LoginUsecase interface {

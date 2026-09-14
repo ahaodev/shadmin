@@ -78,6 +78,8 @@ func NewRedisCacheWithClusterClient(cli *redis.ClusterClient, opts ...Option) Ca
 type redisClienter interface {
 	Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd
 	Get(ctx context.Context, key string) *redis.StringCmd
+	Incr(ctx context.Context, key string) *redis.IntCmd
+	Eval(ctx context.Context, script string, keys []string, args ...any) *redis.Cmd
 	GetDel(ctx context.Context, key string) *redis.StringCmd
 	Exists(ctx context.Context, keys ...string) *redis.IntCmd
 	Del(ctx context.Context, keys ...string) *redis.IntCmd
@@ -104,6 +106,22 @@ func (r *redisCache) tl(exp []time.Duration) time.Duration {
 
 func (r *redisCache) Set(ctx context.Context, ns, key, value string, expiration ...time.Duration) error {
 	return r.cli.Set(ctx, r.o.joinKey(ns, key), value, r.tl(expiration)).Err()
+}
+
+// incrWithTTLScript 原子地自增并刷新 TTL。两条命令放在同一脚本里，
+// 避免 INCR 与 PEXPIRE 之间中断而留下没有 TTL 的永久计数。
+const incrWithTTLScript = `
+local n = redis.call('INCR', KEYS[1])
+redis.call('PEXPIRE', KEYS[1], ARGV[1])
+return n`
+
+// Incr 用 INCR 保证多实例并发下计数不丢失；未配置 TTL 时不刷新过期时间。
+func (r *redisCache) Incr(ctx context.Context, ns, key string, expiration ...time.Duration) (int64, error) {
+	full := r.o.joinKey(ns, key)
+	if ttl := r.tl(expiration); ttl > 0 {
+		return r.cli.Eval(ctx, incrWithTTLScript, []string{full}, ttl.Milliseconds()).Int64()
+	}
+	return r.cli.Incr(ctx, full).Result()
 }
 
 func (r *redisCache) Get(ctx context.Context, ns, key string) (string, bool, error) {

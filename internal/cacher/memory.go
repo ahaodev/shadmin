@@ -2,6 +2,7 @@ package cacher
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -30,6 +31,8 @@ type memoryCache struct {
 	// gadMu 仅用于 GetAndDelete，保证进程内"取+删"整体原子，
 	// 防止并发 goroutine 同时取到同一 key（一次性语义所依赖）。
 	gadMu sync.Mutex
+	// incrMu 仅用于 Incr，保证进程内"读+写"整体原子，避免并发自增互相覆盖。
+	incrMu sync.Mutex
 }
 
 func (m *memoryCache) tl(exp []time.Duration) time.Duration {
@@ -42,6 +45,21 @@ func (m *memoryCache) tl(exp []time.Duration) time.Duration {
 func (m *memoryCache) Set(_ context.Context, ns, key, value string, expiration ...time.Duration) error {
 	m.c.Set(m.o.joinKey(ns, key), value, m.tl(expiration))
 	return nil
+}
+
+func (m *memoryCache) Incr(_ context.Context, ns, key string, expiration ...time.Duration) (int64, error) {
+	full := m.o.joinKey(ns, key)
+	m.incrMu.Lock()
+	defer m.incrMu.Unlock()
+
+	var n int64
+	if v, ok := m.c.Get(full); ok {
+		s, _ := v.(string)
+		n, _ = strconv.ParseInt(s, 10, 64) // 损坏值按 0 处理，重新从 1 计数
+	}
+	n++
+	m.c.Set(full, strconv.FormatInt(n, 10), m.tl(expiration))
+	return n, nil
 }
 
 func (m *memoryCache) Get(_ context.Context, ns, key string) (string, bool, error) {
