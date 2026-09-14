@@ -17,7 +17,7 @@ type ServerConfig struct {
 func DefaultServerConfig() *ServerConfig {
 	return &ServerConfig{
 		TrustedProxies:     []string{"127.0.0.1"},
-		MaxMultipartMemory: 1000 << 20, // 1000 MB
+		MaxMultipartMemory: 1024 << 20, //1G
 		RedirectSlash:      true,
 	}
 }
