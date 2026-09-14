@@ -50,9 +50,9 @@ func (pr *ProtectedRoutes) setupUserRoutes(router *gin.RouterGroup, app *bootstr
 func (pr *ProtectedRoutes) setupProfileRoutes(group *gin.RouterGroup) {
 	profileController := pr.factory.CreateProfileController()
 
-	group.GET("/", profileController.GetProfile)
-	group.PUT("/", profileController.UpdateProfile)
-	group.PUT("/password", profileController.UpdatePassword)
+	group.GET("", profileController.GetProfile)              // GET /api/v1/profile
+	group.PUT("", profileController.UpdateProfile)           // PUT /api/v1/profile
+	group.PUT("/password", profileController.UpdatePassword) // PUT /api/v1/profile/password
 }
 
 // setupResourceRoutes configures resource access routes
