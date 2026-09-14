@@ -5,25 +5,28 @@ import (
 	"fmt"
 	"io"
 	"shadmin/internal/constants"
+	"shadmin/pkg"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-// maxLogBodyLen 日志中请求/响应体的最大展示长度，超出则截断
-const maxLogBodyLen = 1000
-
-// LogMiddleware 请求和响应日志中间件
+// LogMiddleware 请求和响应日志中间件。 用于本地开发调试：请求体与响应体原样整段打印，不做脱敏，也不做长度限制。
 func LogMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 记录请求开始时间
 		start := time.Now()
 
-		// 读取请求体
+		// 读取请求体：必须读全量才能回填给后续 handler
 		var requestBody []byte
 		if c.Request.Body != nil {
-			requestBody, _ = io.ReadAll(c.Request.Body)
+			body, err := io.ReadAll(c.Request.Body)
+			if err != nil {
+				// 读取失败也要回填已读部分，否则 handler 收到空 body 更难排查
+				pkg.Log.Warnf("LogMiddleware: failed to read request body: %v", err)
+			}
+			requestBody = body
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(requestBody))
 		}
 
@@ -71,11 +74,11 @@ func LogMiddleware() gin.HandlerFunc {
 
 		// 请求内容（请求体），仅在存在时输出，置于 Resp 之前
 		if len(requestBody) > 0 {
-			lines = append(lines, fmt.Sprintf("    Request : %s", truncateLog(requestBody)))
+			lines = append(lines, fmt.Sprintf("    Request : %s", requestBody))
 		}
 
 		if len(responseBody) > 0 {
-			lines = append(lines, fmt.Sprintf("    Resp   : %s", truncateLog([]byte(responseBody))))
+			lines = append(lines, fmt.Sprintf("    Resp   : %s", responseBody))
 		}
 
 		// 末尾空一行，便于在连续请求之间区分
@@ -84,23 +87,21 @@ func LogMiddleware() gin.HandlerFunc {
 	}
 }
 
-// truncateLog 截断超长内容，并标注原始长度
-func truncateLog(data []byte) string {
-	if len(data) <= maxLogBodyLen {
-		return string(data)
-	}
-	return fmt.Sprintf("%s... (truncated, %d chars)", string(data[:maxLogBodyLen]), len(data))
-}
-
 // responseBodyWriter 用于捕获响应体
 type responseBodyWriter struct {
 	gin.ResponseWriter
 	body *bytes.Buffer
 }
 
-func (r responseBodyWriter) Write(b []byte) (int, error) {
+func (r *responseBodyWriter) Write(b []byte) (int, error) {
 	r.body.Write(b)
 	return r.ResponseWriter.Write(b)
+}
+
+// WriteString 覆盖 gin 的 WriteString：c.String 与 io.WriteString 不经过 Write，
+func (r *responseBodyWriter) WriteString(s string) (int, error) {
+	r.body.WriteString(s)
+	return r.ResponseWriter.WriteString(s)
 }
 
 // getStatusEmoji 根据状态码返回对应的表情符号
