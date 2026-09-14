@@ -1,6 +1,7 @@
 # Contributing to Shadmin
 
 Shadmin is a full-stack RBAC admin dashboard with three main surfaces:
+
 - Go backend (`main.go`, `api/`, `domain/`, `repository/`, `usecase/`, `ent/`)
 - React 19 frontend (`frontend/`)
 - Thin Go CLI (`cli/`) for read-only agent workflows
@@ -69,7 +70,7 @@ main.go → cmd.Run() → bootstrap.App() → api.SetupRoutes() → api.Run()
 Request flow: **Route → Middleware (JWT + Casbin) → Controller → Usecase → Repository → Ent/DB**
 
 | Layer | Directory | Responsibility |
-|-------|-----------|---------------|
+| ------- | ----------- | --------------- |
 | Entry | `cmd/` | Startup orchestration (`cmd.Run()`), version flag |
 | Domain | `domain/` | Entities, DTOs, Repository/UseCase interfaces, errors, `RespSuccess()`/`RespError()` response helpers |
 | Schema | `ent/schema/` | Ent ORM schema definitions (run `go generate ./ent` after changes) |
@@ -79,7 +80,7 @@ Request flow: **Route → Middleware (JWT + Casbin) → Controller → Usecase �
 | Middleware | `api/middleware/` | `JwtAuthMiddleware`, `CasbinMiddleware.CheckAPIPermission()`, request logging |
 | Route | `api/route/` | `public.go` (auth, health) + `protected.go` (system/*); middleware wiring |
 | Factory | `api/route/factory.go` | DI: creates Repository → Usecase → Controller chains |
-| Internal | `internal/` | `casbin/` manager+adapter, `tokenservice/`, `auth/` login security (3-strike lockout), `scheduler/` Casbin sync (1 min), plus `cacher/`, `captcha/`, `conf/`, `constants/`, `contextutil/`, `tokenutil/` |
+| Internal | `internal/` | `casbin/` manager+adapter, `tokenservice/`, `auth/` login security (3-strike lockout), `scheduler/` Casbin sync (1 h), plus `cacher/`, `captcha/`, `conf/`, `constants/`, `contextutil/`, `tokenutil/` |
 | Bootstrap | `bootstrap/` | App init, DB, Casbin, storage, seed data |
 | Shared | `pkg/` | Cross-package utilities (logging, etc.) |
 
@@ -123,7 +124,7 @@ frontend/src/
 - File storage: `STORAGE_TYPE=disk|minio` with abstract interface in `domain/file.go`.
 
 | `DB_TYPE` | Example `DB_DSN` |
-|-----------|------------------|
+| ----------- | ------------------ |
 | `sqlite` (default) | leave empty |
 | `postgres` | `postgres://user:pass@localhost:5432/shadmin?sslmode=disable` |
 | `mysql` | `user:pass@tcp(localhost:3306)/shadmin?parseTime=true&loc=Local` |
@@ -179,6 +180,7 @@ Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`). Subject ≤ 72 chars.
 ### Quality Gates
 
 Before committing:
+
 - Backend: `go fmt ./...` → `go vet ./...` → `go test ./...`
 - Frontend (if changed): `pnpm lint` → `pnpm format:check`
 - CLI (if changed): `cd cli && make test`
