@@ -16,6 +16,10 @@ This file holds **direction only**: the ideas that stay true as the code changes
 
 **Infrastructure is a choice, not an assumption.** Databases, storage and caches sit behind contracts and are selected by configuration, so swapping one out never reaches business logic. New behavior should be configurable by default, not hardcoded.
 
+**Less is more.** The smallest change that fully answers the problem wins. Prefer deleting a branch over adding a flag, one obvious path over a configurable many, fewer files over more. Every line added is a line someone must read, test and maintain, so new code has to earn its place — if it can be simpler without losing behavior, it is not finished.
+
+**Keep it simple (KISS).** Design for the problem in front of you, not the one you imagine later. Code that reads top-to-bottom beats clever indirection, and abstractions arrive when a second concrete caller proves them, never before. When two designs both work, choose the one with fewer moving parts.
+
 ## Working here
 
 - Keep changes minimal and in-scope; follow the idiom already in the file you are touching.
@@ -27,7 +31,7 @@ This file holds **direction only**: the ideas that stay true as the code changes
 `.agent/skills/shadmin-dev/` is the authoritative, step-by-step source for how things are actually built — read it before writing feature code. Everything under `.agent/` is the single source of truth; each agent's own directory (`.github/`, `.pi/`, `.claude/`) links back to it.
 
 | Need | Read |
-|---|---|
+| --- | --- |
 | Workflow, layer responsibilities, boundaries, permissions | `.agent/skills/shadmin-dev/SKILL.md` |
 | Backend patterns — domain, Ent, repository, usecase, controller, routes | `.agent/skills/shadmin-dev/references/backend.md` |
 | Frontend patterns — types, services, features, hooks, forms, routes | `.agent/skills/shadmin-dev/references/frontend.md` |
