@@ -45,10 +45,6 @@ make install                    # Install into $GOBIN
 make test                       # CLI unit tests
 ```
 
-### Pre-commit hook
-
-`.githooks/pre-commit` runs in order: `gofmt -s -w .` → `go vet ./...` → `go test ./...` → frontend lint+format check. The frontend step is **skipped** if `frontend/node_modules` is not installed or `pnpm` is unavailable. CI in `.github/workflows/ci.yml` runs those gates on a fresh runner and adds `go generate ./...`, a `gofmt -l` check, and the frontend `pnpm build`.
-
 ## Bootstrap Runbook
 
 The first `go run .` does five things — errors in the first 30 seconds are almost always one of these:
