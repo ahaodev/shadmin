@@ -1,9 +1,3 @@
-# AGENTS.md
-
-Shadmin is a **template for RBAC admin systems**. Its value is the pattern, not the feature set — so when extending it, preserve the shape below rather than reinvent it.
-
-This file holds **direction only**: the ideas that stay true as the code changes. Recipes, layer tables, file paths and commands belong to the skill, which is where they can stay correct.
-
 ## Principles
 
 **Dependencies point one way.** Each module declares its contracts first; every layer knows only the layer beneath it, and frameworks stay at the edges. When an inner layer starts reaching outward, the design has broken — that, not a missing feature, is what degrades this template. Change the pattern on purpose, never by accident.
