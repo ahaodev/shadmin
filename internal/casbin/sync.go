@@ -387,13 +387,11 @@ func (s *SyncService) applyUserRoleDiff(userID string, desired []string) error {
 	var errs []error
 	for _, roleID := range toAdd {
 		if _, err := s.manager.AddRoleForUser(userID, roleID); err != nil {
-			logger.WithError(err).Warnf("Failed to add user role: user=%s, role=%s", userID, roleID)
 			errs = append(errs, fmt.Errorf("failed to add role %s for user %s: %w", roleID, userID, err))
 		}
 	}
 	for _, roleID := range toRemove {
 		if _, err := s.manager.DeleteRoleForUser(userID, roleID); err != nil {
-			logger.WithError(err).Warnf("Failed to delete user role: user=%s, role=%s", userID, roleID)
 			errs = append(errs, fmt.Errorf("failed to delete role %s for user %s: %w", roleID, userID, err))
 		}
 	}
@@ -434,13 +432,11 @@ func (s *SyncService) applyRolePolicyDiff(roleID string, desired []policyRule) e
 	var errs []error
 	for _, rule := range toAdd {
 		if _, err := s.manager.AddPolicy(roleID, rule.obj, rule.act); err != nil {
-			logger.WithError(err).Warnf("Failed to add API permission: %s %s", rule.act, rule.obj)
 			errs = append(errs, fmt.Errorf("failed to add policy %s %s for role %s: %w", rule.act, rule.obj, roleID, err))
 		}
 	}
 	for _, rule := range toRemove {
 		if _, err := s.manager.RemovePolicy(roleID, rule.obj, rule.act); err != nil {
-			logger.WithError(err).Warnf("Failed to remove API permission: %s %s", rule.act, rule.obj)
 			errs = append(errs, fmt.Errorf("failed to remove policy %s %s for role %s: %w", rule.act, rule.obj, roleID, err))
 		}
 	}

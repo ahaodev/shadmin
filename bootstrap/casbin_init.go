@@ -158,7 +158,7 @@ func (t *casbinSyncTarget) merge(other casbinSyncTarget) {
 }
 
 // triggerHookSync triggers targeted Casbin refresh after permission-related table changes.
-// 后台同步带 100ms 延迟，等事务提交完成；Casbin 侧写入由 SyncService 的锁串行化，
+// 触发时机由 afterCommit 保证（提交后才触发）；Casbin 侧写入由 SyncService 的锁串行化，
 // 因此并发触发只是排队，不会互相覆盖。
 func (ci *CasbinInitializer) triggerHookSync(schemaType string, target casbinSyncTarget) {
 	if target.empty() {
@@ -167,8 +167,6 @@ func (ci *CasbinInitializer) triggerHookSync(schemaType string, target casbinSyn
 	}
 
 	go func() {
-		time.Sleep(100 * time.Millisecond)
-
 		syncCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 		defer cancel()
 
@@ -304,36 +302,12 @@ func (ci *CasbinInitializer) collectValueTarget(v ent.Value) casbinSyncTarget {
 	switch value := v.(type) {
 	case *ent.User:
 		return casbinSyncTarget{userIDs: []string{value.ID}}
-	case []*ent.User:
-		ids := make([]string, 0, len(value))
-		for _, item := range value {
-			ids = append(ids, item.ID)
-		}
-		return casbinSyncTarget{userIDs: ids}
 	case *ent.Role:
 		return casbinSyncTarget{roleIDs: []string{value.ID}}
-	case []*ent.Role:
-		ids := make([]string, 0, len(value))
-		for _, item := range value {
-			ids = append(ids, item.ID)
-		}
-		return casbinSyncTarget{roleIDs: ids}
 	case *ent.Menu:
 		return casbinSyncTarget{menuIDs: []string{value.ID}}
-	case []*ent.Menu:
-		ids := make([]string, 0, len(value))
-		for _, item := range value {
-			ids = append(ids, item.ID)
-		}
-		return casbinSyncTarget{menuIDs: ids}
 	case *ent.ApiResource:
 		return casbinSyncTarget{apiResourceIDs: []string{value.ID}}
-	case []*ent.ApiResource:
-		ids := make([]string, 0, len(value))
-		for _, item := range value {
-			ids = append(ids, item.ID)
-		}
-		return casbinSyncTarget{apiResourceIDs: ids}
 	default:
 		return casbinSyncTarget{}
 	}

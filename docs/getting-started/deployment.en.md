@@ -291,7 +291,7 @@ REDIS_PASSWORD=                   # leave empty if none
 REDIS_DB=0                        # 0-15
 ```
 
-- **Casbin**: with Redis, uses `casbin-redis-adapter` (policies persisted to Redis); otherwise an in-memory Enforcer (kept fresh via Ent hooks + scheduled sync).
+- **Casbin**: with Redis, uses `casbin-redis-adapter` (policies persisted to Redis); otherwise policies are projected into the `casbin_rule` table of the same database (kept fresh via Ent hooks + scheduled sync).
 - **Captcha**: challenges stored in Redis with key TTL, verifiable across instances.
 - **JWT blacklist**: on logout the token `jti` is written to Redis until expiry, so logout takes effect across instances immediately.
 

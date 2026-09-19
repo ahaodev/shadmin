@@ -292,7 +292,7 @@ REDIS_PASSWORD=                   # 无密码留空
 REDIS_DB=0                        # 0-15
 ```
 
-- **Casbin**：启用 Redis 时走 `casbin-redis-adapter`（策略持久化到 Redis），否则纯内存 Enforcer（由应用层 Ent Hook + 定时同步维持策略）。
+- **Casbin**：启用 Redis 时走 `casbin-redis-adapter`（策略持久化到 Redis），否则持久化到同一数据库的 `casbin_rule` 表（由应用层 Ent Hook + 定时同步维持策略）。
 - **Captcha**：验证码存到 Redis（key TTL 自动过期），多实例可跨进程校验。
 - **JWT 黑名单**：登出时将 token 的 `jti` 写入 Redis 直到过期，多实例登出即时生效。
 
