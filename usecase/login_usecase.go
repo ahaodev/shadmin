@@ -167,7 +167,7 @@ func (lu *loginUsecase) Refresh(c context.Context, refreshToken string) (*domain
 	// 轮换：新令牌全部签发成功后吊销旧 refresh token，阻断旧令牌重放。
 	// 吊销失败时旧令牌仍有效，客户端重试即可，不会造成会话中断。
 	if lu.tokenBlacklist != nil && claims.JTI() != "" && claims.ExpiresAt != nil {
-		if err := lu.tokenBlacklist.Add(context.Background(), claims.JTI(), claims.ExpiresAt.Time); err != nil {
+		if err := lu.tokenBlacklist.Add(ctx, claims.JTI(), claims.ExpiresAt.Time); err != nil {
 			return nil, fmt.Errorf("revoke rotated refresh token: %w", err)
 		}
 	}
@@ -177,25 +177,28 @@ func (lu *loginUsecase) Refresh(c context.Context, refreshToken string) (*domain
 
 // Logout 将 access/refresh token 的 jti 加入黑名单，TTL 设为 token 剩余有效期。
 func (lu *loginUsecase) Logout(c context.Context, accessToken, refreshToken string) error {
+	ctx, cancel := context.WithTimeout(c, lu.contextTimeout)
+	defer cancel()
+
 	if accessToken != "" {
 		// 登出审计日志（不记录令牌内容）
 		if claims, err := lu.tokenService.ParseAccessClaims(accessToken, lu.accessTokenSecret); err == nil {
 			pkg.Log.Infof("User logout - UserID: %s, UserName: %s", claims.ID, claims.Name)
 		}
 
-		if err := lu.revokeTokenJTI(accessToken, lu.accessTokenSecret); err != nil {
+		if err := lu.revokeTokenJTI(ctx, accessToken, lu.accessTokenSecret); err != nil {
 			return err
 		}
 	}
 	if refreshToken != "" {
-		if err := lu.revokeTokenJTI(refreshToken, lu.refreshTokenSecret); err != nil {
+		if err := lu.revokeTokenJTI(ctx, refreshToken, lu.refreshTokenSecret); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (lu *loginUsecase) revokeTokenJTI(token, secret string) error {
+func (lu *loginUsecase) revokeTokenJTI(ctx context.Context, token, secret string) error {
 	jti, exp, ok := lu.tokenService.ExtractJTIAndExpiry(token, secret)
 	if !ok || jti == "" {
 		return nil // 无 jti 的旧令牌或不可解析的令牌无需加入黑名单
@@ -203,7 +206,7 @@ func (lu *loginUsecase) revokeTokenJTI(token, secret string) error {
 	if time.Now().After(exp) {
 		return nil // 已过期的 token 无需加入黑名单
 	}
-	return lu.tokenBlacklist.Add(context.Background(), jti, exp)
+	return lu.tokenBlacklist.Add(ctx, jti, exp)
 }
 
 // accountLockedError 返回锁定错误

@@ -46,7 +46,7 @@ func (uc *UserController) GetUsers(c *gin.Context) {
 	filter.IncludeRoles = c.Query("include_roles") == "true"
 
 	// 使用统一查询接口
-	result, err := uc.UserUsecase.ListUsers(c, filter)
+	result, err := uc.UserUsecase.ListUsers(c.Request.Context(), filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
@@ -73,7 +73,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		return
 	}
 
-	user, err := uc.UserUsecase.CreateUser(c, &request)
+	user, err := uc.UserUsecase.CreateUser(c.Request.Context(), &request)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
@@ -95,7 +95,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 // @Router       /system/user/{id} [get]
 func (uc *UserController) GetUser(c *gin.Context) {
 	id := c.Param("id")
-	user, err := uc.UserUsecase.GetUserByID(c, id)
+	user, err := uc.UserUsecase.GetUserByID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, domain.RespError("User not found"))
 		return
@@ -124,7 +124,7 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 	}
 
 	// 执行用户更新
-	if err := uc.UserUsecase.UpdateUserPartial(c, id, updateReq); err != nil {
+	if err := uc.UserUsecase.UpdateUserPartial(c.Request.Context(), id, updateReq); err != nil {
 		if errors.Is(err, domain.ErrCannotEditAdmin) {
 			c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
 			return
@@ -134,7 +134,7 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 	}
 
 	// 获取更新后的用户信息
-	user, err := uc.UserUsecase.GetUserByID(c, id)
+	user, err := uc.UserUsecase.GetUserByID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
@@ -169,7 +169,7 @@ func (uc *UserController) InviteUser(c *gin.Context) {
 		return
 	}
 
-	user, err := uc.UserUsecase.InviteUser(c, &request, invitedBy.(string))
+	user, err := uc.UserUsecase.InviteUser(c.Request.Context(), &request, invitedBy.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
@@ -194,7 +194,7 @@ func (uc *UserController) InviteUser(c *gin.Context) {
 func (uc *UserController) GetUserRoles(c *gin.Context) {
 	userID := c.Param("id")
 
-	roles, err := uc.UserUsecase.GetUserRoles(c, userID)
+	roles, err := uc.UserUsecase.GetUserRoles(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
@@ -226,7 +226,7 @@ func (uc *UserController) DeleteUser(c *gin.Context) {
 	}
 
 	// 执行删除用户逻辑（含权限校验）
-	if err := uc.UserUsecase.DeleteUser(c, userID, currentUserID); err != nil {
+	if err := uc.UserUsecase.DeleteUser(c.Request.Context(), userID, currentUserID); err != nil {
 		if errors.Is(err, domain.ErrCannotDeleteSelf) || errors.Is(err, domain.ErrCannotDeleteAdmin) {
 			c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
 			return

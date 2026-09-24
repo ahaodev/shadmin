@@ -29,7 +29,7 @@ func (cc *CaptchaController) GetSlideCaptcha(c *gin.Context) {
 	}
 
 	oldID := c.Query("old_captcha_id")
-	challenge, err := cc.CaptchaUsecase.GenerateSlide(c, oldID)
+	challenge, err := cc.CaptchaUsecase.GenerateSlide(c.Request.Context(), oldID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return

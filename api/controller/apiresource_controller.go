@@ -55,7 +55,7 @@ func (arc *ApiResourceController) GetApiResources(c *gin.Context) {
 		Path:        path,
 	}
 
-	result, err := arc.ApiResourceUseCase.FetchPaged(c, params)
+	result, err := arc.ApiResourceUseCase.FetchPaged(c.Request.Context(), params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return

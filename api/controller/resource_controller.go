@@ -26,7 +26,7 @@ func (rc *ResourceController) GetResources(c *gin.Context) {
 	userID := c.GetString(constants.UserID)
 	isAdmin := c.GetBool(constants.IsAdmin)
 
-	resources, err := rc.ResourceUsecase.GetUserResources(c, userID, isAdmin)
+	resources, err := rc.ResourceUsecase.GetUserResources(c.Request.Context(), userID, isAdmin)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
