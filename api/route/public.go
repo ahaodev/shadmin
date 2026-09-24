@@ -1,6 +1,8 @@
 package route
 
 import (
+	"time"
+
 	"shadmin/api/middleware"
 	"shadmin/bootstrap"
 	"shadmin/internal/conf"
@@ -52,8 +54,8 @@ func (pr *PublicRoutes) setupAuthRoutes(group *gin.RouterGroup) {
 	group.POST("/refresh", authController.RefreshToken)
 	group.POST("/logout", authController.Logout)
 	group.GET("/captcha/slide", captchaController.GetSlideCaptcha)
-	group.POST("/device/code", deviceAuthController.RequestCode)
-	group.POST("/device/token", deviceAuthController.PollToken)
+	group.POST("/device/code", middleware.RateLimitByIP(10, time.Minute), deviceAuthController.RequestCode)
+	group.POST("/device/token", middleware.RateLimitByIP(60, time.Minute), deviceAuthController.PollToken)
 
 	// 第三方登录：先注册 /providers，再注册 /:provider 与 /:provider/callback，
 	// 避免 gin 路由树把 /providers 当作 :provider 匹配。

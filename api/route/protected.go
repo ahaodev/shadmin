@@ -1,6 +1,8 @@
 package route
 
 import (
+	"time"
+
 	"shadmin/api/middleware"
 	"shadmin/bootstrap"
 
@@ -66,7 +68,7 @@ func (pr *ProtectedRoutes) setupResourceRoutes(group *gin.RouterGroup) {
 func (pr *ProtectedRoutes) setupDeviceAuthRoutes(group *gin.RouterGroup) {
 	deviceAuthController := pr.factory.CreateDeviceAuthController()
 
-	group.POST("/activate", deviceAuthController.Activate)
+	group.POST("/activate", middleware.RateLimitByIP(20, time.Minute), deviceAuthController.Activate)
 }
 
 // setupSystemRoutes configures system administration routes
