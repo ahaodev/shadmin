@@ -1,5 +1,11 @@
 import React, { type ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
+import {
+  type NavCollapsible,
+  type NavGroup as NavGroupProps,
+  type NavItem,
+  type NavLink,
+} from '@/types/layout'
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
 import { getIconByName } from '@/lib/icons'
 import {
@@ -27,12 +33,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
-import {
-  type NavCollapsible,
-  type NavGroup as NavGroupProps,
-  type NavItem,
-  type NavLink,
-} from './types'
 
 export function NavGroup({
   title,

@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { menuService } from '@/services/menu-resource-service'
 import { useAuthStore } from '@/stores/auth-store'
+import { menuService } from '@/lib/menu-service'
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout'
 
 // Routes that are always accessible for authenticated users (not menu-managed)

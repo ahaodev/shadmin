@@ -18,18 +18,9 @@ const loginLogSchema = z.object({
   failure_reason: z.string().optional(),
   login_time: z.coerce.date(),
 })
-export type LoginLog = z.infer<typeof loginLogSchema>
+export type { LoginLog } from '@/types/login-log'
 
 export const loginLogListSchema = z.array(loginLogSchema)
-
-// 分页响应类型
-export type PaginatedLoginLogsResponse = {
-  list: LoginLog[] | null
-  total: number
-  page: number
-  page_size: number
-  total_pages: number
-}
 
 // 查询过滤器schema
 export const loginLogFilterSchema = z.object({
@@ -46,4 +37,3 @@ export const loginLogFilterSchema = z.object({
   sort_by: z.string().optional(),
   order: z.union([z.literal('asc'), z.literal('desc')]).optional(),
 })
-export type LoginLogFilter = z.infer<typeof loginLogFilterSchema>

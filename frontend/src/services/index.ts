@@ -1,7 +1,7 @@
 // Export all service APIs
 export * from './authApi'
 export * from './menuApi'
-export * from './menu-resource-service'
+export * from './resourceApi'
 export * from './profileApi'
 export * from './roleApi'
 export * from './userApi'

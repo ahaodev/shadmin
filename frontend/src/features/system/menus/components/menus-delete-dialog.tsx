@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { menuService } from '@/services/menu-resource-service'
 import { deleteMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/error'
+import { menuService } from '@/lib/menu-service'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

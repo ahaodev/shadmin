@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { menuService } from '@/services/menu-resource-service'
+import type { SidebarData } from '@/types/layout'
 import { Command } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
-import { type SidebarData } from '@/components/layout/types'
+import { menuService } from '@/lib/menu-service'
 
 const defaultSidebarData = {
   user: {

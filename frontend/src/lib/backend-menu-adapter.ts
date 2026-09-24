@@ -1,5 +1,5 @@
+import type { NavGroup, NavItem } from '@/types/layout'
 import { type MenuTreeNode } from '@/types/menu'
-import { type NavGroup, type NavItem } from '@/components/layout/types'
 
 /**
  * Shared render guard for backend menus.

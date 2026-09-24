@@ -129,8 +129,7 @@ export function UserAuthForm({
         }
 
         try {
-          const { menuService } =
-            await import('@/services/menu-resource-service')
+          const { menuService } = await import('@/lib/menu-service')
           await menuService.reloadMenuData()
         } catch (error) {
           // eslint-disable-next-line no-console

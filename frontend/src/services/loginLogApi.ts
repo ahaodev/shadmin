@@ -1,9 +1,9 @@
 import { apiClient } from '@/services/config'
-import { buildSearchParams } from '@/lib/query-params'
 import type {
   PaginatedLoginLogsResponse,
   LoginLogFilter,
-} from '@/features/system/login-logs/data/schema'
+} from '@/types/login-log'
+import { buildSearchParams } from '@/lib/query-params'
 
 // Login Log Management API - Based on swagger.json /system/login-logs endpoints
 

@@ -2,10 +2,10 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { menuService } from '@/services/menu-resource-service'
 import { createMenu, updateMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
 import { toast } from 'sonner'
+import { menuService } from '@/lib/menu-service'
 import {
   MENUS_QUERY_KEY,
   PARENT_MENUS_QUERY_KEY,

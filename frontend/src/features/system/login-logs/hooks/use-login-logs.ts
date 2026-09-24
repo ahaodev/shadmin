@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { clearAllLoginLogs, getLoginLogs } from '@/services/loginLogApi'
+import type { LoginLogFilter } from '@/types/login-log'
 import { useCrudMutation } from '@/hooks/use-crud-mutation'
-import type { LoginLogFilter } from '../data/schema'
 
 // Query keys for React Query
 const LOGIN_LOGS_QUERY_KEY = 'login-logs'
