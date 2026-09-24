@@ -3,13 +3,12 @@ package domain
 import (
 	"context"
 	"errors"
-	"shadmin/internal/constants"
 	"time"
 )
 
 const (
-	RoleStatusActive   = constants.StatusActive
-	RoleStatusInactive = constants.StatusInactive
+	RoleStatusActive   = StatusActive
+	RoleStatusInactive = StatusInactive
 )
 
 var (
