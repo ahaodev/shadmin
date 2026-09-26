@@ -6,11 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"shadmin/internal/constants"
 	"strings"
 	"time"
 
 	"shadmin/domain"
+	"shadmin/internal/constants"
 	"shadmin/internal/tokenservice"
 )
 
@@ -86,7 +86,9 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 func (u *userIdentityUsecase) resolveOrCreateUser(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
 	var lastErr error
 	for range 2 {
-		user, err := u.resolveOrCreateUserOnce(ctx, provider, profile)
+		user, err := u.identityRepository.WithUserBindingTx(ctx, func(txCtx context.Context, userRepo domain.UserRepository, identityRepo domain.UserIdentityRepository) (*domain.User, error) {
+			return u.resolveOrCreateUserForIdentity(txCtx, userRepo, identityRepo, provider, profile)
+		})
 		if err == nil {
 			return user, nil
 		}
@@ -96,12 +98,6 @@ func (u *userIdentityUsecase) resolveOrCreateUser(ctx context.Context, provider 
 		}
 	}
 	return nil, lastErr
-}
-
-func (u *userIdentityUsecase) resolveOrCreateUserOnce(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
-	return u.identityRepository.WithUserBindingTx(ctx, func(txCtx context.Context, userRepo domain.UserRepository, identityRepo domain.UserIdentityRepository) (*domain.User, error) {
-		return u.resolveOrCreateUserForIdentity(txCtx, userRepo, identityRepo, provider, profile)
-	})
 }
 
 func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(

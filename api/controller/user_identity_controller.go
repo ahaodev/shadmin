@@ -5,11 +5,11 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+
+	"shadmin/domain"
 	"shadmin/internal/auth"
 	"shadmin/internal/constants"
 	"shadmin/internal/contextutil"
-
-	"shadmin/domain"
 
 	"github.com/gin-gonic/gin"
 	"github.com/markbates/goth"
@@ -122,10 +122,8 @@ func (sc *UserIdentityController) recordIdentityLoginLog(c *gin.Context, provide
 	// 避免异步写日志因 "context canceled" 失败。
 	ctx := context.WithoutCancel(c.Request.Context())
 	go func() {
-		if _, err := sc.LoginLogUsecase.CreateLoginLog(ctx, logRequest); err != nil {
-			// 日志失败不影响登录流程，仅忽略。
-			_ = err
-		}
+		// 日志失败不影响登录流程，仅忽略。
+		_, _ = sc.LoginLogUsecase.CreateLoginLog(ctx, logRequest)
 	}()
 }
 
@@ -178,7 +176,7 @@ func (sc *UserIdentityController) ListProviders(c *gin.Context) {
 	c.JSON(http.StatusOK, domain.RespSuccess(list))
 }
 
-// redirectTo 重定向到给定 URL；若 URL 解析失败则降级返回 JSON 错误。
+// redirectTo 重定向到给定 URL；目标为空时返回 JSON 错误。
 func (sc *UserIdentityController) redirectTo(c *gin.Context, target string) {
 	if target == "" {
 		c.JSON(http.StatusInternalServerError, domain.RespError("identity redirect not configured"))
