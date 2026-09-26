@@ -37,6 +37,7 @@ type UserIdentityProfile = goth.User
 var (
 	ErrUserIdentityProviderDisabled = errors.New("user identity provider is not enabled")
 	ErrUserIdentityAuthFailed       = errors.New("user identity authentication failed")
+	ErrUserIdentityConflict         = errors.New("user identity binding conflict")
 )
 
 // UserIdentityRepository 第三方身份关联存储接口。

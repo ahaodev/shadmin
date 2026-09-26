@@ -84,12 +84,15 @@ type UserQueryFilter struct {
 
 type UserRepository interface {
 	Create(c context.Context, user *User) error
+	CreateWithRoles(c context.Context, user *User, roleIDs []string) error
 	GetByID(c context.Context, id string) (*User, error)
 	GetByIdentifier(c context.Context, identifier string) (*User, error)
 	Query(c context.Context, filter UserQueryFilter) (*PagedResult[*User], error)
 	Update(c context.Context, user *User) error
+	UpdateWithAuthorization(c context.Context, user *User) error
+	UpdateWithRoles(c context.Context, user *User, roleIDs []string) error
+	UpdateIdentityProfile(c context.Context, userID, nickname, avatar string) error
 	Delete(c context.Context, id string) error
-	// GetStatusByID returns only the status string for the user.
 	GetStatusByID(c context.Context, id string) (string, error)
 	GetRoleIDs(c context.Context, id string) ([]string, error)
 }

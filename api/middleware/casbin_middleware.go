@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -42,12 +43,17 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 
 		hasPermission, err := m.CasManager.CheckPermission(userID, path, method)
 		if err != nil {
-			pkg.Log.WithFields(logrus.Fields{
-				"user_id": userID,
-				"method":  method,
-				"path":    path,
-			}).WithError(err).Error("API 权限检查失败")
-			c.JSON(http.StatusInternalServerError, domain.RespError("权限检查失败"))
+			status := http.StatusInternalServerError
+			if errors.Is(err, casbin.ErrSnapshotStale) {
+				status = http.StatusServiceUnavailable
+			} else {
+				pkg.Log.WithFields(logrus.Fields{
+					"user_id": userID,
+					"method":  method,
+					"path":    path,
+				}).WithError(err).Error("API 权限检查失败")
+			}
+			c.JSON(status, domain.RespError("权限检查失败"))
 			c.Abort()
 			return
 		}

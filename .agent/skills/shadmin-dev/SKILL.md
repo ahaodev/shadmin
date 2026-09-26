@@ -137,9 +137,12 @@ These are linked through the **Role → Menu → API Resources** binding:
 4. Frontend fetches permissions from `/api/v1/resources` and stores in Zustand
 
 **To add permissions for a new feature:**
-1. Backend: routes auto-register as API resources on restart
-2. Frontend: add permission constants in `frontend/src/constants/permissions.ts`
-3. Admin panel: create menu entries, bind API resources, assign to roles
+1. Backend: routes are scanned into API resources by `bootstrap.InitApiResources`; route inventory changes advance the authorization generation.
+2. Frontend: add permission constants in `frontend/src/constants/permissions.ts`.
+3. Admin panel: create menu entries, bind API resources, assign to roles.
+4. For any new write path that changes users, roles, menus, API resources, or their authorization edges, use the repository authorization transaction helper so the DB change and `authz_state.generation` update commit together. Do not mutate the live Casbin Enforcer directly.
+
+**Casbin snapshot lifecycle:** Ent authorization relations are the source of truth. Each process builds a complete in-memory Enforcer snapshot and publishes it atomically; a committed `authz_states.generation` update triggers local synchronization, while `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` provides low-frequency recovery polling (default one hour) for missed triggers, restarts, and cross-instance changes. Snapshots are not persisted through Casbin AutoSave. If a generation change is detected or cannot be checked, protected Casbin requests fail closed until a fresh snapshot is published. Keep the existing `g/p` semantics (active users/roles, public resources excluded, `admin` wildcard) unless a separately reviewed change intentionally changes them.
 
 ### Step 6: Generate & Verify
 

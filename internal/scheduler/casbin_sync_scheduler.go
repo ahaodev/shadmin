@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"fmt"
 	"shadmin/internal/casbin"
 	"shadmin/pkg"
 	"sync"
@@ -11,23 +10,38 @@ import (
 
 var log = pkg.Log
 
-// CasbinSyncScheduler casbin同步定时任务调度器
+// CasbinSyncScheduler runs generation-triggered syncs with a periodic fallback.
 type CasbinSyncScheduler struct {
 	syncService *casbin.SyncService
 	interval    time.Duration
-	lastSync    time.Time
+	triggerChan chan struct{}
 	running     bool
 	stopChan    chan struct{}
 	doneChan    chan struct{}
 	mutex       sync.RWMutex
 }
 
-// NewCasbinSyncScheduler 创建新的casbin同步调度器
+// NewCasbinSyncScheduler creates a Casbin sync scheduler.
 func NewCasbinSyncScheduler(syncService *casbin.SyncService, interval time.Duration) *CasbinSyncScheduler {
+	if interval <= 0 {
+		interval = time.Hour
+	}
 	return &CasbinSyncScheduler{
 		syncService: syncService,
 		interval:    interval,
-		lastSync:    time.Now(),
+		// A buffered, coalescing trigger avoids blocking the Ent commit hook and
+		// collapses bursts of authorization writes into one sync attempt.
+		triggerChan: make(chan struct{}, 1),
+	}
+}
+
+// TriggerSync requests an authorization snapshot refresh after a committed
+// generation change. The request is best-effort and coalesced; the periodic
+// poll remains the recovery path for missed triggers and other instances.
+func (s *CasbinSyncScheduler) TriggerSync() {
+	select {
+	case s.triggerChan <- struct{}{}:
+	default:
 	}
 }
 
@@ -42,7 +56,6 @@ func (s *CasbinSyncScheduler) Start(ctx context.Context) {
 	}
 
 	// stopChan/doneChan 每次启动重建，Stop 之后可以再次 Start。
-	// interval 与通道一样在锁内取快照后传给 run，避免运行中 SetInterval 造成数据竞争。
 	stopChan := make(chan struct{})
 	doneChan := make(chan struct{})
 	s.stopChan = stopChan
@@ -72,13 +85,6 @@ func (s *CasbinSyncScheduler) Stop() {
 	log.Printf(" Casbin同步调度器已停止")
 }
 
-// IsRunning 检查调度器是否在运行
-func (s *CasbinSyncScheduler) IsRunning() bool {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	return s.running
-}
-
 // run 执行定时同步任务的主循环。interval 与通道由 Start 快照传入，不读取可变字段。
 func (s *CasbinSyncScheduler) run(ctx context.Context, interval time.Duration, stop <-chan struct{}, done chan<- struct{}) {
 	defer close(done)
@@ -98,7 +104,12 @@ func (s *CasbinSyncScheduler) run(ctx context.Context, interval time.Duration, s
 
 		case <-ticker.C:
 			if err := s.performSync(ctx); err != nil {
-				log.Printf("ERROR: Casbin定时增量同步失败: %v", err)
+				log.Printf("ERROR: Casbin generation sync failed: %v", err)
+			}
+
+		case <-s.triggerChan:
+			if err := s.performSync(ctx); err != nil {
+				log.Printf("ERROR: Casbin generation sync failed after trigger: %v", err)
 			}
 		}
 	}
@@ -106,69 +117,12 @@ func (s *CasbinSyncScheduler) run(ctx context.Context, interval time.Duration, s
 
 // performSync 执行一次同步操作
 func (s *CasbinSyncScheduler) performSync(ctx context.Context) error {
-	startTime := time.Now()
-
-	s.mutex.RLock()
-	since := s.lastSync
-	s.mutex.RUnlock()
-
-	// 使用带超时的上下文，避免单次同步时间过长
 	syncCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	err := s.syncService.SyncIncremental(syncCtx, since)
-	if err != nil {
+	if err := s.syncService.SyncIfChanged(syncCtx); err != nil {
 		return err
 	}
 
-	s.mutex.Lock()
-	s.lastSync = startTime
-	s.mutex.Unlock()
-
-	// 可选：获取并记录同步统计
-	if stats, err := s.syncService.GetSyncStats(syncCtx); err == nil {
-		if !stats.IsHealthy() {
-			log.Printf("WARN: Casbin同步状态不健康 - Roles: %d, Policies: %d",
-				stats.CasbinRoles, stats.CasbinPolicies)
-		}
-	}
 	return nil
-}
-
-// TriggerSync 手动触发一次同步
-func (s *CasbinSyncScheduler) TriggerSync(ctx context.Context) error {
-	if !s.IsRunning() {
-		return fmt.Errorf("调度器未运行")
-	}
-
-	log.Printf(" 手动触发Casbin同步")
-	return s.performSync(ctx)
-}
-
-// GetStatus 获取调度器状态信息
-func (s *CasbinSyncScheduler) GetStatus() SchedulerStatus {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
-	return SchedulerStatus{
-		Running:  s.running,
-		Interval: s.interval,
-		LastSync: s.lastSync,
-	}
-}
-
-// SchedulerStatus 调度器状态
-type SchedulerStatus struct {
-	Running  bool          `json:"running"`
-	Interval time.Duration `json:"interval"`
-	LastSync time.Time     `json:"last_sync"`
-}
-
-// SetInterval 更新同步间隔（只影响下一次 Start；运行中的 ticker 不重建）
-func (s *CasbinSyncScheduler) SetInterval(interval time.Duration) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.interval = interval
-	log.Printf(" Casbin同步间隔已更新为: %v（下次 Start 生效）", interval)
 }

@@ -91,3 +91,11 @@ func TestCheckAPIPermission_Returns500OnManagerError(t *testing.T) {
 		t.Fatalf("status = %d, want 500", w.Code)
 	}
 }
+
+func TestCheckAPIPermission_FailsClosedWhenSnapshotIsStale(t *testing.T) {
+	r := newCasbinTestRouter(fakeManager{err: casbin.ErrSnapshotStale})
+
+	if w := casbinProbe(t, r, "/api/v1/probe"); w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", w.Code)
+	}
+}

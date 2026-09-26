@@ -261,7 +261,7 @@ User → Role → Permission Policy → API Resource (path + method)
 
 1. On startup, `bootstrap.InitApiResources()` scans all Gin routes and writes them to the database with IDs in `METHOD:/path` format
 2. Admins bind API resources to menu items in Menu Management
-3. When roles are assigned menus, Casbin policies are automatically synced
+3. Authorization changes increment the generation in the same DB transaction; each instance polls it, builds a complete Casbin snapshot, and atomically swaps it
 4. The frontend fetches the current user's visible menu tree and permission list via `/api/v1/resources` to dynamically render the sidebar
 
 ## Database Abstraction
@@ -295,9 +295,8 @@ main.go
     → bootstrap.App()              # Load .env, connect DB, init Casbin/storage/Gin
     → api.SetupRoutes(app)         # Register static assets, Swagger, API routes
     → bootstrap.InitApiResources() # Scan Gin routes and write to DB
-    → bootstrap.InitDefaultAdmin() # Init admin role/user, bind menus and policies
-    → bootstrap.InitDictData()     # Init dictionary data
-    → bootstrap.InitCasbinHooks()  # Set up Casbin rules
+    → bootstrap.InitDefaultAdmin() # Init admin role/user and menus
+    → bootstrap.InitCasbin(app)       # Build initial snapshot and start generation triggers with fallback polling
     → api.Run(app)                 # Listen on port :55667
 ```
 

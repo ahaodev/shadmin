@@ -25,13 +25,17 @@ func Run() {
 	api.SetupRoutes(app)
 
 	// 扫描路由入库
-	bootstrap.InitApiResources(app)
+	if err := bootstrap.InitApiResources(app); err != nil {
+		pkg.Log.Fatalf("API resource initialization failed: %v", err)
+	}
 
 	// 初始化默认管理员用户（包含菜单初始化）
-	bootstrap.InitDefaultAdmin(app)
+	if err := bootstrap.InitDefaultAdmin(app); err != nil {
+		pkg.Log.Fatalf("default admin initialization failed: %v", err)
+	}
 
-	// 初始化完成后，执行一次全量同步并注册Hook。
-	if err := bootstrap.InitCasbinHooks(app); err != nil {
+	// 初始化完成后，构建首个 Casbin 授权快照并启动 generation 触发同步。
+	if err := bootstrap.InitCasbin(app); err != nil {
 		pkg.Log.Fatalf("casbin initialization failed, aborting startup: %v", err)
 	}
 

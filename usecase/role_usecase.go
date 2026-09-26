@@ -107,9 +107,8 @@ func (ru *roleUsecase) Update(c context.Context, id string, request *domain.Upda
 		return nil, fmt.Errorf("failed to update role: %w", err)
 	}
 
-	// Log menu assignments change - casbin sync handled by scheduled task
 	if request.MenuIDs != nil && ru.hasMenuAssignmentsChanged(oldMenuIDs, request.MenuIDs) {
-		pkg.Log.Printf("Menu assignments changed for role %s, will be synced by scheduled casbin task", existingRole.ID)
+		pkg.Log.Printf("Menu assignments changed for role %s; authorization snapshot will refresh from the new generation", existingRole.ID)
 	}
 	// Fetch and return updated role
 	updatedRole, err := ru.roleRepository.GetByID(ctx, id)
@@ -142,20 +141,7 @@ func (ru *roleUsecase) Delete(c context.Context, id string) error {
 		return fmt.Errorf("failed to delete role from database: %w", err)
 	}
 
-	// 3. 清理Casbin中的角色策略
-	if err := ru.cleanupRolePermissions(role.Name); err != nil {
-		// 策略清理失败，记录错误但不回滚角色删除
-		pkg.Log.Printf("ERROR: Failed to clean up permissions for deleted role %s: %v", role.Name, err)
-		// 可以考虑加入告警机制
-	}
-
 	pkg.Log.Printf("Successfully deleted role %s", role.Name)
-	return nil
-}
-
-// cleanupRolePermissions 记录角色删除，权限清理由定时同步处理
-func (ru *roleUsecase) cleanupRolePermissions(roleName string) error {
-	pkg.Log.Printf("Role %s deleted, permissions will be cleaned up by scheduled casbin sync", roleName)
 	return nil
 }
 

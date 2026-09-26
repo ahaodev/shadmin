@@ -2,31 +2,190 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
+	"shadmin/ent"
 	"shadmin/ent/user"
 	"shadmin/internal/constants"
+	"shadmin/repository"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// InitDefaultAdmin initializes default admin user and permissions
-func InitDefaultAdmin(app *Application) {
-	ctx := context.Background()
+type seedMenu struct {
+	key        string
+	parentKey  string
+	name       string
+	sequence   int
+	typ        string
+	path       string
+	icon       string
+	permission string
+	resources  []string
+}
 
-	// Check if admin user exists
+var defaultMenus = []seedMenu{
+	{key: "dashboard", name: "仪表盘", typ: "menu", path: "/", icon: "Home"},
+	{key: "system", name: "系统管理", typ: "menu", path: "/", icon: "Settings"},
+	{key: "menu", parentKey: "system", name: "菜单管理", sequence: 1, typ: "menu", path: "/system/menu", icon: "Menu", resources: []string{"GET:/api/v1/system/menu", "GET:/api/v1/system/menu/tree"}},
+	{key: "role", parentKey: "system", name: "角色管理", sequence: 2, typ: "menu", path: "/system/role", icon: "UserCheck", resources: []string{"GET:/api/v1/system/role"}},
+	{key: "user", parentKey: "system", name: "用户管理", sequence: 3, typ: "menu", path: "/system/user", icon: "Users", resources: []string{"GET:/api/v1/system/user"}},
+	{key: "department", parentKey: "system", name: "部门管理", sequence: 4, typ: "menu", path: "/system/departments", icon: "Building2", resources: []string{"GET:/api/v1/system/department/tree"}},
+	{key: "api-resource", parentKey: "system", name: "API资源", sequence: 5, typ: "menu", path: "/system/api-resources", icon: "Code2", resources: []string{"GET:/api/v1/system/api-resources"}},
+	{key: "login-log", parentKey: "system", name: "登录日志", sequence: 6, typ: "menu", path: "/system/login-logs", icon: "Layers3", resources: []string{"GET:/api/v1/system/login-logs"}},
+	{key: "dict", parentKey: "system", name: "字典管理", sequence: 7, typ: "menu", path: "/system/dict", icon: "BookMarked", resources: []string{"GET:/api/v1/system/dict/types", "GET:/api/v1/system/dict/items", "GET:/api/v1/system/dict/types/code/:code/items"}},
+}
+
+var defaultButtons = []seedMenu{
+	{key: "menu-add", parentKey: "menu", name: "创建菜单", typ: "button", icon: "PlusCircle", permission: "system:menu:add", resources: []string{"POST:/api/v1/system/menu", "GET:/api/v1/system/api-resources"}},
+	{key: "menu-edit", parentKey: "menu", name: "编辑菜单", typ: "button", icon: "Edit", permission: "system:menu:edit", resources: []string{"PUT:/api/v1/system/menu/:id", "GET:/api/v1/system/menu/:id", "GET:/api/v1/system/api-resources"}},
+	{key: "menu-delete", parentKey: "menu", name: "删除菜单", typ: "button", icon: "Trash2", permission: "system:menu:delete", resources: []string{"DELETE:/api/v1/system/menu/:id"}},
+	{key: "role-add", parentKey: "role", name: "创建角色", typ: "button", icon: "Plus", permission: "system:role:add", resources: []string{"POST:/api/v1/system/role", "GET:/api/v1/system/menu/tree"}},
+	{key: "role-delete", parentKey: "role", name: "删除角色", typ: "button", icon: "Trash2", permission: "system:role:delete", resources: []string{"DELETE:/api/v1/system/role/:id"}},
+	{key: "role-edit", parentKey: "role", name: "编辑角色", typ: "button", icon: "Edit", permission: "system:role:edit", resources: []string{"PUT:/api/v1/system/role/:id", "GET:/api/v1/system/role/:id", "GET:/api/v1/system/role/:id/menus", "GET:/api/v1/system/menu/tree"}},
+	{key: "user-add", parentKey: "user", name: "创建用户", typ: "button", icon: "PlusCircle", permission: "system:user:add", resources: []string{"POST:/api/v1/system/user"}},
+	{key: "user-invite", parentKey: "user", name: "邀请用户", typ: "button", icon: "Phone", permission: "system:user:invite", resources: []string{"POST:/api/v1/system/user/invite"}},
+	{key: "user-delete", parentKey: "user", name: "删除用户", typ: "button", icon: "Trash", permission: "system:user:delete", resources: []string{"DELETE:/api/v1/system/user/:id"}},
+	{key: "user-edit", parentKey: "user", name: "编辑用户", typ: "button", icon: "Edit", permission: "system:user:edit", resources: []string{"PUT:/api/v1/system/user/:id", "GET:/api/v1/system/user/:id", "GET:/api/v1/system/user/:id/roles"}},
+	{key: "department-add", parentKey: "department", name: "创建部门", typ: "button", icon: "PlusCircle", permission: "system:department:add", resources: []string{"POST:/api/v1/system/department", "GET:/api/v1/system/department/tree"}},
+	{key: "department-edit", parentKey: "department", name: "编辑部门", typ: "button", icon: "Edit", permission: "system:department:edit", resources: []string{"PUT:/api/v1/system/department/:id", "GET:/api/v1/system/department/:id", "GET:/api/v1/system/department/tree"}},
+	{key: "department-delete", parentKey: "department", name: "删除部门", typ: "button", icon: "Trash2", permission: "system:department:delete", resources: []string{"DELETE:/api/v1/system/department/:id"}},
+	{key: "login-log-clean", parentKey: "login-log", name: "清空日志", typ: "button", icon: "Trash2", permission: "system:login_log:clean", resources: []string{"DELETE:/api/v1/system/login-logs"}},
+	{key: "dict-add-type", parentKey: "dict", name: "创建字典类型", typ: "button", icon: "PlusCircle", permission: "system:dict:add_type", resources: []string{"POST:/api/v1/system/dict/types"}},
+	{key: "dict-edit-type", parentKey: "dict", name: "编辑字典类型", typ: "button", icon: "Edit", permission: "system:dict:edit_type", resources: []string{"PUT:/api/v1/system/dict/types/:id", "GET:/api/v1/system/dict/types/:id"}},
+	{key: "dict-delete-type", parentKey: "dict", name: "删除字典类型", typ: "button", icon: "Trash2", permission: "system:dict:delete_type", resources: []string{"DELETE:/api/v1/system/dict/types/:id"}},
+	{key: "dict-add-item", parentKey: "dict", name: "创建字典项", typ: "button", icon: "Plus", permission: "system:dict:add_item", resources: []string{"POST:/api/v1/system/dict/items"}},
+	{key: "dict-edit-item", parentKey: "dict", name: "编辑字典项", typ: "button", icon: "Edit", permission: "system:dict:edit_item", resources: []string{"PUT:/api/v1/system/dict/items/:id", "GET:/api/v1/system/dict/items/:id"}},
+	{key: "dict-delete-item", parentKey: "dict", name: "删除字典项", typ: "button", icon: "Trash", permission: "system:dict:delete_item", resources: []string{"DELETE:/api/v1/system/dict/items/:id"}},
+}
+
+func seedDefaultMenus(ctx context.Context, client *ent.Client) error {
+	menuIDs := make(map[string]string, len(defaultMenus)+len(defaultButtons))
+	if err := seedMenuList(ctx, client, defaultMenus, menuIDs); err != nil {
+		return err
+	}
+	return seedMenuList(ctx, client, defaultButtons, menuIDs)
+}
+
+func seedMenuList(ctx context.Context, client *ent.Client, items []seedMenu, menuIDs map[string]string) error {
+	for _, item := range items {
+		parentID := ""
+		if item.parentKey != "" {
+			var ok bool
+			parentID, ok = menuIDs[item.parentKey]
+			if !ok {
+				return fmt.Errorf("seed menu %q references unknown parent %q", item.name, item.parentKey)
+			}
+		}
+		created, err := createSeedMenu(ctx, client, item, parentID)
+		if err != nil {
+			return fmt.Errorf("create seed menu %q: %w", item.name, err)
+		}
+		menuIDs[item.key] = created.ID
+	}
+	return nil
+}
+
+func createSeedMenu(ctx context.Context, client *ent.Client, item seedMenu, parentID string) (*ent.Menu, error) {
+	builder := client.Menu.Create().
+		SetName(item.name).
+		SetSequence(item.sequence).
+		SetType(item.typ).
+		SetPath(item.path).
+		SetIcon(item.icon).
+		SetIsFrame(false).
+		SetVisible("show").
+		SetPermissions(item.permission).
+		SetStatus(constants.StatusActive)
+	if parentID != "" {
+		builder = builder.SetParentID(parentID)
+	}
+	if len(item.resources) > 0 {
+		builder = builder.AddAPIResourceIDs(item.resources...)
+	}
+	return builder.Save(ctx)
+}
+
+// InitDefaultAdmin initializes or repairs the default admin and menus in one
+// transaction, including the authorization generation change.
+func InitDefaultAdmin(app *Application) error {
+	ctx := context.Background()
+	const maxAttempts = 3
+
+	var lastErr error
+	for attempt := range maxAttempts {
+		needsInitialization, err := needsDefaultAdminInitialization(ctx, app.DB)
+		if err != nil {
+			lastErr = err
+		} else if !needsInitialization {
+			return nil
+		} else {
+			lastErr = repository.WithAuthorizationTx(ctx, app.DB, func(txCtx context.Context, tx *ent.Tx) error {
+				txApp := *app
+				txApp.DB = tx.Client()
+				return initDefaultAdmin(&txApp, txCtx)
+			})
+			if lastErr == nil {
+				return nil
+			}
+		}
+
+		if attempt+1 < maxAttempts {
+			time.Sleep(time.Duration(attempt+1) * 100 * time.Millisecond)
+		}
+	}
+	return fmt.Errorf("initialize default admin after %d attempts: %w", maxAttempts, lastErr)
+}
+
+func needsDefaultAdminInitialization(ctx context.Context, client *ent.Client) (bool, error) {
+	adminExists, err := client.User.Query().Where(user.IsAdminEQ(true)).Exist(ctx)
+	if err != nil {
+		return true, fmt.Errorf("check admin user: %w", err)
+	}
+	if !adminExists {
+		return true, nil
+	}
+	adminRole, err := client.Role.Query().Where(func(s *sql.Selector) {
+		s.Where(sql.EQ("name", "admin"))
+	}).First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			// initDefaultAdmin repairs the missing system role and rebinds the
+			// existing administrator instead of creating a second admin user.
+			return true, nil
+		}
+		return true, fmt.Errorf("get admin role: %w", err)
+	}
+	menuCount, err := client.Role.Query().
+		Where(func(s *sql.Selector) { s.Where(sql.EQ("id", adminRole.ID)) }).
+		QueryMenus().Count(ctx)
+	if err != nil {
+		return true, fmt.Errorf("count admin menu bindings: %w", err)
+	}
+	return menuCount == 0, nil
+}
+
+func initDefaultAdmin(app *Application, ctx context.Context) error {
 	adminExists, err := app.DB.User.Query().
 		Where(user.IsAdminEQ(true)).
 		Exist(ctx)
 	if err != nil {
-		log.Printf("check admin user failed: %v", err)
-		return
+		return fmt.Errorf("check admin user: %w", err)
 	}
 
 	if adminExists {
+		adminRole, err := ensureAdminRole(app.DB, ctx)
+		if err != nil {
+			return err
+		}
 		log.Println("admin user already exists")
-		// Ensure admin role has menus bound
-		checkAndBindMenusToExistingAdmin(app, ctx)
-		return
+		return initMenu(app.DB, adminRole.ID, ctx)
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(app.Env.AdminPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash admin password: %w", err)
 	}
 
 	adminRole, err := app.DB.Role.Create().
@@ -35,169 +194,81 @@ func InitDefaultAdmin(app *Application) {
 		SetStatus(constants.StatusActive).
 		Save(ctx)
 	if err != nil {
-		log.Printf("create admin role failed: %v", err)
-		return
+		return fmt.Errorf("create admin role: %w", err)
 	}
-	// Create admin user
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(app.Env.AdminPassword), bcrypt.DefaultCost)
-	if err != nil {
-		log.Printf("hash password failed: %v", err)
-		return
-	}
-	adminUser, err := app.DB.User.Create().
+
+	if _, err := app.DB.User.Create().
 		SetUsername(app.Env.AdminUsername).
 		SetEmail(app.Env.AdminEmail).
 		SetPassword(string(hashedPassword)).
 		SetStatus(user.StatusActive).
 		SetIsAdmin(true).
 		AddRoles(adminRole).
-		Save(ctx)
-	if err != nil {
-		log.Printf("create admin user failed: %v", err)
-		return
+		Save(ctx); err != nil {
+		return fmt.Errorf("create admin user: %w", err)
 	}
 
-	// Grant super policy
-	_, err = app.CasManager.AddPolicy(adminRole.ID, "*", "*")
-	if err != nil {
-		log.Printf("add policy failed: %v", err)
+	if err := initMenu(app.DB, adminRole.ID, ctx); err != nil {
+		return fmt.Errorf("initialize admin menus: %w", err)
 	}
-
-	// Bind role to user
-	_, err = app.CasManager.AddRoleForUser(adminUser.ID, adminRole.ID)
-	if err != nil {
-		log.Printf("assign role failed: %v", err)
-	}
-
-	// Save policy
-	if err := app.CasManager.SavePolicy(); err != nil {
-		log.Printf("save policy failed: %v", err)
-	}
-
-	// Init menus and bind to admin
-	initMenu(app, adminRole.ID)
-
 	log.Printf("admin user created: %s", app.Env.AdminUsername)
+	return nil
 }
 
-// bindAllMenusToAdminRole binds all menus to the admin role if not already bound
-func bindAllMenusToAdminRole(app *Application, adminRoleID string, ctx context.Context) {
-	// Check existing bindings
-	existingBindings, err := app.DB.Role.Query().
-		Where(func(s *sql.Selector) {
-			s.Where(sql.EQ("id", adminRoleID))
-		}).
-		QueryMenus().
-		Count(ctx)
-	if err != nil {
-		log.Printf("check role-menu binding failed: %v", err)
-		return
+func ensureAdminRole(client *ent.Client, ctx context.Context) (*ent.Role, error) {
+	adminRole, err := client.Role.Query().Where(func(s *sql.Selector) {
+		s.Where(sql.EQ("name", "admin"))
+	}).First(ctx)
+	if ent.IsNotFound(err) {
+		adminRole, err = client.Role.Create().
+			SetName("admin").
+			SetIsSystem(true).
+			SetStatus(constants.StatusActive).
+			Save(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("recreate admin role: %w", err)
+		}
+	} else if err != nil {
+		return nil, fmt.Errorf("get admin role: %w", err)
 	}
 
-	if existingBindings > 0 {
-		log.Printf("admin role already bound menus (%d)", existingBindings)
-		return
+	if _, err := client.User.Update().
+		Where(user.IsAdminEQ(true)).
+		AddRoleIDs(adminRole.ID).
+		Save(ctx); err != nil {
+		return nil, fmt.Errorf("restore admin role assignment: %w", err)
 	}
-
-	// Fetch all menus
-	allMenus, err := app.DB.Menu.Query().All(ctx)
-	if err != nil {
-		log.Printf("fetch all menus failed: %v", err)
-		return
-	}
-
-	if len(allMenus) == 0 {
-		log.Println("no menu found, skip bind")
-		return
-	}
-
-	// Bind all menus to admin role
-	adminRole, err := app.DB.Role.Get(ctx, adminRoleID)
-	if err != nil {
-		log.Printf("get admin role failed: %v", err)
-		return
-	}
-
-	_, err = adminRole.Update().AddMenus(allMenus...).Save(ctx)
-	if err != nil {
-		log.Printf("bind menus to admin role failed: %v", err)
-		return
-	}
-
-	log.Printf("successfully bound %d menus to admin role", len(allMenus))
+	return adminRole, nil
 }
 
-// checkAndBindMenusToExistingAdmin ensures admin role has menus bound
-func checkAndBindMenusToExistingAdmin(app *Application, ctx context.Context) {
-	// Get admin role
-	adminRole, err := app.DB.Role.Query().
-		Where(func(s *sql.Selector) {
-			s.Where(sql.EQ("name", "admin"))
-		}).
-		First(ctx)
+func initMenu(client *ent.Client, adminRoleID string, ctx context.Context) error {
+	count, err := client.Menu.Query().Count(ctx)
 	if err != nil {
-		log.Printf("get admin role failed: %v", err)
-		return
+		return fmt.Errorf("check existing menus: %w", err)
 	}
-
-	bindAllMenusToAdminRole(app, adminRole.ID, ctx)
+	if count == 0 {
+		if err := seedDefaultMenus(ctx, client); err != nil {
+			return err
+		}
+		log.Println("menu data initialized")
+	}
+	return bindMenusToAdmin(client, adminRoleID, ctx)
 }
 
-func initMenu(app *Application, roleID string) {
-	ctx := context.Background()
-	menu := app.DB.Menu
-	// Check if menus already exist
-	existingMenus, err := menu.Query().Count(ctx)
+func bindMenusToAdmin(client *ent.Client, adminRoleID string, ctx context.Context) error {
+	menus, err := client.Menu.Query().All(ctx)
 	if err != nil {
-		log.Printf("check menu data failed: %v", err)
-		return
+		return fmt.Errorf("fetch menus for admin: %w", err)
 	}
-	if existingMenus > 0 {
-		log.Println("menu data already exists, skip init")
-		return
+	if len(menus) == 0 {
+		return nil
 	}
-	// Level 1 menus
-	_, _ = menu.Create().SetName("仪表盘").SetSequence(0).SetType("menu").SetPath("/").SetIcon("Home").SetIsFrame(false).SetVisible("show").SetStatus(constants.StatusActive).Save(ctx)
-	system, _ := menu.Create().SetName("系统管理").SetSequence(0).SetType("menu").SetPath("/").SetIcon("Settings").SetIsFrame(false).SetVisible("show").SetStatus(constants.StatusActive).Save(ctx)
-	// Level 2 menus
-	menuMgmt, _ := menu.Create().SetParentID(system.ID).SetName("菜单管理").SetSequence(1).SetType("menu").SetPath("/system/menu").SetIcon("Menu").SetIsFrame(false).SetVisible("show").AddAPIResourceIDs("GET:/api/v1/system/menu", "GET:/api/v1/system/menu/tree").SetStatus(constants.StatusActive).Save(ctx)
-	roleMgmt, _ := menu.Create().SetParentID(system.ID).SetName("角色管理").SetSequence(2).SetType("menu").SetPath("/system/role").SetIcon("UserCheck").SetIsFrame(false).SetVisible("show").AddAPIResourceIDs("GET:/api/v1/system/role").SetStatus(constants.StatusActive).Save(ctx)
-	userMgmt, _ := menu.Create().SetParentID(system.ID).SetName("用户管理").SetSequence(3).SetType("menu").SetPath("/system/user").SetIcon("Users").SetIsFrame(false).SetVisible("show").AddAPIResourceIDs("GET:/api/v1/system/user").SetStatus(constants.StatusActive).Save(ctx)
-	deptMgmt, _ := menu.Create().SetParentID(system.ID).SetName("部门管理").SetSequence(4).SetType("menu").SetPath("/system/departments").SetIcon("Building2").SetIsFrame(false).SetVisible("show").AddAPIResourceIDs("GET:/api/v1/system/department/tree").SetStatus(constants.StatusActive).Save(ctx)
-	_, _ = menu.Create().SetParentID(system.ID).SetName("API资源").SetSequence(5).SetType("menu").SetPath("/system/api-resources").SetIcon("Code2").SetIsFrame(false).SetVisible("show").AddAPIResourceIDs("GET:/api/v1/system/api-resources").SetStatus(constants.StatusActive).Save(ctx)
-	loginLogs, _ := menu.Create().SetParentID(system.ID).SetName("登录日志").SetSequence(6).SetType("menu").SetPath("/system/login-logs").SetIcon("Layers3").SetIsFrame(false).SetVisible("show").AddAPIResourceIDs("GET:/api/v1/system/login-logs").SetStatus(constants.StatusActive).Save(ctx)
-	dictMgmt, _ := menu.Create().SetParentID(system.ID).SetName("字典管理").SetSequence(7).SetType("menu").SetPath("/system/dict").SetIcon("BookMarked").SetIsFrame(false).SetVisible("show").AddAPIResourceIDs("GET:/api/v1/system/dict/types", "GET:/api/v1/system/dict/items", "GET:/api/v1/system/dict/types/code/:code/items").SetStatus(constants.StatusActive).Save(ctx)
-	// Menu management buttons
-	menu.Create().SetParentID(menuMgmt.ID).SetName("创建菜单").SetSequence(0).SetType("button").SetPath("").SetIcon("PlusCircle").SetIsFrame(false).SetVisible("show").SetPermissions("system:menu:add").AddAPIResourceIDs("POST:/api/v1/system/menu", "GET:/api/v1/system/api-resources").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(menuMgmt.ID).SetName("编辑菜单").SetSequence(0).SetType("button").SetPath("").SetIcon("Edit").SetIsFrame(false).SetVisible("show").SetPermissions("system:menu:edit").AddAPIResourceIDs("PUT:/api/v1/system/menu/:id", "GET:/api/v1/system/menu/:id", "GET:/api/v1/system/api-resources").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(menuMgmt.ID).SetName("删除菜单").SetSequence(0).SetType("button").SetPath("").SetIcon("Trash2").SetIsFrame(false).SetVisible("show").SetPermissions("system:menu:delete").AddAPIResourceIDs("DELETE:/api/v1/system/menu/:id").SetStatus(constants.StatusActive).Save(ctx)
-	// Role management buttons
-	menu.Create().SetParentID(roleMgmt.ID).SetName("创建角色").SetSequence(0).SetType("button").SetPath("").SetIcon("Plus").SetIsFrame(false).SetVisible("show").SetPermissions("system:role:add").AddAPIResourceIDs("POST:/api/v1/system/role", "GET:/api/v1/system/menu/tree").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(roleMgmt.ID).SetName("删除角色").SetSequence(0).SetType("button").SetPath("").SetIcon("Trash2").SetIsFrame(false).SetVisible("show").SetPermissions("system:role:delete").AddAPIResourceIDs("DELETE:/api/v1/system/role/:id").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(roleMgmt.ID).SetName("编辑角色").SetSequence(0).SetType("button").SetPath("").SetIcon("Edit").SetIsFrame(false).SetVisible("show").SetPermissions("system:role:edit").AddAPIResourceIDs("PUT:/api/v1/system/role/:id", "GET:/api/v1/system/role/:id", "GET:/api/v1/system/role/:id/menus", "GET:/api/v1/system/menu/tree").SetStatus(constants.StatusActive).Save(ctx)
-	// User management buttons
-	menu.Create().SetParentID(userMgmt.ID).SetName("创建用户").SetSequence(0).SetType("button").SetPath("").SetIcon("PlusCircle").SetIsFrame(false).SetVisible("show").SetPermissions("system:user:add").AddAPIResourceIDs("POST:/api/v1/system/user").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(userMgmt.ID).SetName("邀请用户").SetSequence(0).SetType("button").SetPath("").SetIcon("Phone").SetIsFrame(false).SetVisible("show").SetPermissions("system:user:invite").AddAPIResourceIDs("POST:/api/v1/system/user/invite").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(userMgmt.ID).SetName("删除用户").SetSequence(0).SetType("button").SetPath("").SetIcon("Trash").SetIsFrame(false).SetVisible("show").SetPermissions("system:user:delete").AddAPIResourceIDs("DELETE:/api/v1/system/user/:id").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(userMgmt.ID).SetName("编辑用户").SetSequence(0).SetType("button").SetPath("").SetIcon("Edit").SetIsFrame(false).SetVisible("show").SetPermissions("system:user:edit").AddAPIResourceIDs("PUT:/api/v1/system/user/:id", "GET:/api/v1/system/user/:id", "GET:/api/v1/system/user/:id/roles").SetStatus(constants.StatusActive).Save(ctx)
-	// Department management buttons
-	menu.Create().SetParentID(deptMgmt.ID).SetName("创建部门").SetSequence(0).SetType("button").SetPath("").SetIcon("PlusCircle").SetIsFrame(false).SetVisible("show").SetPermissions("system:department:add").AddAPIResourceIDs("POST:/api/v1/system/department", "GET:/api/v1/system/department/tree").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(deptMgmt.ID).SetName("编辑部门").SetSequence(0).SetType("button").SetPath("").SetIcon("Edit").SetIsFrame(false).SetVisible("show").SetPermissions("system:department:edit").AddAPIResourceIDs("PUT:/api/v1/system/department/:id", "GET:/api/v1/system/department/:id", "GET:/api/v1/system/department/tree").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(deptMgmt.ID).SetName("删除部门").SetSequence(0).SetType("button").SetPath("").SetIcon("Trash2").SetIsFrame(false).SetVisible("show").SetPermissions("system:department:delete").AddAPIResourceIDs("DELETE:/api/v1/system/department/:id").SetStatus(constants.StatusActive).Save(ctx)
-	// Log button
-	menu.Create().SetParentID(loginLogs.ID).SetName("清空日志").SetSequence(0).SetType("button").SetPath("").SetIcon("Trash2").SetIsFrame(false).SetVisible("show").SetPermissions("system:login_log:clean").AddAPIResourceIDs("DELETE:/api/v1/system/login-logs").SetStatus(constants.StatusActive).Save(ctx)
-	// Dictionary buttons (types & items)
-	menu.Create().SetParentID(dictMgmt.ID).SetName("创建字典类型").SetSequence(0).SetType("button").SetPath("").SetIcon("PlusCircle").SetIsFrame(false).SetVisible("show").SetPermissions("system:dict:add_type").AddAPIResourceIDs("POST:/api/v1/system/dict/types").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(dictMgmt.ID).SetName("编辑字典类型").SetSequence(0).SetType("button").SetPath("").SetIcon("Edit").SetIsFrame(false).SetVisible("show").SetPermissions("system:dict:edit_type").AddAPIResourceIDs("PUT:/api/v1/system/dict/types/:id", "GET:/api/v1/system/dict/types/:id").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(dictMgmt.ID).SetName("删除字典类型").SetSequence(0).SetType("button").SetPath("").SetIcon("Trash2").SetIsFrame(false).SetVisible("show").SetPermissions("system:dict:delete_type").AddAPIResourceIDs("DELETE:/api/v1/system/dict/types/:id").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(dictMgmt.ID).SetName("创建字典项").SetSequence(0).SetType("button").SetPath("").SetIcon("Plus").SetIsFrame(false).SetVisible("show").SetPermissions("system:dict:add_item").AddAPIResourceIDs("POST:/api/v1/system/dict/items").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(dictMgmt.ID).SetName("编辑字典项").SetSequence(0).SetType("button").SetPath("").SetIcon("Edit").SetIsFrame(false).SetVisible("show").SetPermissions("system:dict:edit_item").AddAPIResourceIDs("PUT:/api/v1/system/dict/items/:id", "GET:/api/v1/system/dict/items/:id").SetStatus(constants.StatusActive).Save(ctx)
-	menu.Create().SetParentID(dictMgmt.ID).SetName("删除字典项").SetSequence(0).SetType("button").SetPath("").SetIcon("Trash").SetIsFrame(false).SetVisible("show").SetPermissions("system:dict:delete_item").AddAPIResourceIDs("DELETE:/api/v1/system/dict/items/:id").SetStatus(constants.StatusActive).Save(ctx)
-
-	log.Println("menu data initialized")
-
-	// Bind all menus to the role if provided
-	if roleID != "" {
-		bindAllMenusToAdminRole(app, roleID, ctx)
+	adminRole, err := client.Role.Get(ctx, adminRoleID)
+	if err != nil {
+		return fmt.Errorf("get admin role: %w", err)
 	}
+	if _, err := adminRole.Update().AddMenus(menus...).Save(ctx); err != nil {
+		return fmt.Errorf("bind menus to admin role: %w", err)
+	}
+	return nil
 }

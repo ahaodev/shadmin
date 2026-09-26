@@ -261,7 +261,7 @@ Shadmin 使用 **Casbin RBAC** 进行权限控制：
 
 1. 后端启动时，`bootstrap.InitApiResources()` 扫描所有 Gin 路由，以 `METHOD:/path` 为 ID 写入数据库
 2. 管理员在菜单管理中将 API 资源绑定到菜单项
-3. 角色分配菜单后，Casbin 策略自动同步
+3. 授权关系变更在同一事务递增 generation；提交后 Ent trigger 唤醒本地同步，各实例以低频轮询兜底，构建完整 Casbin 快照并原子替换
 4. 前端通过 `/api/v1/resources` 获取当前用户可见的菜单树和权限列表，动态渲染侧边栏
 
 ## 数据库抽象
@@ -295,9 +295,8 @@ main.go
     → bootstrap.App()              # 加载 .env、连接 DB、初始化 Casbin/存储/Gin
     → api.SetupRoutes(app)         # 注册静态资源、Swagger、API 路由
     → bootstrap.InitApiResources() # 扫描 Gin 路由写入 DB
-    → bootstrap.InitDefaultAdmin() # 初始化 admin 角色/用户、绑定菜单与策略
-    → bootstrap.InitDictData()     # 初始化字典数据
-    → bootstrap.InitCasbinHooks()  # 设置 Casbin 规则
+    → bootstrap.InitDefaultAdmin() # 初始化 admin 角色/用户和菜单
+    → bootstrap.InitCasbin(app)    # 构建初始快照并启动 generation 触发同步与低频轮询
     → api.Run(app)                 # 监听端口 :55667
 ```
 

@@ -3,30 +3,32 @@ package casbin
 import (
 	"sync"
 	"testing"
+
+	"github.com/casbin/casbin/v3"
 )
 
-// TestManagerConcurrentReadWrite 守护 CasManager 的读并发安全：
-// API 中间件的 CheckPermission（读）与同步 worker 的策略写入（写）必然并发，
-// 底层 casbin.Enforcer 无内部锁，必须使用 SyncedEnforcer。
-func TestManagerConcurrentReadWrite(t *testing.T) {
-	m := testManager(t)
-	mustAddRoleForUser(t, m, "u1", "r1")
-	mustAddPolicy(t, m, "r1", "/api/x", "GET")
+// Concurrent requests must keep evaluating complete snapshots while the sync worker publishes replacements.
+func TestManagerConcurrentSnapshotPublication(t *testing.T) {
+	manager, first := testManagerWithEnforcer(t, func(enforcer *casbin.SyncedEnforcer) {
+		mustAddRoleForUser(t, enforcer, "u1", "r1")
+		mustAddPolicy(t, enforcer, "r1", "/api/x", "GET")
+	})
+	second, err := newEnforcer()
+	if err != nil {
+		t.Fatalf("newEnforcer: %v", err)
+	}
+	mustAddRoleForUser(t, second, "u1", "r1")
+	mustAddPolicy(t, second, "r1", "/api/x", "GET")
 
 	const iterations = 2000
-
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
 		for range iterations {
-			if _, err := m.CheckPermission("u1", "/api/x", "GET"); err != nil {
-				t.Error(err)
-				return
-			}
-			if roles := m.GetRolesForUser("u1"); len(roles) != 1 {
-				t.Errorf("roles = %v, want [r1]", roles)
+			if allowed, err := manager.CheckPermission("u1", "/api/x", "GET"); err != nil || !allowed {
+				t.Errorf("CheckPermission = (%v, %v), want (true, nil)", allowed, err)
 				return
 			}
 		}
@@ -34,13 +36,17 @@ func TestManagerConcurrentReadWrite(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for range iterations {
-			if _, err := m.AddPolicy("r1", "/api/y", "POST"); err != nil {
+		for generation := int64(1); generation <= iterations; generation++ {
+			enforcer := first
+			if generation%2 == 0 {
+				enforcer = second
+			}
+			if err := manager.ReplaceSnapshot(enforcer, generation); err != nil {
 				t.Error(err)
 				return
 			}
-			if _, err := m.RemovePolicy("r1", "/api/y", "POST"); err != nil {
-				t.Error(err)
+			if !manager.MarkSnapshotFresh(generation) {
+				t.Errorf("MarkSnapshotFresh(%d) rejected the published snapshot", generation)
 				return
 			}
 		}

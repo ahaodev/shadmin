@@ -8,56 +8,84 @@ import (
 	"shadmin/ent/apiresource"
 	"shadmin/ent/menu"
 	"shadmin/internal/constants"
+	"shadmin/repository"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-// InitApiResources 初始化API资源数据 - 删除重建，保持ID一致维持菜单关联
-func InitApiResources(app *Application) {
-	log.Println("🔍 Scanning and rebuilding API resources...")
-
+// InitApiResources rebuilds route resources and restores menu associations in one transaction.
+func InitApiResources(app *Application) error {
 	ctx := context.Background()
-
-	// 先获取现有菜单-API资源关联关系
-	menuApiResourceAssociations, err := getMenuApiResourceAssociations(ctx, app.DB)
-	if err != nil {
-		log.Printf("❌ Failed to get menu-API resource associations: %v", err)
-		return
-	}
-	log.Printf("💾 Saved %d menu-API resource associations", len(menuApiResourceAssociations))
-
-	// 先清空所有API资源
-	deleted, err := app.DB.ApiResource.Delete().Exec(ctx)
-	if err != nil {
-		log.Printf("❌ Failed to clear existing API resources: %v", err)
-		return
-	}
-	log.Printf("🗑️ Cleared %d existing API resources", deleted)
-
-	// 扫描路由获取API资源
 	discoveredResources := scanGinRoutes(app.ApiEngine)
-	totalScanned := len(discoveredResources)
 
-	// 重新创建所有资源（ID保持一致）
-	created, err := bulkCreateApiResources(ctx, app.DB, discoveredResources)
+	tx, err := app.DB.Tx(ctx)
 	if err != nil {
-		log.Printf("❌ Failed to create API resources: %v", err)
-		return
+		return fmt.Errorf("begin API resource rebuild: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Lock the singleton generation row before comparing/rebuilding the route inventory.
+	// Concurrent application instances then serialize this startup operation.
+	if err := repository.BumpAuthorizationGeneration(ctx, tx); err != nil {
+		return err
 	}
 
-	// 恢复菜单-API资源关联关系
-	restored, err := restoreMenuApiResourceAssociations(ctx, app.DB, menuApiResourceAssociations)
+	existingResources, err := tx.ApiResource.Query().All(ctx)
 	if err != nil {
-		log.Printf("❌ Failed to restore menu-API resource associations: %v", err)
-	} else {
-		log.Printf("🔗 Restored %d menu-API resource associations", restored)
+		return fmt.Errorf("read existing API resources: %w", err)
+	}
+	if apiResourceInventoryMatches(existingResources, discoveredResources) {
+		if err := tx.Rollback(); err != nil {
+			return fmt.Errorf("rollback unchanged API resource inventory: %w", err)
+		}
+		return nil
 	}
 
-	log.Printf("✅ API resources rebuilt successfully:")
-	log.Printf("   - Total scanned: %d", totalScanned)
-	log.Printf("   - Created: %d", created)
+	associations, err := getMenuApiResourceAssociations(ctx, tx.Client())
+	if err != nil {
+		return fmt.Errorf("read menu/API resource associations: %w", err)
+	}
+	deleted, err := tx.ApiResource.Delete().Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("clear API resources: %w", err)
+	}
+	created, err := bulkCreateApiResources(ctx, tx, discoveredResources)
+	if err != nil {
+		return err
+	}
+	restored, err := restoreMenuApiResourceAssociations(ctx, tx, associations)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit API resource rebuild: %w", err)
+	}
+
+	log.Printf("API resources rebuilt: scanned=%d created=%d deleted=%d restored_associations=%d",
+		len(discoveredResources), created, deleted, restored)
+	return nil
+}
+
+func apiResourceInventoryMatches(existing []*ent.ApiResource, discovered []*domain.ApiResource) bool {
+	if len(existing) != len(discovered) {
+		return false
+	}
+
+	byID := make(map[string]*ent.ApiResource, len(existing))
+	for _, resource := range existing {
+		byID[resource.ID] = resource
+	}
+	for _, resource := range discovered {
+		id := domain.GenerateApiResourceID(resource.Method, resource.Path)
+		current, ok := byID[id]
+		if !ok || current.Method != resource.Method || current.Path != resource.Path ||
+			current.Handler != resource.Handler || current.Module != resource.Module || current.IsPublic != resource.IsPublic {
+			return false
+		}
+	}
+	return true
 }
 
 // scanGinRoutes 扫描Gin路由获取API资源
@@ -97,16 +125,10 @@ func scanGinRoutes(ginEngine *gin.Engine) []*domain.ApiResource {
 }
 
 // bulkCreateApiResources 批量创建API资源
-func bulkCreateApiResources(ctx context.Context, client *ent.Client, apiResources []*domain.ApiResource) (int, error) {
+func bulkCreateApiResources(ctx context.Context, tx *ent.Tx, apiResources []*domain.ApiResource) (int, error) {
 	if len(apiResources) == 0 {
 		return 0, nil
 	}
-
-	tx, err := client.Tx(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to start transaction: %w", err)
-	}
-	defer tx.Rollback()
 
 	now := time.Now()
 	createdCount := 0
@@ -127,7 +149,7 @@ func bulkCreateApiResources(ctx context.Context, client *ent.Client, apiResource
 		apiResource.CreatedAt = now
 		apiResource.UpdatedAt = now
 
-		_, err = tx.ApiResource.Create().
+		_, err := tx.ApiResource.Create().
 			SetID(apiResource.ID).
 			SetMethod(apiResource.Method).
 			SetPath(apiResource.Path).
@@ -141,10 +163,6 @@ func bulkCreateApiResources(ctx context.Context, client *ent.Client, apiResource
 			return 0, fmt.Errorf("failed to create API resource %s (method: %s, path: %s): %w", apiResource.ID, apiResource.Method, apiResource.Path, err)
 		}
 		createdCount++
-	}
-
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return createdCount, nil
@@ -225,74 +243,59 @@ func getMenuApiResourceAssociations(ctx context.Context, client *ent.Client) ([]
 }
 
 // restoreMenuApiResourceAssociations 恢复菜单-API资源关联关系
-func restoreMenuApiResourceAssociations(ctx context.Context, client *ent.Client, associations []MenuApiResourceAssociation) (int, error) {
+func restoreMenuApiResourceAssociations(ctx context.Context, tx *ent.Tx, associations []MenuApiResourceAssociation) (int, error) {
 	if len(associations) == 0 {
 		return 0, nil
 	}
 
-	tx, err := client.Tx(ctx)
+	menuIDs, err := tx.Menu.Query().Select(menu.FieldID).Strings(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("failed to start transaction: %w", err)
+		return 0, fmt.Errorf("read existing menu IDs: %w", err)
 	}
-	defer tx.Rollback()
+	existingMenus := make(map[string]struct{}, len(menuIDs))
+	for _, id := range menuIDs {
+		existingMenus[id] = struct{}{}
+	}
 
-	restoredCount := 0
+	apiResourceIDs, err := tx.ApiResource.Query().Select(apiresource.FieldID).Strings(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("read existing API resource IDs: %w", err)
+	}
+	existingApiResources := make(map[string]struct{}, len(apiResourceIDs))
+	for _, id := range apiResourceIDs {
+		existingApiResources[id] = struct{}{}
+	}
 
-	// 按菜单分组关联关系，批量更新
 	menuAssociations := make(map[string][]string)
 	for _, assoc := range associations {
 		menuAssociations[assoc.MenuID] = append(menuAssociations[assoc.MenuID], assoc.ApiResourceID)
 	}
 
+	restoredCount := 0
 	for menuID, apiResourceIDs := range menuAssociations {
-		// 检查菜单是否存在
-		menuExists, err := tx.Menu.Query().
-			Where(menu.IDEQ(menuID)).
-			Exist(ctx)
-		if err != nil {
-			log.Printf("WARN: Failed to check menu existence %s: %v", menuID, err)
-			continue
-		}
-		if !menuExists {
+		if _, exists := existingMenus[menuID]; !exists {
 			log.Printf("WARN: Menu %s no longer exists, skipping association restore", menuID)
 			continue
 		}
 
-		// 检查API资源是否存在，只添加存在的资源
-		var existingApiResourceIDs []string
+		validApiResourceIDs := make([]string, 0, len(apiResourceIDs))
 		for _, apiResourceID := range apiResourceIDs {
-			exists, err := tx.ApiResource.Query().
-				Where(apiresource.IDEQ(apiResourceID)).
-				Exist(ctx)
-			if err != nil {
-				log.Printf("WARN: Failed to check API resource existence %s: %v", apiResourceID, err)
-				continue
-			}
-			if exists {
-				existingApiResourceIDs = append(existingApiResourceIDs, apiResourceID)
+			if _, exists := existingApiResources[apiResourceID]; exists {
+				validApiResourceIDs = append(validApiResourceIDs, apiResourceID)
 			} else {
 				log.Printf("WARN: API resource %s no longer exists, skipping", apiResourceID)
 			}
 		}
-
-		if len(existingApiResourceIDs) == 0 {
+		if len(validApiResourceIDs) == 0 {
 			continue
 		}
 
-		// 添加关联关系
-		_, err = tx.Menu.UpdateOneID(menuID).
-			AddAPIResourceIDs(existingApiResourceIDs...).
-			Save(ctx)
-		if err != nil {
-			log.Printf("WARN: Failed to restore associations for menu %s: %v", menuID, err)
-			continue
+		if _, err := tx.Menu.UpdateOneID(menuID).
+			AddAPIResourceIDs(validApiResourceIDs...).
+			Save(ctx); err != nil {
+			return 0, fmt.Errorf("restore API resource associations for menu %s: %w", menuID, err)
 		}
-
-		restoredCount += len(existingApiResourceIDs)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+		restoredCount += len(validApiResourceIDs)
 	}
 
 	return restoredCount, nil

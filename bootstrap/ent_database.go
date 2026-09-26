@@ -8,6 +8,7 @@ import (
 	"shadmin/ent"
 	"shadmin/ent/migrate"
 	"shadmin/internal/conf"
+	"shadmin/repository"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -51,6 +52,9 @@ func NewEntDatabase(env *conf.Env) *ent.Client {
 		migrate.WithDropColumn(true),
 	); err != nil {
 		log.Fatal("❌ Failed to create schema resources:", err)
+	}
+	if err := repository.EnsureAuthorizationState(ctx, client); err != nil {
+		log.Fatal("❌ Failed to initialize authorization state:", err)
 	}
 
 	log.Printf("✅ Database schema migration completed")

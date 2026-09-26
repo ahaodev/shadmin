@@ -68,12 +68,8 @@ func App() *Application {
 		auth.DefaultTTL,
 	)
 
-	casAdapter, err := casbin.NewAdapter(app.DB, redisCfg)
-	if err != nil {
-		panic(err)
-	}
-	// 初始化 Casbin 管理器（启用 Redis 时走 redis-adapter，否则投影到同库的 casbin_rule 表）
-	app.CasManager = casbin.NewCasManager(casAdapter)
+	// The Ent relationships are authoritative; Casbin policies are in-memory snapshots.
+	app.CasManager = casbin.NewCasManager()
 
 	// JWT 登出黑名单：复用共享 Cacher，ns="jwt:blacklist"。
 	app.TokenBlacklist = auth.NewTokenBlacklist(app.Cacher)
@@ -85,12 +81,17 @@ func App() *Application {
 	}
 	app.CaptchaManager = cm
 
-	// 初始化Casbin初始化器并执行启动时同步
+	// 初始化 Casbin 快照构建与同步服务；首个快照在服务启动前构建。
 	app.CasbinInitializer = NewCasbinInitializer(app.DB, app.CasManager)
 
-	// 初始化Casbin定时同步调度器（每1小时同步一次作为兜底），启动时机在默认数据和全量同步完成之后
+	// Each process refreshes its local snapshot from the shared generation.
 	syncService := app.CasbinInitializer.GetSyncService()
-	app.CasbinScheduler = scheduler.NewCasbinSyncScheduler(syncService, 1*time.Hour)
+	app.CasbinScheduler = scheduler.NewCasbinSyncScheduler(
+		syncService,
+		time.Duration(app.Env.AuthzSyncPollIntervalSeconds)*time.Second,
+	)
+	// authz_states generation 提交后立即唤醒当前实例；低频轮询负责兜底恢复。
+	app.registerAuthorizationGenerationHook()
 
 	// 初始化文件存储
 	storageConfig := InitStorage(app.Env)
@@ -119,9 +120,39 @@ func (app *Application) CloseDBConnection() {
 	CloseEntConnection(app.DB)
 }
 
+// registerAuthorizationGenerationHook 注册 generation 提交触发器。
+// 只能在授权事务提交成功后唤醒同步，不能在 generation 更新的事务中直接构建快照。
+func (app *Application) registerAuthorizationGenerationHook() {
+	if app.CasbinScheduler == nil {
+		return
+	}
+
+	app.DB.AuthzState.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			mutation, ok := m.(*ent.AuthzStateMutation)
+			if !ok || !authzGenerationChanged(mutation) {
+				return next.Mutate(ctx, m)
+			}
+
+			v, err := next.Mutate(ctx, m)
+			if err != nil {
+				return nil, err
+			}
+			afterCommit(m, app.CasbinScheduler.TriggerSync)
+			return v, nil
+		})
+	})
+}
+
+func authzGenerationChanged(mutation *ent.AuthzStateMutation) bool {
+	if _, ok := mutation.Generation(); ok {
+		return true
+	}
+	_, ok := mutation.AddedGeneration()
+	return ok
+}
+
 // registerUserStatusCacheHook 注册 ent hook：User 变更提交成功后失效 UserStatusCache。
-// ID 必须在 next.Mutate 之前解析——批量 Delete 生效后 predicate 已查不到这些行；
-// 失效时机交给 afterCommit，事务内立即失效会被并发请求用旧值回填。
 func (app *Application) registerUserStatusCacheHook() {
 	cache := app.UserStatusCache
 	app.DB.Use(func(next ent.Mutator) ent.Mutator {

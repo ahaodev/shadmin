@@ -179,6 +179,9 @@ func (mr *entMenuRepository) CreateMenu(ctx context.Context, req *domain.CreateM
 		return nil, err
 	}
 	defer tx.Rollback()
+	if err := BumpAuthorizationGeneration(ctx, tx); err != nil {
+		return nil, err
+	}
 
 	createQuery := tx.Menu.
 		Create().
@@ -221,6 +224,9 @@ func (mr *entMenuRepository) UpdateMenu(ctx context.Context, id string, req *dom
 		return nil, err
 	}
 	defer tx.Rollback()
+	if err := BumpAuthorizationGeneration(ctx, tx); err != nil {
+		return nil, err
+	}
 
 	updateQuery := tx.Menu.
 		UpdateOneID(id).
@@ -284,11 +290,10 @@ func (mr *entMenuRepository) GetChildrenMenus(ctx context.Context, parentID stri
 
 // DeleteMenu deletes a menu (only the specified menu, not children)
 func (mr *entMenuRepository) DeleteMenu(ctx context.Context, id string) error {
-	// Delete the menu directly without checking children
-	// The recursive deletion logic will be handled in the UseCase layer
-	return mr.client.Menu.
-		DeleteOneID(id).
-		Exec(ctx)
+	// Delete the menu directly without checking children.
+	return WithAuthorizationTx(ctx, mr.client, func(txCtx context.Context, tx *ent.Tx) error {
+		return tx.Menu.DeleteOneID(id).Exec(txCtx)
+	})
 }
 
 func (mr *entMenuRepository) DeleteMenuTree(ctx context.Context, id string) error {
@@ -297,6 +302,9 @@ func (mr *entMenuRepository) DeleteMenuTree(ctx context.Context, id string) erro
 		return fmt.Errorf("failed to begin menu deletion transaction: %w", err)
 	}
 	defer tx.Rollback()
+	if err := BumpAuthorizationGeneration(ctx, tx); err != nil {
+		return err
+	}
 
 	if err := deleteMenuTree(ctx, tx.Client(), id); err != nil {
 		return err

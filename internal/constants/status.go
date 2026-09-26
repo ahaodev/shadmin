@@ -2,6 +2,8 @@ package constants
 
 import "shadmin/domain"
 
+const AuthorizationStateID = "global"
+
 const (
 	StatusSuccess = domain.StatusSuccess
 	StatusFailed  = domain.StatusFailed

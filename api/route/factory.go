@@ -154,10 +154,9 @@ func (f *ControllerFactory) CreateResourceController() *controller.ResourceContr
 // CreateUserController creates a user controller
 func (f *ControllerFactory) CreateUserController() *controller.UserController {
 	ur := repository.NewUserRepository(f.db)
-	rr := repository.NewRoleRepository(f.db)
 
 	return &controller.UserController{
-		UserUsecase: usecase.NewUserUsecase(ur, rr, f.timeout),
+		UserUsecase: usecase.NewUserUsecase(ur, f.timeout),
 		Env:         f.app.Env,
 	}
 }

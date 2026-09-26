@@ -1626,7 +1626,7 @@ Run `go generate ./ent` to regenerate ORM code. Ensure field types in the Ent Sc
 ### Permissions Not Working
 
 1. Confirm API resources have been scanned and assigned to roles in the admin panel
-2. Confirm Casbin policies are updated (restart the service or call the refresh endpoint)
+2. After saving role/menu/API-resource changes, the committed generation triggers an immediate local Casbin snapshot rebuild; the low-frequency poll (1 hour by default) covers missed triggers, restarts, and cross-instance changes
 3. Check that routes have `casbinMiddleware.CheckAPIPermission()` applied
 
 **Debugging Steps:**
@@ -1640,9 +1640,9 @@ curl -v -H "Authorization: Bearer YOUR_TOKEN" http://localhost:55667/api/v1/syst
 # If missing, restart the backend to trigger bootstrap.InitApiResources() auto-scan
 
 # 3. Go to Role Management → Edit Role → Check the new API resources and menus
-# Casbin policies are auto-updated on save
+# The Ent trigger wakes the local sync; the fallback poll rebuilds snapshots after missed or cross-instance changes
 
-# 4. Re-login or refresh token to apply new permissions
+# 4. Wait for the authorization snapshot to refresh; Casbin role policies are not cached in the JWT
 ```
 
 > **Permission Model Note:** Shadmin uses a dual-layer permission model: the backend uses Casbin to control API access by `(userID, path, method)`; the frontend uses `PERMISSIONS` constant strings (e.g., `system:project:add`) to control button/menu visibility. They are linked through the "Role → Menu → API Resources" binding — when you assign menus to a role, you simultaneously assign the API resource permissions under those menus.

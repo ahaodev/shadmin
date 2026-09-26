@@ -110,5 +110,7 @@ Available factory fields: `f.db` (`*ent.Client`), `f.app` (`*bootstrap.Applicati
 ### Casbin middleware
 `CheckAPIPermission()` enforces `(userID, requestPath, requestMethod)` — returns 403 if denied. Whitelisted paths (health, swagger) are auto-skipped.
 
-### API resource auto-scan
-On startup, `bootstrap.InitApiResources` scans all Gin routes and persists records with ID format `METHOD:/api/v1/path`. Existing menu→API resource associations are preserved across rebuilds.
+### API resource and Casbin snapshot sync
+`bootstrap.InitApiResources` scans Gin routes and persists records with deterministic IDs (`METHOD:/api/v1/path`), preserving menu→API-resource associations. A changed route inventory advances `authz_state.generation` in the same transaction.
+
+Ent user/role/menu/API-resource relations are the authorization source of truth. Permission-affecting writes must go through repository methods that update those relations and advance the generation in the same DB transaction (`repository.WithAuthorizationTx` or the equivalent transaction-scoped helper). Each process polls the shared generation and builds a complete in-memory Casbin snapshot; publish the new Enforcer only after the build succeeds. Do not use adapter AutoSave or mutate a published Enforcer. A stale snapshot is fail-closed by the Casbin middleware (HTTP 503) until a fresh snapshot is available.

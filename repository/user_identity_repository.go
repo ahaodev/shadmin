@@ -2,8 +2,9 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"strings"
+
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/useridentity"
@@ -103,8 +104,8 @@ func (r *entUserIdentityRepository) Upsert(ctx context.Context, account *domain.
 			SetProviderSubject(account.ProviderSubject).
 			Save(ctx)
 		if createErr != nil {
-			if ent.IsConstraintError(createErr) {
-				return fmt.Errorf("create user identity: %w", createErr)
+			if isUniqueConstraintError(createErr) {
+				return fmt.Errorf("%w: %w", domain.ErrUserIdentityConflict, createErr)
 			}
 			return fmt.Errorf("create user identity: %w", createErr)
 		}
@@ -117,37 +118,39 @@ func (r *entUserIdentityRepository) Upsert(ctx context.Context, account *domain.
 	return r.updateOne(ctx, existing.ID, account)
 }
 
+// isUniqueConstraintError recognizes the portable unique-constraint messages
+// emitted by the SQLite, PostgreSQL, and MySQL drivers. Other constraint
+// failures must not trigger the identity-race retry in the use case.
+func isUniqueConstraintError(err error) bool {
+	if !ent.IsConstraintError(err) {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "unique constraint") ||
+		strings.Contains(message, "unique violation") ||
+		strings.Contains(message, "duplicate key") ||
+		strings.Contains(message, "duplicate entry")
+}
+
 func (r *entUserIdentityRepository) WithUserBindingTx(ctx context.Context, fn domain.UserIdentityBindingTxFunc) (*domain.User, error) {
 	if fn == nil {
 		return nil, fmt.Errorf("user identity transaction function is nil")
 	}
 
-	tx, err := r.client.Tx(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("start user identity transaction: %w", err)
-	}
+	var user *domain.User
+	err := withEntTransaction(ctx, r.client, func(txCtx context.Context, tx *ent.Tx) error {
+		txClient := tx.Client()
+		userRepo := NewUserRepository(txClient)
+		identityRepo := &entUserIdentityRepository{client: txClient}
 
-	txClient := tx.Client()
-	userRepo := NewUserRepository(txClient)
-	identityRepo := &entUserIdentityRepository{
-		client: txClient,
-	}
-
-	user, err := fn(ctx, userRepo, identityRepo)
+		var err error
+		user, err = fn(txCtx, userRepo, identityRepo)
+		return err
+	})
 	if err != nil {
-		return nil, rollbackUserIdentityTx(tx, err)
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit user identity transaction: %w", err)
+		return nil, fmt.Errorf("bind user identity transaction: %w", err)
 	}
 	return user, nil
-}
-
-func rollbackUserIdentityTx(tx *ent.Tx, err error) error {
-	if rollbackErr := tx.Rollback(); rollbackErr != nil && !errors.Is(rollbackErr, context.Canceled) {
-		return fmt.Errorf("%w: rollback user identity transaction: %v", err, rollbackErr)
-	}
-	return err
 }
 
 func (r *entUserIdentityRepository) updateOne(ctx context.Context, id string, account *domain.UserIdentity) error {

@@ -24,9 +24,10 @@ const (
 )
 
 type Env struct {
-	AppEnv         string `mapstructure:"APP_ENV"`
-	ContextTimeout int    `mapstructure:"CONTEXT_TIMEOUT"`
-	Port           string `mapstructure:"PORT"`
+	AppEnv                       string `mapstructure:"APP_ENV"`
+	ContextTimeout               int    `mapstructure:"CONTEXT_TIMEOUT"`
+	AuthzSyncPollIntervalSeconds int    `mapstructure:"AUTHZ_SYNC_POLL_INTERVAL_SECONDS"`
+	Port                         string `mapstructure:"PORT"`
 
 	// Database configuration
 	DBType string `mapstructure:"DB_TYPE"` // "sqlite" or "postgres"
@@ -83,9 +84,10 @@ func (e *Env) RedisEnabled() bool {
 func setDefaults() {
 	defaults := map[string]interface{}{
 		// 基础配置
-		"APP_ENV":         AppEnvDev,
-		"CONTEXT_TIMEOUT": 60,
-		"PORT":            ":55667",
+		"APP_ENV":                          AppEnvDev,
+		"CONTEXT_TIMEOUT":                  60,
+		"AUTHZ_SYNC_POLL_INTERVAL_SECONDS": 3600,
+		"PORT":                             ":55667",
 
 		// 数据库配置
 		"DB_TYPE": DbTypeSqlite,
@@ -145,6 +147,10 @@ func generateEnvFile() error {
 		{
 			title: "# 基础配置",
 			keys:  []string{"APP_ENV", "CONTEXT_TIMEOUT", "PORT"},
+		},
+		{
+			title: "# 授权同步配置",
+			keys:  []string{"AUTHZ_SYNC_POLL_INTERVAL_SECONDS"},
 		},
 		{
 			title: "# 数据库配置",
@@ -211,6 +217,9 @@ func (e *Env) validate() error {
 
 	if e.ContextTimeout <= 0 {
 		errs = append(errs, "CONTEXT_TIMEOUT必须大于0")
+	}
+	if e.AuthzSyncPollIntervalSeconds <= 0 {
+		errs = append(errs, "AUTHZ_SYNC_POLL_INTERVAL_SECONDS必须大于0")
 	}
 
 	if e.Port == "" {

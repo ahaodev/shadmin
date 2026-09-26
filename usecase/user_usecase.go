@@ -14,14 +14,12 @@ import (
 
 type userUsecase struct {
 	userRepository domain.UserRepository
-	roleRepository domain.RoleRepository
 	contextTimeout time.Duration
 }
 
-func NewUserUsecase(userRepository domain.UserRepository, roleRepository domain.RoleRepository, timeout time.Duration) domain.UserUseCase {
+func NewUserUsecase(userRepository domain.UserRepository, timeout time.Duration) domain.UserUseCase {
 	return &userUsecase{
 		userRepository: userRepository,
-		roleRepository: roleRepository,
 		contextTimeout: timeout,
 	}
 }
@@ -54,19 +52,9 @@ func (uu *userUsecase) CreateUser(c context.Context, request *domain.CreateUserR
 		user.Password = string(hashedPassword)
 	}
 
-	// 创建用户
-	if err := uu.userRepository.Create(ctx, user); err != nil {
+	// 创建用户与角色关联在同一授权事务中提交。
+	if err := uu.userRepository.CreateWithRoles(ctx, user, request.RoleIDs); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
-	}
-
-	// 分配角色（如果提供了角色ID）
-	if len(request.RoleIDs) > 0 {
-		for _, roleID := range request.RoleIDs {
-			if err := uu.roleRepository.Assign(ctx, user.ID, roleID); err != nil {
-				// 如果角色分配失败，记录错误但不影响用户创建
-				pkg.Log.Printf("Failed to assign role %s to user %s: %v", roleID, user.ID, err)
-			}
-		}
 	}
 
 	pkg.Log.Printf("Successfully created user %s", user.Username)
@@ -213,54 +201,14 @@ func (uu *userUsecase) UpdateUserPartial(c context.Context, userID string, updat
 		user.DepartmentID = updates.DepartmentID
 	}
 
-	// Update user basic info first
-	err = uu.userRepository.Update(ctx, user)
-	if err != nil {
-		return err
+	if updates.RoleIDs != nil {
+		// An explicit empty array clears all roles; an omitted field leaves roles unchanged.
+		return uu.userRepository.UpdateWithRoles(ctx, user, updates.RoleIDs)
 	}
-
-	// Handle role updates if provided
-	if len(updates.RoleIDs) > 0 {
-		// Get current user roles
-		currentRoles, err := uu.GetUserRoles(ctx, userID)
-		if err != nil {
-			return err
-		}
-
-		// Create maps for easier comparison
-		currentRoleMap := make(map[string]bool)
-		for _, roleID := range currentRoles {
-			currentRoleMap[roleID] = true
-		}
-
-		newRoleMap := make(map[string]bool)
-		for _, roleID := range updates.RoleIDs {
-			newRoleMap[roleID] = true
-		}
-
-		// Find roles to add and remove
-		for _, roleID := range updates.RoleIDs {
-			if !currentRoleMap[roleID] {
-				// Add new role
-				err = uu.roleRepository.Assign(ctx, userID, roleID)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		for _, roleID := range currentRoles {
-			if !newRoleMap[roleID] {
-				// Remove old role
-				err = uu.roleRepository.Revoke(ctx, userID, roleID)
-				if err != nil {
-					return err
-				}
-			}
-		}
+	if updates.Status != nil {
+		return uu.userRepository.UpdateWithAuthorization(ctx, user)
 	}
-
-	return nil
+	return uu.userRepository.Update(ctx, user)
 }
 
 // GetUserRoles 获取用户角色

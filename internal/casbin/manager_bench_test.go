@@ -23,30 +23,21 @@ const benchUser = "bench-user"
 const benchObj = "/api/v1/system/bench-res119/:id"
 
 // setupBenchPolicy 为每个 benchmark 构建独立的策略集并预热一次，
-func setupBenchPolicy(tb testing.TB) (Manager, *casbin.SyncedEnforcer) {
+func setupBenchPolicy(tb testing.TB) (*CasManager, *casbin.SyncedEnforcer) {
 	tb.Helper()
-	m, e := testManagerWithEnforcer(tb)
-
-	for _, role := range benchRoles {
-		for i := range 120 {
-			obj := fmt.Sprintf("/api/v1/system/bench-res%03d/:id", i)
-			if _, err := m.AddPolicy(role, obj, "GET"); err != nil {
-				tb.Fatalf("AddPolicy: %v", err)
-			}
-			if _, err := m.AddPolicy(role, obj, "POST"); err != nil {
-				tb.Fatalf("AddPolicy: %v", err)
+	m, _ := testManagerWithEnforcer(tb, func(e *casbin.SyncedEnforcer) {
+		for _, role := range benchRoles {
+			for i := range 120 {
+				obj := fmt.Sprintf("/api/v1/system/bench-res%03d/:id", i)
+				mustAddPolicy(tb, e, role, obj, "GET")
+				mustAddPolicy(tb, e, role, obj, "POST")
 			}
 		}
-	}
-	if _, err := m.AddPolicy("bench-role-wild", "*", "*"); err != nil {
-		tb.Fatalf("AddPolicy: %v", err)
-	}
-	if _, err := m.AddRoleForUser(benchUser, "bench-admin"); err != nil {
-		tb.Fatalf("AddRoleForUser: %v", err)
-	}
-	if _, err := m.AddRoleForUser(benchUser, "bench-role-wild"); err != nil {
-		tb.Fatalf("AddRoleForUser: %v", err)
-	}
+		mustAddPolicy(tb, e, "bench-role-wild", "*", "*")
+		mustAddRoleForUser(tb, e, benchUser, "bench-admin")
+		mustAddRoleForUser(tb, e, benchUser, "bench-role-wild")
+	})
+	e := m.currentSnapshot().enforcer
 
 	if allowed, err := m.CheckPermission(benchUser, benchObj, "GET"); err != nil || !allowed {
 		tb.Fatalf("warmup CheckPermission: allowed=%v err=%v", allowed, err)

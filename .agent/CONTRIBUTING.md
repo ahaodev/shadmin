@@ -76,7 +76,7 @@ Request flow: **Route → Middleware (JWT + Casbin) → Controller → Usecase �
 | Middleware | `api/middleware/` | `JwtAuthMiddleware`, `CasbinMiddleware.CheckAPIPermission()`, request logging |
 | Route | `api/route/` | `public.go` (auth, health) + `protected.go` (system/*); middleware wiring |
 | Factory | `api/route/factory.go` | DI: creates Repository → Usecase → Controller chains |
-| Internal | `internal/` | `casbin/` manager+adapter, `tokenservice/`, `auth/` login security (3-strike lockout), `scheduler/` Casbin sync (1 h), plus `cacher/`, `captcha/`, `conf/`, `constants/`, `contextutil/`, `tokenutil/` |
+| Internal | `internal/` | `casbin/` in-memory snapshot manager, `tokenservice/`, `auth/` login security (3-strike lockout), `scheduler/` authorization-generation trigger with fallback polling, plus `cacher/`, `captcha/`, `conf/`, `constants/`, `contextutil/`, `tokenutil/` |
 | Bootstrap | `bootstrap/` | App init, DB, Casbin, storage, seed data |
 | Shared | `pkg/` | Cross-package utilities (logging, etc.) |
 
@@ -109,7 +109,7 @@ frontend/src/
 ### Auth & Permissions
 
 - **Authentication**: JWT access + refresh tokens. Middleware extracts claims into Gin context (`x-user-*` keys).
-- **Authorization**: Casbin checks `(userID, path, method)` on `/api/v1/system/*` routes via `CheckAPIPermission()` middleware.
+- **Authorization**: Casbin checks `(userID, path, method)` on `/api/v1/system/*` routes via `CheckAPIPermission()` middleware. A stale or unavailable snapshot returns 503 for protected requests; initial snapshot failure aborts startup.
 - **Frontend**: `frontend/src/lib/permissions.ts` defines `hasPermission()`, `hasRole()`, `canAccessMenu()`; the `usePermission()` hook exposes them against the auth-store's `permissions`. Gate UI with `usePermission()` (e.g. `departments-table.tsx`).
 - **Login security**: 3 failed attempts within 1 minute → 1-minute lockout (`internal/auth/login_security.go`). The manager stores only a counter in the shared `cacher`; the key's TTL *is* the lock window. With the memory backend the window is per-replica; with Redis it is shared.
 

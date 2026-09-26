@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"shadmin/internal/constants"
 	"strings"
@@ -23,9 +24,7 @@ type userIdentityUsecase struct {
 	contextTimeout     time.Duration
 }
 
-// NewUserIdentityUsecase 构造第三方登录用例。
-// token 相关参数与 device_auth_usecase 保持一致：复用同一套 TokenService + env secrets，
-// 不引入独立的令牌签发流程。
+// NewUserIdentityUsecase 构造第三方登录用例。不引入独立的令牌签发流程。
 func NewUserIdentityUsecase(
 	identityRepository domain.UserIdentityRepository,
 	tokenService *tokenservice.TokenService,
@@ -86,13 +85,13 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 // 并发首次登录可能同时建号，唯一约束冲突时重试一次。
 func (u *userIdentityUsecase) resolveOrCreateUser(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
 	var lastErr error
-	for attempt := 0; attempt < 2; attempt++ {
+	for range 2 {
 		user, err := u.resolveOrCreateUserOnce(ctx, provider, profile)
 		if err == nil {
 			return user, nil
 		}
 		lastErr = err
-		if !isUniqueViolation(err) {
+		if !errors.Is(err, domain.ErrUserIdentityConflict) {
 			return nil, err
 		}
 	}
@@ -197,11 +196,13 @@ func providerDisplayName(profile domain.UserIdentityProfile) string {
 // email 不在此处刷新：provider email 变化可能撞上 (source, email) 唯一约束，
 // 登录路径不应因邮箱冲突而失败（email 仅在建号时写入）。
 func (u *userIdentityUsecase) refreshUserProfile(ctx context.Context, userRepo domain.UserRepository, user *domain.User, profile domain.UserIdentityProfile) error {
-	user.Nickname = providerDisplayName(profile)
-	user.Avatar = strings.TrimSpace(profile.AvatarURL)
-	if err := userRepo.Update(ctx, user); err != nil {
+	nickname := providerDisplayName(profile)
+	avatar := strings.TrimSpace(profile.AvatarURL)
+	if err := userRepo.UpdateIdentityProfile(ctx, user.ID, nickname, avatar); err != nil {
 		return fmt.Errorf("refresh user profile: %w", err)
 	}
+	user.Nickname = nickname
+	user.Avatar = avatar
 	return nil
 }
 
@@ -234,13 +235,4 @@ func slugifyUsername(s string) string {
 func usernameSuffix(provider, subject string) string {
 	sum := sha256.Sum256([]byte(strings.ToLower(provider) + ":" + subject))
 	return hex.EncodeToString(sum[:])[:10]
-}
-
-// isUniqueViolation 粗略判定唯一约束冲突（跨 sqlite/postgres/mysql 文案差异）
-func isUniqueViolation(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "unique") || strings.Contains(msg, "constraint") || strings.Contains(msg, "duplicate")
 }

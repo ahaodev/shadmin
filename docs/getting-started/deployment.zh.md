@@ -97,7 +97,10 @@ docker run -d \
 | `DB_DSN` | 空（SQLite 默认 `.database/data.db`） | 数据库连接串 |
 | `STORAGE_TYPE` | `disk` | 存储类型：`disk` / `s3` / `minio` |
 | `STORAGE_BASE_PATH` | `./uploads` | 本地存储路径 |
-| `REDIS_ADDR` | 空（禁用） | Redis 地址；留空则 Casbin/Captcha/JWT 黑名单全部走内存，填写则一并切到 Redis |
+| `CACHE_TYPE` | `mem` | 缓存后端：`mem` / `redis` |
+| `REDIS_ADDRESS` | 空 | Redis 地址；用于共享用户状态、Captcha 和 JWT 黑名单缓存 |
+| `REDIS_USERNAME` / `REDIS_PASSWORD` / `REDIS_DB` | 空 / 空 / `0` | Redis 连接配置 |
+| `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` | `3600` | generation 触发同步的兜底轮询间隔（秒），默认 1 小时 |
 
 ---
 
@@ -284,19 +287,20 @@ S3_TOKEN=                          # 通常留空
 
 ## Redis 缓存配置
 
-Shadmin 支持可选的 Redis 作为缓存后端，统一覆盖 Casbin 策略存储、Captcha 验证码与 JWT 登出黑名单。`REDIS_ADDR` 留空（默认）时全部走进程内存实现，单实例部署无需 Redis；填写后三者一并切换到 Redis，多实例部署可共享状态。
+Shadmin 支持 Redis 作为共享缓存后端，用于用户状态缓存、Captcha 验证码和 JWT 登出黑名单。通过 `CACHE_TYPE=redis` 和 `REDIS_ADDRESS` 启用；留空或设为 `mem` 时使用进程内缓存。
 
 ```bash
-REDIS_ADDR=127.0.0.1:6379        # 留空 = 全部走内存；填写即切到 Redis
-REDIS_PASSWORD=                   # 无密码留空
-REDIS_DB=0                        # 0-15
+CACHE_TYPE=redis
+REDIS_ADDRESS=127.0.0.1:6379
+REDIS_USERNAME=
+REDIS_PASSWORD=
+REDIS_DB=0
 ```
 
-- **Casbin**：启用 Redis 时走 `casbin-redis-adapter`（策略持久化到 Redis），否则持久化到同一数据库的 `casbin_rule` 表（由应用层 Ent Hook + 定时同步维持策略）。
-- **Captcha**：验证码存到 Redis（key TTL 自动过期），多实例可跨进程校验。
-- **JWT 黑名单**：登出时将 token 的 `jti` 写入 Redis 直到过期，多实例登出即时生效。
+- **Casbin**：策略是从 Ent 用户/角色/菜单/API 资源关系生成的进程内快照，不再写入 Casbin adapter。多实例通过共享 DB 中的授权 generation 各自重建本地快照；Redis 本身不刷新其他进程的 Enforcer。
+- **Captcha、用户状态缓存和 JWT 黑名单**：Redis 可让这些缓存状态在多实例间共享。
 
-> 生产多实例部署建议填写 `REDIS_ADDR`；单实例可留空，零外部依赖。
+> 多实例必须连接同一权威数据库；授权 generation 提交后会通过 Ent trigger 唤醒当前实例同步，`AUTHZ_SYNC_POLL_INTERVAL_SECONDS` 作为漏触发、进程重启和跨实例变更的兜底轮询间隔（默认 1 小时）。
 
 ---
 

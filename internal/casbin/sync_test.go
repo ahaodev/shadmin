@@ -3,139 +3,287 @@ package casbin
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	"shadmin/ent"
+	"shadmin/ent/role"
+	"shadmin/ent/user"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
-func TestSyncStatsIsHealthy(t *testing.T) {
-	tests := []struct {
-		name  string
-		stats SyncStats
-		want  bool
-	}{
-		{
-			name:  "fresh install: both sides empty",
-			stats: SyncStats{},
-			want:  true,
-		},
-		{
-			name:  "db empty but casbin has leftovers",
-			stats: SyncStats{CasbinPolicies: 1},
-			want:  false,
-		},
-		{
-			// Casbin 为空不等于没同步：角色可能压根没有可投影的权限。
-			// 这条曾经报 false，导致每次启动/每小时一条误报 WARN。
-			name:  "roles exist but project to nothing",
-			stats: SyncStats{DatabaseRoles: 1},
-			want:  true,
-		},
-		{
-			name:  "db roles projected to casbin",
-			stats: SyncStats{DatabaseRoles: 3, CasbinPolicies: 7},
-			want:  true,
-		},
-		{
-			name:  "only user-role assignments, no policies yet",
-			stats: SyncStats{DatabaseUserRoles: 2, CasbinRoles: 2},
-			want:  true,
-		},
+func newSnapshotTestService(t *testing.T) (*ent.Client, *CasManager, *SyncService) {
+	t.Helper()
+
+	name := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
+	client, err := ent.Open("sqlite3", fmt.Sprintf("file:%s?mode=memory&cache=shared&_fk=1", name))
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+
+	ctx := context.Background()
+	if err := client.Schema.Create(ctx); err != nil {
+		t.Fatalf("create test schema: %v", err)
+	}
+	if err := client.AuthzState.Create().SetID("global").Exec(ctx); err != nil {
+		t.Fatalf("create authz state: %v", err)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.stats.IsHealthy(); got != tt.want {
-				t.Fatalf("IsHealthy() = %v, want %v (stats: %+v)", got, tt.want, tt.stats)
-			}
-		})
+	manager := &CasManager{stale: true}
+	return client, manager, NewSyncService(client, manager)
+}
+
+func addSnapshotTestData(t *testing.T, client *ent.Client) string {
+	t.Helper()
+	ctx := context.Background()
+
+	protected, err := client.ApiResource.Create().
+		SetID("GET:/api/v1/report").
+		SetMethod("GET").
+		SetPath("/api/v1/report").
+		SetHandler("reportHandler").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create protected API resource: %v", err)
+	}
+	public, err := client.ApiResource.Create().
+		SetID("GET:/api/v1/health").
+		SetMethod("GET").
+		SetPath("/api/v1/health").
+		SetHandler("healthHandler").
+		SetIsPublic(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create public API resource: %v", err)
+	}
+
+	menu, err := client.Menu.Create().
+		SetName("Reports").
+		SetStatus("active").
+		AddAPIResources(protected, public).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create menu: %v", err)
+	}
+	role, err := client.Role.Create().
+		SetName("operator").
+		SetStatus("active").
+		AddMenus(menu).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+	userEntity, err := client.User.Create().
+		SetUsername("alice").
+		SetStatus(user.StatusActive).
+		AddRoles(role).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	return userEntity.ID
+}
+
+func TestSyncFromDatabaseBuildsSnapshotFromEntRelations(t *testing.T) {
+	client, manager, service := newSnapshotTestService(t)
+	userID := addSnapshotTestData(t, client)
+
+	if err := service.SyncFromDatabase(context.Background()); err != nil {
+		t.Fatalf("SyncFromDatabase: %v", err)
+	}
+	if allowed, err := manager.CheckPermission(userID, "/api/v1/report", "GET"); err != nil || !allowed {
+		t.Fatalf("protected permission = %v, err = %v; want allow", allowed, err)
+	}
+	if allowed, err := manager.CheckPermission(userID, "/api/v1/report", "POST"); err != nil || allowed {
+		t.Fatalf("wrong method permission = %v, err = %v; want deny", allowed, err)
+	}
+	if allowed, err := manager.CheckPermission(userID, "/api/v1/health", "GET"); err != nil || allowed {
+		t.Fatalf("public resource policy = %v, err = %v; want no Casbin grant", allowed, err)
+	}
+
+	generation, ok := manager.CurrentGeneration()
+	if !ok || generation != 0 {
+		t.Fatalf("snapshot generation = %d, loaded = %v; want generation 0", generation, ok)
 	}
 }
 
-func TestUniqueRoleIDsDeduplicates(t *testing.T) {
-	menus := []*ent.Menu{
-		{Edges: ent.MenuEdges{Roles: []*ent.Role{{ID: "r1"}, {ID: "r2"}}}},
-		{Edges: ent.MenuEdges{Roles: []*ent.Role{{ID: "r2"}, {ID: ""}}}},
-		{Edges: ent.MenuEdges{}},
+func TestSyncIfChangedPublishesEmptySnapshotAfterUserDeactivation(t *testing.T) {
+	client, manager, service := newSnapshotTestService(t)
+	userID := addSnapshotTestData(t, client)
+	ctx := context.Background()
+
+	if err := service.SyncFromDatabase(ctx); err != nil {
+		t.Fatalf("initial SyncFromDatabase: %v", err)
+	}
+	if allowed, err := manager.CheckPermission(userID, "/api/v1/report", "GET"); err != nil || !allowed {
+		t.Fatalf("initial permission = %v, err = %v; want allow", allowed, err)
 	}
 
-	got := uniqueRoleIDs(menus)
-	if !sameStringSet(got, []string{"r1", "r2"}) {
-		t.Fatalf("uniqueRoleIDs = %v, want {r1 r2}", got)
+	tx, err := client.Tx(ctx)
+	if err != nil {
+		t.Fatalf("begin transaction: %v", err)
 	}
-}
-
-func TestClearCasbinPolicies(t *testing.T) {
-	m := testManager(t)
-	mustAddPolicy(t, m, "r1", "/a", "GET")
-	mustAddPolicy(t, m, "r2", "/b", "POST")
-	mustAddRoleForUser(t, m, "u1", "r1")
-	mustAddRoleForUser(t, m, "u2", "r2")
-
-	svc := &SyncService{manager: m}
-	if err := svc.clearCasbinPolicies(); err != nil {
-		t.Fatalf("clearCasbinPolicies: %v", err)
+	if err := tx.User.UpdateOneID(userID).SetStatus(user.StatusInactive).Exec(ctx); err != nil {
+		_ = tx.Rollback()
+		t.Fatalf("deactivate user: %v", err)
+	}
+	if err := tx.Role.Update().SetStatus("inactive").Exec(ctx); err != nil {
+		_ = tx.Rollback()
+		t.Fatalf("deactivate role: %v", err)
+	}
+	if err := tx.AuthzState.UpdateOneID("global").AddGeneration(1).Exec(ctx); err != nil {
+		_ = tx.Rollback()
+		t.Fatalf("bump generation: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit transaction: %v", err)
 	}
 
-	if got := m.GetAllPolicies(); len(got) != 0 {
-		t.Fatalf("policies remain after clear: %v", got)
+	if err := service.SyncIfChanged(ctx); err != nil {
+		t.Fatalf("SyncIfChanged: %v", err)
 	}
-	if got := m.GetAllRoles(); len(got) != 0 {
-		t.Fatalf("role mappings remain after clear: %v", got)
+	if allowed, err := manager.CheckPermission(userID, "/api/v1/report", "GET"); err != nil || allowed {
+		t.Fatalf("permission after deactivation = %v, err = %v; want deny", allowed, err)
 	}
-}
-
-var errRemoveBoom = errors.New("remove boom")
-
-type failingRemoveFilteredPolicyManager struct{ Manager }
-
-func (m failingRemoveFilteredPolicyManager) RemoveFilteredPolicy(_ int, _ ...string) (bool, error) {
-	return false, errRemoveBoom
-}
-
-func TestClearCasbinPoliciesAggregatesErrors(t *testing.T) {
-	m := testManager(t)
-	mustAddPolicy(t, m, "r1", "/a", "GET")
-
-	svc := &SyncService{manager: failingRemoveFilteredPolicyManager{m}}
-	if err := svc.clearCasbinPolicies(); !errors.Is(err, errRemoveBoom) {
-		t.Fatalf("err = %v, want to wrap %v", err, errRemoveBoom)
+	if generation, ok := manager.CurrentGeneration(); !ok || generation != 1 {
+		t.Fatalf("snapshot generation = %d, loaded = %v; want generation 1", generation, ok)
 	}
 }
 
-// saveRecordingManager 让清理失败，并记录 SavePolicy 是否被调用：
-// 清理失败必须中止在全量重建的写回之前，否则内存里没删掉的旧规则会被整体覆盖回存储，
-// 让"全量重建"变成把幽灵权限永久化。
-type saveRecordingManager struct {
-	Manager
-	saveCalls int
-}
+func TestSyncFromDatabasePublishesEmptySnapshot(t *testing.T) {
+	client, manager, service := newSnapshotTestService(t)
+	userID := addSnapshotTestData(t, client)
+	ctx := context.Background()
 
-func (m *saveRecordingManager) RemoveFilteredPolicy(_ int, _ ...string) (bool, error) {
-	return false, errRemoveBoom
-}
-
-func (m *saveRecordingManager) SavePolicy() error {
-	m.saveCalls++
-	return nil
-}
-
-func TestSyncFromDatabaseAbortsOnClearFailure(t *testing.T) {
-	base := testManager(t)
-	mustAddPolicy(t, base, "r1", "/a", "GET")
-
-	m := &saveRecordingManager{Manager: base}
-	// entClient 故意留 nil：清理失败必须在触碰 DB 之前返回，否则这里会 panic。
-	svc := &SyncService{manager: m}
-
-	err := svc.SyncFromDatabase(context.Background())
-	if !errors.Is(err, errRemoveBoom) {
-		t.Fatalf("err = %v, want to wrap %v", err, errRemoveBoom)
+	if err := service.SyncFromDatabase(ctx); err != nil {
+		t.Fatalf("initial SyncFromDatabase: %v", err)
 	}
-	if m.saveCalls != 0 {
-		t.Fatalf("SavePolicy called %d times after a failed clear, want 0", m.saveCalls)
+	if allowed, err := manager.CheckPermission(userID, "/api/v1/report", "GET"); err != nil || !allowed {
+		t.Fatalf("initial permission = %v, err = %v; want allow", allowed, err)
 	}
-	if got := base.GetAllPolicies(); len(got) != 1 {
-		t.Fatalf("policies = %v, want the pre-existing rule left untouched", got)
+
+	tx, err := client.Tx(ctx)
+	if err != nil {
+		t.Fatalf("begin delete transaction: %v", err)
+	}
+	if err := tx.User.DeleteOneID(userID).Exec(ctx); err != nil {
+		_ = tx.Rollback()
+		t.Fatalf("delete user: %v", err)
+	}
+	if err := tx.Role.Update().SetStatus("inactive").Exec(ctx); err != nil {
+		_ = tx.Rollback()
+		t.Fatalf("deactivate role: %v", err)
+	}
+	if err := tx.AuthzState.UpdateOneID("global").AddGeneration(1).Exec(ctx); err != nil {
+		_ = tx.Rollback()
+		t.Fatalf("bump generation: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit generation: %v", err)
+	}
+
+	if err := service.SyncIfChanged(ctx); err != nil {
+		t.Fatalf("SyncIfChanged: %v", err)
+	}
+	if allowed, err := manager.CheckPermission(userID, "/api/v1/report", "GET"); err != nil || allowed {
+		t.Fatalf("permission after deleting the last user = %v, err = %v; want deny", allowed, err)
+	}
+	if generation, ok := manager.CurrentGeneration(); !ok || generation != 1 {
+		t.Fatalf("snapshot generation = %d, loaded = %v; want generation 1", generation, ok)
+	}
+}
+
+func TestInstancesIndependentlyApplySharedGeneration(t *testing.T) {
+	client, firstManager, firstService := newSnapshotTestService(t)
+	_ = addSnapshotTestData(t, client)
+	ctx := context.Background()
+	if err := firstService.SyncFromDatabase(ctx); err != nil {
+		t.Fatalf("initial first sync: %v", err)
+	}
+
+	secondManager := &CasManager{stale: true}
+	secondService := NewSyncService(client, secondManager)
+	if err := secondService.SyncFromDatabase(ctx); err != nil {
+		t.Fatalf("initial second sync: %v", err)
+	}
+
+	tx, err := client.Tx(ctx)
+	if err != nil {
+		t.Fatalf("begin transaction: %v", err)
+	}
+	role, err := tx.Role.Query().Where(role.NameEQ("operator")).Only(ctx)
+	if err != nil {
+		_ = tx.Rollback()
+		t.Fatalf("load role: %v", err)
+	}
+	bob, err := tx.User.Create().SetUsername("bob").SetStatus(user.StatusActive).AddRoles(role).Save(ctx)
+	if err != nil {
+		_ = tx.Rollback()
+		t.Fatalf("create second user: %v", err)
+	}
+	if err := tx.AuthzState.UpdateOneID("global").AddGeneration(1).Exec(ctx); err != nil {
+		_ = tx.Rollback()
+		t.Fatalf("bump generation: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit transaction: %v", err)
+	}
+
+	if err := firstService.SyncIfChanged(ctx); err != nil {
+		t.Fatalf("sync first instance: %v", err)
+	}
+	if err := secondService.SyncIfChanged(ctx); err != nil {
+		t.Fatalf("sync second instance: %v", err)
+	}
+	for name, manager := range map[string]*CasManager{"first": firstManager, "second": secondManager} {
+		if allowed, err := manager.CheckPermission(bob.ID, "/api/v1/report", "GET"); err != nil || !allowed {
+			t.Fatalf("%s instance permission = %v, err = %v; want allow", name, allowed, err)
+		}
+		if generation, ok := manager.CurrentGeneration(); !ok || generation != 1 {
+			t.Fatalf("%s generation = %d, loaded = %v; want 1", name, generation, ok)
+		}
+	}
+}
+
+func TestSyncIfChangedSkipsCurrentGeneration(t *testing.T) {
+	client, manager, service := newSnapshotTestService(t)
+	_ = addSnapshotTestData(t, client)
+	ctx := context.Background()
+
+	if err := service.SyncFromDatabase(ctx); err != nil {
+		t.Fatalf("SyncFromDatabase: %v", err)
+	}
+	before, loaded := manager.CurrentGeneration()
+	if !loaded {
+		t.Fatal("snapshot not marked as loaded")
+	}
+	if err := service.SyncIfChanged(ctx); err != nil {
+		t.Fatalf("SyncIfChanged: %v", err)
+	}
+	after, loaded := manager.CurrentGeneration()
+	if !loaded || after != before {
+		t.Fatalf("generation after no-op sync = %d, loaded = %v; want %d", after, loaded, before)
+	}
+}
+
+func TestSyncIfChangedFailsClosedWhenGenerationCannotBeRead(t *testing.T) {
+	client, manager, service := newSnapshotTestService(t)
+	userID := addSnapshotTestData(t, client)
+	ctx := context.Background()
+	if err := service.SyncFromDatabase(ctx); err != nil {
+		t.Fatalf("initial SyncFromDatabase: %v", err)
+	}
+	if err := client.Close(); err != nil {
+		t.Fatalf("close database client: %v", err)
+	}
+
+	if err := service.SyncIfChanged(ctx); err == nil {
+		t.Fatal("SyncIfChanged succeeded after the database client was closed")
+	}
+	if allowed, err := manager.CheckPermission(userID, "/api/v1/report", "GET"); allowed || !errors.Is(err, ErrSnapshotStale) {
+		t.Fatalf("CheckPermission after generation read failure = (%v, %v), want (false, ErrSnapshotStale)", allowed, err)
 	}
 }

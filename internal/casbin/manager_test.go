@@ -1,108 +1,90 @@
 package casbin
 
 import (
-	"sort"
-	"strings"
+	"errors"
 	"testing"
 
 	"github.com/casbin/casbin/v3"
-	"github.com/casbin/casbin/v3/model"
 )
 
-// memAdapter 是测试用的最小适配器：enforcer 的策略状态完全在内存中，
-// 适配器只用来满足 casbin.NewEnforcer 的接口要求，不承载任何断言。
-type memAdapter struct{}
-
-func (a *memAdapter) LoadPolicy(model.Model) error                              { return nil }
-func (a *memAdapter) SavePolicy(model.Model) error                              { return nil }
-func (a *memAdapter) AddPolicy(string, string, []string) error                  { return nil }
-func (a *memAdapter) RemovePolicy(string, string, []string) error               { return nil }
-func (a *memAdapter) RemoveFilteredPolicy(string, string, int, ...string) error { return nil }
-
-// testManager 为每个用例构建独立的 enforcer，用例之间互不污染，
-// 因此夹具无需命名空间前缀，也支持 -shuffle / -count 重复运行。
-func testManager(tb testing.TB) Manager {
+func testManagerWithEnforcer(tb testing.TB, configure func(*casbin.SyncedEnforcer)) (*CasManager, *casbin.SyncedEnforcer) {
 	tb.Helper()
-	m, _ := testManagerWithEnforcer(tb)
-	return m
-}
-
-// testManagerWithEnforcer 额外返回底层 SyncedEnforcer，供需要直接 Enforce 的用例使用
-// （benchmark 绕开 CheckPermission 的角色查询）。刻意不经 Manager 接口暴露：
-// 那会让调用方绕过加锁约定，重开 SyncedEnforcer 本要消除的竞态。
-func testManagerWithEnforcer(tb testing.TB) (Manager, *casbin.SyncedEnforcer) {
-	tb.Helper()
-	e, err := newEnforcer(&memAdapter{})
+	enforcer, err := newEnforcer()
 	if err != nil {
 		tb.Fatalf("newEnforcer: %v", err)
 	}
-	return &CasManager{enforcer: e}, e
+	if configure != nil {
+		configure(enforcer)
+	}
+	manager := &CasManager{
+		snapshot: &authorizationSnapshot{enforcer: enforcer, generation: 0},
+	}
+	return manager, enforcer
 }
 
-func mustAddPolicy(t *testing.T, m Manager, role, obj, act string) {
-	t.Helper()
-	ok, err := m.AddPolicy(role, obj, act)
+func replaceTestSnapshot(tb testing.TB, manager *CasManager, generation int64, configure func(*casbin.SyncedEnforcer)) {
+	tb.Helper()
+	enforcer, err := newEnforcer()
 	if err != nil {
-		t.Fatalf("AddPolicy(%q, %q, %q): %v", role, obj, act, err)
+		tb.Fatalf("newEnforcer: %v", err)
 	}
-	if !ok {
-		t.Fatalf("AddPolicy(%q, %q, %q): ok=false, want true", role, obj, act)
+	if configure != nil {
+		configure(enforcer)
 	}
-}
-
-func mustRemovePolicy(t *testing.T, m Manager, role, obj, act string) {
-	t.Helper()
-	ok, err := m.RemovePolicy(role, obj, act)
-	if err != nil {
-		t.Fatalf("RemovePolicy(%q, %q, %q): %v", role, obj, act, err)
+	if err := manager.ReplaceSnapshot(enforcer, generation); err != nil {
+		tb.Fatalf("ReplaceSnapshot: %v", err)
 	}
-	if !ok {
-		t.Fatalf("RemovePolicy(%q, %q, %q): ok=false, want true", role, obj, act)
-	}
-}
-
-func mustRemoveFilteredPolicy(t *testing.T, m Manager, fieldIndex int, values ...string) {
-	t.Helper()
-	ok, err := m.RemoveFilteredPolicy(fieldIndex, values...)
-	if err != nil {
-		t.Fatalf("RemoveFilteredPolicy(%d, %v): %v", fieldIndex, values, err)
-	}
-	if !ok {
-		t.Fatalf("RemoveFilteredPolicy(%d, %v): ok=false, want true", fieldIndex, values)
+	if !manager.MarkSnapshotFresh(generation) {
+		tb.Fatalf("MarkSnapshotFresh(%d) rejected the published snapshot", generation)
 	}
 }
 
-func mustAddRoleForUser(t *testing.T, m Manager, user, role string) {
-	t.Helper()
-	ok, err := m.AddRoleForUser(user, role)
-	if err != nil {
-		t.Fatalf("AddRoleForUser(%q, %q): %v", user, role, err)
-	}
-	if !ok {
-		t.Fatalf("AddRoleForUser(%q, %q): ok=false, want true", user, role)
+func mustAddPolicy(tb testing.TB, enforcer *casbin.SyncedEnforcer, role, object, action string) {
+	tb.Helper()
+	if _, err := enforcer.AddNamedPolicy("p", role, object, action); err != nil {
+		tb.Fatalf("AddNamedPolicy(%q, %q, %q): %v", role, object, action, err)
 	}
 }
 
-func mustDeleteRolesForUser(t *testing.T, m Manager, user string) {
-	t.Helper()
-	ok, err := m.DeleteRolesForUser(user)
-	if err != nil {
-		t.Fatalf("DeleteRolesForUser(%q): %v", user, err)
-	}
-	if !ok {
-		t.Fatalf("DeleteRolesForUser(%q): ok=false, want true", user)
+func mustAddRoleForUser(tb testing.TB, enforcer *casbin.SyncedEnforcer, userID, role string) {
+	tb.Helper()
+	if _, err := enforcer.AddRoleForUser(userID, role); err != nil {
+		tb.Fatalf("AddRoleForUser(%q, %q): %v", userID, role, err)
 	}
 }
 
-func assertPermission(t *testing.T, m Manager, userID, obj, act string, want bool) {
+func assertPermission(t *testing.T, manager Manager, userID, object, action string, want bool) {
 	t.Helper()
-	got, err := m.CheckPermission(userID, obj, act)
+	got, err := manager.CheckPermission(userID, object, action)
 	if err != nil {
-		t.Fatalf("CheckPermission(%q, %q, %q): %v", userID, obj, act, err)
+		t.Fatalf("CheckPermission(%q, %q, %q): %v", userID, object, action, err)
 	}
 	if got != want {
-		t.Fatalf("CheckPermission(%q, %q, %q) = %v, want %v", userID, obj, act, got, want)
+		t.Fatalf("CheckPermission(%q, %q, %q) = %v, want %v", userID, object, action, got, want)
 	}
+}
+
+func TestNewCasManagerStartsStale(t *testing.T) {
+	manager := NewCasManager()
+	if allowed, err := manager.CheckPermission("user", "/api/test", "GET"); allowed || !errors.Is(err, ErrSnapshotStale) {
+		t.Fatalf("CheckPermission before first snapshot = (%v, %v), want (false, ErrSnapshotStale)", allowed, err)
+	}
+}
+
+func TestManagerStaleSnapshotFailsClosedAndCanRecover(t *testing.T) {
+	manager, _ := testManagerWithEnforcer(t, func(enforcer *casbin.SyncedEnforcer) {
+		mustAddRoleForUser(t, enforcer, "user", "role")
+		mustAddPolicy(t, enforcer, "role", "/api/test", "GET")
+	})
+
+	manager.MarkSnapshotStale()
+	if allowed, err := manager.CheckPermission("user", "/api/test", "GET"); allowed || !errors.Is(err, ErrSnapshotStale) {
+		t.Fatalf("CheckPermission while stale = (%v, %v), want (false, ErrSnapshotStale)", allowed, err)
+	}
+	if !manager.MarkSnapshotFresh(0) {
+		t.Fatal("MarkSnapshotFresh rejected the current generation")
+	}
+	assertPermission(t, manager, "user", "/api/test", "GET", true)
 }
 
 func TestCheckPermission(t *testing.T) {
@@ -115,17 +97,18 @@ func TestCheckPermission(t *testing.T) {
 	objExact := "/api/v1/res/allowed"
 	objOther := "/api/v1/res/other"
 
-	m := testManager(t)
-	mustAddPolicy(t, m, roleExact, objExact, "GET")
-	mustAddPolicy(t, m, roleExact, "/api/v1/res/:id", "POST")
-	mustAddPolicy(t, m, roleWild, "*", "*")
-	mustAddRoleForUser(t, m, userNormal, roleExact)
-	mustAddRoleForUser(t, m, userWild, roleWild)
+	manager, _ := testManagerWithEnforcer(t, func(enforcer *casbin.SyncedEnforcer) {
+		mustAddPolicy(t, enforcer, roleExact, objExact, "GET")
+		mustAddPolicy(t, enforcer, roleExact, "/api/v1/res/:id", "POST")
+		mustAddPolicy(t, enforcer, roleWild, "*", "*")
+		mustAddRoleForUser(t, enforcer, userNormal, roleExact)
+		mustAddRoleForUser(t, enforcer, userWild, roleWild)
+	})
 
 	cases := []struct {
-		name             string
-		userID, obj, act string
-		want             bool
+		name                   string
+		userID, object, action string
+		want                   bool
 	}{
 		{"exact path and method", userNormal, objExact, "GET", true},
 		{"keyMatch2 path", userNormal, "/api/v1/res/42", "POST", true},
@@ -135,196 +118,69 @@ func TestCheckPermission(t *testing.T) {
 		{"user without roles", "user-nobody", objExact, "GET", false},
 		{"empty user", "", objExact, "GET", false},
 	}
-
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assertPermission(t, m, tc.userID, tc.obj, tc.act, tc.want)
+			assertPermission(t, manager, tc.userID, tc.object, tc.action, tc.want)
 		})
 	}
 }
 
-// 当前实现无结果缓存；下面四个用例锁定"策略变更立即生效"，
-// 并在将来引入结果缓存时守住失效逻辑。
-func TestCheckPermission_PolicyChangeTakesEffect_OnGrant(t *testing.T) {
-	const (
-		role = "role"
-		user = "user"
-	)
-	obj := "/api/v1/res"
+func TestCheckPermission_GrantTakesEffectAfterSnapshotPublication(t *testing.T) {
+	const userID, roleID, object = "user", "role", "/api/v1/res"
+	manager, _ := testManagerWithEnforcer(t, func(enforcer *casbin.SyncedEnforcer) {
+		mustAddRoleForUser(t, enforcer, userID, roleID)
+	})
+	assertPermission(t, manager, userID, object, "GET", false)
 
-	m := testManager(t)
-	mustAddRoleForUser(t, m, user, role)
-
-	// 先确认一个 deny 结果
-	assertPermission(t, m, user, obj, "GET", false)
-
-	mustAddPolicy(t, m, role, obj, "GET")
-
-	assertPermission(t, m, user, obj, "GET", true)
+	replaceTestSnapshot(t, manager, 1, func(enforcer *casbin.SyncedEnforcer) {
+		mustAddRoleForUser(t, enforcer, userID, roleID)
+		mustAddPolicy(t, enforcer, roleID, object, "GET")
+	})
+	assertPermission(t, manager, userID, object, "GET", true)
 }
 
-// 撤权后若仍放行即为安全漏洞。
-func TestCheckPermission_PolicyChangeTakesEffect_OnRevoke(t *testing.T) {
-	const (
-		role = "role"
-		user = "user"
-	)
-	obj := "/api/v1/res"
+func TestCheckPermission_RevokeTakesEffectAfterSnapshotPublication(t *testing.T) {
+	const userID, roleID, object = "user", "role", "/api/v1/res"
+	manager, _ := testManagerWithEnforcer(t, func(enforcer *casbin.SyncedEnforcer) {
+		mustAddRoleForUser(t, enforcer, userID, roleID)
+		mustAddPolicy(t, enforcer, roleID, object, "GET")
+	})
+	assertPermission(t, manager, userID, object, "GET", true)
 
-	m := testManager(t)
-	mustAddRoleForUser(t, m, user, role)
-	mustAddPolicy(t, m, role, obj, "GET")
-
-	// 先确认一个 allow 结果
-	assertPermission(t, m, user, obj, "GET", true)
-
-	mustRemovePolicy(t, m, role, obj, "GET")
-
-	assertPermission(t, m, user, obj, "GET", false)
+	replaceTestSnapshot(t, manager, 1, func(enforcer *casbin.SyncedEnforcer) {
+		mustAddRoleForUser(t, enforcer, userID, roleID)
+	})
+	assertPermission(t, manager, userID, object, "GET", false)
 }
 
-// RemoveFilteredPolicy 是"删除某角色所有策略"的批量入口。
-func TestCheckPermission_PolicyChangeTakesEffect_OnRemoveFilteredPolicy(t *testing.T) {
-	const (
-		role = "role"
-		user = "user"
-	)
-	obj := "/api/v1/res"
+func TestCheckPermission_RoleRemovalTakesEffectAfterSnapshotPublication(t *testing.T) {
+	const userID, roleID, object = "user", "role", "/api/v1/res"
+	manager, _ := testManagerWithEnforcer(t, func(enforcer *casbin.SyncedEnforcer) {
+		mustAddRoleForUser(t, enforcer, userID, roleID)
+		mustAddPolicy(t, enforcer, roleID, object, "GET")
+	})
+	assertPermission(t, manager, userID, object, "GET", true)
 
-	m := testManager(t)
-	mustAddRoleForUser(t, m, user, role)
-	mustAddPolicy(t, m, role, obj, "GET")
-	assertPermission(t, m, user, obj, "GET", true)
-
-	mustRemoveFilteredPolicy(t, m, 0, role)
-
-	assertPermission(t, m, user, obj, "GET", false)
-}
-
-func TestCheckPermission_PolicyChangeTakesEffect_OnDeleteRolesForUser(t *testing.T) {
-	const (
-		role = "role"
-		user = "user"
-	)
-	obj := "/api/v1/res"
-
-	m := testManager(t)
-	mustAddRoleForUser(t, m, user, role)
-	mustAddPolicy(t, m, role, obj, "GET")
-	assertPermission(t, m, user, obj, "GET", true)
-
-	mustDeleteRolesForUser(t, m, user)
-
-	assertPermission(t, m, user, obj, "GET", false)
+	replaceTestSnapshot(t, manager, 1, func(enforcer *casbin.SyncedEnforcer) {
+		mustAddPolicy(t, enforcer, roleID, object, "GET")
+	})
+	assertPermission(t, manager, userID, object, "GET", false)
 }
 
 func TestCheckPermission_StableAcrossRepeatedCalls(t *testing.T) {
-	const (
-		role = "role"
-		user = "user"
-	)
-	obj := "/api/v1/res"
-
-	m := testManager(t)
-	mustAddRoleForUser(t, m, user, role)
-	mustAddPolicy(t, m, role, obj, "GET")
+	const userID, roleID, object = "user", "role", "/api/v1/res"
+	manager, _ := testManagerWithEnforcer(t, func(enforcer *casbin.SyncedEnforcer) {
+		mustAddRoleForUser(t, enforcer, userID, roleID)
+		mustAddPolicy(t, enforcer, roleID, object, "GET")
+	})
 
 	for i := range 200 {
-		got, err := m.CheckPermission(user, obj, "GET")
+		allowed, err := manager.CheckPermission(userID, object, "GET")
 		if err != nil {
 			t.Fatalf("call %d: %v", i, err)
 		}
-		if !got {
+		if !allowed {
 			t.Fatalf("call %d: got deny, want allow", i)
-		}
-	}
-}
-
-func TestManagerGetAllPolicies(t *testing.T) {
-	m := testManager(t)
-
-	mustAddPolicy(t, m, "role-a", "/api/v1/a", "GET")
-	mustAddPolicy(t, m, "role-a", "/api/v1/b", "POST")
-	mustAddPolicy(t, m, "role-b", "/api/v1/a", "GET")
-
-	want := map[string]bool{
-		"role-a,/api/v1/a,GET":  true,
-		"role-a,/api/v1/b,POST": true,
-		"role-b,/api/v1/a,GET":  true,
-	}
-
-	got := m.GetAllPolicies()
-	if len(got) != len(want) {
-		t.Fatalf("GetAllPolicies: got %d policies, want %d", len(got), len(want))
-	}
-	for _, p := range got {
-		if !want[strings.Join(p, ",")] {
-			t.Errorf("GetAllPolicies: unexpected policy %v", p)
-		}
-	}
-}
-
-func TestManagerRoleMappingReadback(t *testing.T) {
-	m := testManager(t)
-
-	mustAddRoleForUser(t, m, "alice", "admin")
-	mustAddRoleForUser(t, m, "alice", "ops")
-	mustAddRoleForUser(t, m, "bob", "viewer")
-
-	// casbin 返回角色顺序不稳定（内部 map 迭代），断言前先排序
-	roles := m.GetRolesForUser("alice")
-	sort.Strings(roles)
-	if got := strings.Join(roles, ","); got != "admin,ops" {
-		t.Errorf("GetRolesForUser(alice) = %q, want %q", got, "admin,ops")
-	}
-	if got := m.GetRolesForUser("nobody"); len(got) != 0 {
-		t.Errorf("GetRolesForUser(nobody) = %v, want empty", got)
-	}
-
-	want := map[string]bool{
-		"alice,admin": true,
-		"alice,ops":   true,
-		"bob,viewer":  true,
-	}
-	got := m.GetAllRoles()
-	if len(got) != len(want) {
-		t.Fatalf("GetAllRoles: got %d mappings, want %d", len(got), len(want))
-	}
-	for _, r := range got {
-		if len(r) != 2 || !want[strings.Join(r, ",")] {
-			t.Errorf("GetAllRoles: unexpected mapping %v", r)
-		}
-	}
-}
-
-func TestManagerGetFilteredPolicies(t *testing.T) {
-	m := testManager(t)
-
-	mustAddPolicy(t, m, "role-a", "/api/v1/a", "GET")
-	mustAddPolicy(t, m, "role-a", "/api/v1/b", "POST")
-	mustAddPolicy(t, m, "role-b", "/api/v1/a", "GET")
-
-	got := m.GetFilteredPolicies(0, "role-a")
-	if len(got) != 2 {
-		t.Fatalf("GetFilteredPolicies(role-a) = %v, want 2 rules", got)
-	}
-	for _, p := range got {
-		if p[0] != "role-a" {
-			t.Errorf("GetFilteredPolicies(role-a) leaked another subject: %v", p)
-		}
-	}
-
-	if got := m.GetFilteredPolicies(0, "role-missing"); len(got) != 0 {
-		t.Fatalf("GetFilteredPolicies(role-missing) = %v, want empty", got)
-	}
-
-	// 返回副本：改动结果不得影响 enforcer 内部状态。
-	for _, p := range got {
-		p[1] = "/mutated"
-	}
-	for _, p := range m.GetFilteredPolicies(0, "role-a") {
-		if p[1] == "/mutated" {
-			t.Fatal("GetFilteredPolicies returned a view into casbin's internal policy slice")
 		}
 	}
 }

@@ -14,14 +14,6 @@ type entRoleRepository struct {
 	client *ent.Client
 }
 
-func (rr *entRoleRepository) Assign(c context.Context, uid, rid string) error {
-	return rr.client.User.UpdateOneID(uid).AddRoleIDs(rid).Exec(c)
-}
-
-func (rr *entRoleRepository) Revoke(c context.Context, uid, rid string) error {
-	return rr.client.User.UpdateOneID(uid).RemoveRoleIDs(rid).Exec(c)
-}
-
 func NewRoleRepository(client *ent.Client) domain.RoleRepository {
 	return &entRoleRepository{
 		client: client,
@@ -61,15 +53,19 @@ func (rr *entRoleRepository) Create(c context.Context, role *domain.Role) error 
 	role.CreatedAt = now
 	role.UpdatedAt = now
 
-	builder := rr.client.Role.Create().
-		SetName(role.Name).
-		SetSequence(role.Sequence).
-		SetStatus(role.Status).
-		AddMenuIDs(role.MenusIds...).
-		SetCreatedAt(role.CreatedAt).
-		SetUpdatedAt(role.UpdatedAt)
-
-	created, err := builder.Save(c)
+	var created *ent.Role
+	err := WithAuthorizationTx(c, rr.client, func(txCtx context.Context, tx *ent.Tx) error {
+		var err error
+		created, err = tx.Role.Create().
+			SetName(role.Name).
+			SetSequence(role.Sequence).
+			SetStatus(role.Status).
+			AddMenuIDs(role.MenusIds...).
+			SetCreatedAt(role.CreatedAt).
+			SetUpdatedAt(role.UpdatedAt).
+			Save(txCtx)
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create role: %w", err)
 	}
@@ -148,24 +144,27 @@ func (rr *entRoleRepository) ExistsByName(c context.Context, name string) (bool,
 func (rr *entRoleRepository) Update(c context.Context, role *domain.Role) error {
 	role.UpdatedAt = time.Now()
 
-	builder := rr.client.Role.UpdateOneID(role.ID).
-		SetName(role.Name).
-		SetSequence(role.Sequence).
-		SetStatus(role.Status).
-		SetUpdatedAt(role.UpdatedAt).
-		ClearMenus().
-		AddMenuIDs(role.MenusIds...)
-
-	_, err := builder.Save(c)
+	err := WithAuthorizationTx(c, rr.client, func(txCtx context.Context, tx *ent.Tx) error {
+		_, err := tx.Role.UpdateOneID(role.ID).
+			SetName(role.Name).
+			SetSequence(role.Sequence).
+			SetStatus(role.Status).
+			SetUpdatedAt(role.UpdatedAt).
+			ClearMenus().
+			AddMenuIDs(role.MenusIds...).
+			Save(txCtx)
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update role: %w", err)
 	}
-
 	return nil
 }
 
 func (rr *entRoleRepository) Delete(c context.Context, id string) error {
-	err := rr.client.Role.DeleteOneID(id).Exec(c)
+	err := WithAuthorizationTx(c, rr.client, func(txCtx context.Context, tx *ent.Tx) error {
+		return tx.Role.DeleteOneID(id).Exec(txCtx)
+	})
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.ErrRoleNotFound
@@ -182,6 +181,9 @@ func (rr *entRoleRepository) DeleteIfUnused(c context.Context, id, name string) 
 		return fmt.Errorf("failed to begin role deletion transaction: %w", err)
 	}
 	defer tx.Rollback()
+	if err := BumpAuthorizationGeneration(c, tx); err != nil {
+		return err
+	}
 
 	userCount, err := tx.Role.
 		Query().

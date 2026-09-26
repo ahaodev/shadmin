@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/predicate"
@@ -92,28 +93,40 @@ func NewUserRepository(client *ent.Client) domain.UserRepository {
 }
 
 func (ur *entUserRepository) Create(c context.Context, u *domain.User) error {
+	return ur.create(c, u, nil)
+}
+
+func (ur *entUserRepository) CreateWithRoles(c context.Context, u *domain.User, roleIDs []string) error {
+	return ur.create(c, u, &roleIDs)
+}
+
+func (ur *entUserRepository) create(c context.Context, u *domain.User, roleIDs *[]string) error {
 	status := domainStatusToEntStatus(u.Status)
+	var created *ent.User
 
-	createQuery := ur.client.User.
-		Create().
-		SetUsername(u.Username).
-		SetNickname(u.Nickname).
-		SetNillableEmail(emptyToNil(u.Email)).
-		SetNillablePhone(emptyToNil(u.Phone)).
-		SetNillablePassword(emptyToNil(u.Password)).
-		SetAvatar(u.Avatar).
-		SetStatus(status).
-		SetNillableInvitedAt(u.InvitedAt).
-		SetNillableInvitedBy(&u.InvitedBy).
-		SetNillableDepartmentID(u.DepartmentID)
-
-	// 来源：默认 shadmin；第三方登录显式置为 provider name（github/google）
-	if u.Source != "" {
-		createQuery = createQuery.SetSource(user.Source(u.Source))
-	}
-
-	created, err := createQuery.Save(c)
-
+	err := WithAuthorizationTx(c, ur.client, func(txCtx context.Context, tx *ent.Tx) error {
+		createQuery := tx.User.
+			Create().
+			SetUsername(u.Username).
+			SetNickname(u.Nickname).
+			SetNillableEmail(emptyToNil(u.Email)).
+			SetNillablePhone(emptyToNil(u.Phone)).
+			SetNillablePassword(emptyToNil(u.Password)).
+			SetAvatar(u.Avatar).
+			SetStatus(status).
+			SetNillableInvitedAt(u.InvitedAt).
+			SetNillableInvitedBy(&u.InvitedBy).
+			SetNillableDepartmentID(u.DepartmentID)
+		if u.Source != "" {
+			createQuery = createQuery.SetSource(user.Source(u.Source))
+		}
+		if roleIDs != nil && len(*roleIDs) > 0 {
+			createQuery = createQuery.AddRoleIDs((*roleIDs)...)
+		}
+		var err error
+		created, err = createQuery.Save(txCtx)
+		return err
+	})
 	if err != nil {
 		return err
 	}
@@ -131,7 +144,7 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	if filter.Status != "" {
 		// status 支持逗号多值（web 多选拼接，如 active,suspended）
 		var entStatuses []user.Status
-		for _, s := range strings.Split(filter.Status, ",") {
+		for s := range strings.SplitSeq(filter.Status, ",") {
 			if s = strings.TrimSpace(s); s != "" {
 				entStatuses = append(entStatuses, domainStatusToEntStatus(s))
 			}
@@ -157,7 +170,7 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	if filter.Role != "" {
 		// role 过滤：逗号分隔的角色 ID，匹配拥有任一角色的用户
 		var roleIDs []string
-		for _, id := range strings.Split(filter.Role, ",") {
+		for id := range strings.SplitSeq(filter.Role, ",") {
 			if id = strings.TrimSpace(id); id != "" {
 				roleIDs = append(roleIDs, id)
 			}
@@ -257,44 +270,67 @@ func (ur *entUserRepository) GetByID(c context.Context, id string) (*domain.User
 	return entUserToDomainUser(u, true), nil
 }
 
-// Update 更新用户信息
-// 🔒 安全: IsAdmin 字段在此处被故意排除，仅在创建时设置，不可通过 API 修改
+// Update updates user fields that do not affect authorization.
+// Status and role changes must use UpdateWithAuthorization or UpdateWithRoles.
+// 🔒 IsAdmin is intentionally excluded and can only be set during creation.
 func (ur *entUserRepository) Update(c context.Context, u *domain.User) error {
-	updateQuery := ur.client.User.
-		UpdateOneID(u.ID).
-		SetUsername(u.Username).
-		SetNickname(u.Nickname).
-		SetAvatar(u.Avatar).
-		SetStatus(domainStatusToEntStatus(u.Status))
+	return ur.update(c, u, nil, false)
+}
 
-	// email 唯一且可空：空值写 NULL（第三方来源用户可能无邮箱），非空则更新
-	if u.Email == "" {
-		updateQuery = updateQuery.ClearEmail()
+// UpdateWithAuthorization updates user fields and advances the authorization
+// generation for changes such as an account status transition.
+func (ur *entUserRepository) UpdateWithAuthorization(c context.Context, u *domain.User) error {
+	return ur.update(c, u, nil, true)
+}
+
+func (ur *entUserRepository) UpdateWithRoles(c context.Context, u *domain.User, roleIDs []string) error {
+	return ur.update(c, u, &roleIDs, true)
+}
+
+func (ur *entUserRepository) update(c context.Context, u *domain.User, roleIDs *[]string, authorizationChanged bool) error {
+	var updated *ent.User
+	mutate := func(txCtx context.Context, tx *ent.Tx) error {
+		updateQuery := tx.User.
+			UpdateOneID(u.ID).
+			SetUsername(u.Username).
+			SetNickname(u.Nickname).
+			SetAvatar(u.Avatar).
+			SetStatus(domainStatusToEntStatus(u.Status))
+
+		// email 唯一且可空：空值写 NULL（第三方来源用户可能无邮箱），非空则更新
+		if u.Email == "" {
+			updateQuery = updateQuery.ClearEmail()
+		} else {
+			updateQuery = updateQuery.SetEmail(u.Email)
+		}
+		if u.Phone == "" {
+			updateQuery = updateQuery.ClearPhone()
+		} else {
+			updateQuery = updateQuery.SetPhone(u.Phone)
+		}
+		if u.DepartmentID != nil && *u.DepartmentID != "" {
+			updateQuery = updateQuery.SetDepartmentID(*u.DepartmentID)
+		} else {
+			updateQuery = updateQuery.ClearDepartmentID()
+		}
+		if u.Password != "" {
+			updateQuery = updateQuery.SetPassword(u.Password)
+		}
+		if roleIDs != nil {
+			updateQuery = updateQuery.ClearRoles().AddRoleIDs((*roleIDs)...)
+		}
+
+		var err error
+		updated, err = updateQuery.Save(txCtx)
+		return err
+	}
+
+	var err error
+	if authorizationChanged {
+		err = WithAuthorizationTx(c, ur.client, mutate)
 	} else {
-		updateQuery = updateQuery.SetEmail(u.Email)
+		err = withEntTransaction(c, ur.client, mutate)
 	}
-
-	// phone 唯一且可空：空值写入 NULL（避免空串触发唯一冲突），非空则更新
-	if u.Phone == "" {
-		updateQuery = updateQuery.ClearPhone()
-	} else {
-		updateQuery = updateQuery.SetPhone(u.Phone)
-	}
-
-	// Handle department_id
-	if u.DepartmentID != nil && *u.DepartmentID != "" {
-		updateQuery = updateQuery.SetDepartmentID(*u.DepartmentID)
-	} else {
-		updateQuery = updateQuery.ClearDepartmentID()
-	}
-
-	// 🔒 如果提供了密码，则更新密码哈希
-	if u.Password != "" {
-		updateQuery = updateQuery.SetPassword(u.Password)
-	}
-
-	updated, err := updateQuery.Save(c)
-
 	if err != nil {
 		return err
 	}
@@ -303,10 +339,22 @@ func (ur *entUserRepository) Update(c context.Context, u *domain.User) error {
 	return nil
 }
 
+// UpdateIdentityProfile refreshes OIDC presentation fields without changing authorization state.
+func (ur *entUserRepository) UpdateIdentityProfile(ctx context.Context, userID, nickname, avatar string) error {
+	_, err := ur.client.User.UpdateOneID(userID).
+		SetNickname(nickname).
+		SetAvatar(avatar).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("update identity profile: %w", err)
+	}
+	return nil
+}
+
 func (ur *entUserRepository) Delete(c context.Context, id string) error {
-	return ur.client.User.
-		DeleteOneID(id).
-		Exec(c)
+	return WithAuthorizationTx(c, ur.client, func(txCtx context.Context, tx *ent.Tx) error {
+		return tx.User.DeleteOneID(id).Exec(txCtx)
+	})
 }
 
 // GetStatusByID 只查询用户状态字段，避免加载整条记录。

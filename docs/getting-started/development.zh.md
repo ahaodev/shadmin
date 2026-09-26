@@ -1626,7 +1626,7 @@ pnpm run knip
 ### 权限不生效
 
 1. 确认 API 资源已在后台扫描并分配给角色
-2. 确认 Casbin 策略已更新（重启服务或调用刷新接口）
+2. 保存角色/菜单/API 资源变更后，generation 提交会触发当前实例立即重建本地 Casbin 快照；低频轮询（默认 1 小时）负责漏触发、重启和跨实例变更兜底
 3. 检查路由是否添加了 `casbinMiddleware.CheckAPIPermission()`
 
 **调试步骤：**
@@ -1640,9 +1640,9 @@ curl -v -H "Authorization: Bearer YOUR_TOKEN" http://localhost:55667/api/v1/syst
 # 如果没有，重启后端服务触发 bootstrap.InitApiResources() 自动扫描
 
 # 3. 进入角色管理 → 编辑角色 → 勾选新的 API 资源和菜单
-# 保存后 Casbin 策略会自动更新
+# 保存后数据库 generation 会更新，当前实例由 Ent trigger 唤醒同步；轮询任务负责兜底重建 Casbin 快照
 
-# 4. 重新登录或刷新 Token，使新权限生效
+# 4. 等待授权快照更新；Token 中不缓存 Casbin 角色策略
 ```
 
 > **权限模型说明：** Shadmin 使用双层权限：后端通过 Casbin 按 `(userID, path, method)` 控制 API 访问；前端通过 `PERMISSIONS` 常量字符串（如 `system:project:add`）控制按钮/菜单显示。两者通过"角色 → 菜单 → API 资源"的绑定关系关联——给角色分配菜单时，同时分配该菜单下的 API 资源权限。
