@@ -106,6 +106,20 @@ func (rr *entRoleRepository) GetByID(c context.Context, id string) (*domain.Role
 	return rr.convertEntRoleToDomain(entRole), nil
 }
 
+func (rr *entRoleRepository) GetByName(c context.Context, name string) (*domain.Role, error) {
+	entRole, err := rr.client.Role.Query().
+		Where(role.Name(name)).
+		WithMenus().
+		Only(c)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrRoleNotFound
+		}
+		return nil, fmt.Errorf("failed to get role by name: %w", err)
+	}
+	return rr.convertEntRoleToDomain(entRole), nil
+}
+
 // GetByIDs 批量按 ID 查询角色（含菜单 ID），把逐条 GetByID 的 N+1 回查收敛为单次查询。
 func (rr *entRoleRepository) GetByIDs(c context.Context, ids []string) ([]*domain.Role, error) {
 	if len(ids) == 0 {

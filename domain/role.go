@@ -9,6 +9,7 @@ import (
 const (
 	RoleStatusActive   = StatusActive
 	RoleStatusInactive = StatusInactive
+	RoleNameViewer     = "viewer"
 )
 
 var (
@@ -67,6 +68,7 @@ type RoleRepository interface {
 	Create(c context.Context, role *Role) error
 	Fetch(c context.Context) ([]*Role, error)
 	GetByID(c context.Context, id string) (*Role, error)
+	GetByName(c context.Context, name string) (*Role, error)
 	GetByIDs(c context.Context, ids []string) ([]*Role, error)
 	ExistsByName(c context.Context, name string) (bool, error)
 	Update(c context.Context, role *Role) error

@@ -3,11 +3,15 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"shadmin/domain"
 	"shadmin/ent"
+	"shadmin/ent/menu"
+	"shadmin/ent/role"
 	"shadmin/ent/user"
 	"shadmin/internal/constants"
 	"shadmin/repository"
-	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"golang.org/x/crypto/bcrypt"
@@ -30,11 +34,22 @@ var defaultMenus = []seedMenu{
 	{key: "system", name: "系统管理", typ: "menu", path: "/", icon: "Settings"},
 	{key: "menu", parentKey: "system", name: "菜单管理", sequence: 1, typ: "menu", path: "/system/menu", icon: "Menu", resources: []string{"GET:/api/v1/system/menu", "GET:/api/v1/system/menu/tree"}},
 	{key: "role", parentKey: "system", name: "角色管理", sequence: 2, typ: "menu", path: "/system/role", icon: "UserCheck", resources: []string{"GET:/api/v1/system/role"}},
-	{key: "user", parentKey: "system", name: "用户管理", sequence: 3, typ: "menu", path: "/system/user", icon: "Users", resources: []string{"GET:/api/v1/system/user"}},
+	{key: "user", parentKey: "system", name: "用户管理", sequence: 3, typ: "menu", path: "/system/user", icon: "Users", resources: []string{"GET:/api/v1/system/user", "GET:/api/v1/system/user/:id/roles"}},
 	{key: "department", parentKey: "system", name: "部门管理", sequence: 4, typ: "menu", path: "/system/departments", icon: "Building2", resources: []string{"GET:/api/v1/system/department/tree"}},
 	{key: "api-resource", parentKey: "system", name: "API资源", sequence: 5, typ: "menu", path: "/system/api-resources", icon: "Code2", resources: []string{"GET:/api/v1/system/api-resources"}},
 	{key: "login-log", parentKey: "system", name: "登录日志", sequence: 6, typ: "menu", path: "/system/login-logs", icon: "Layers3", resources: []string{"GET:/api/v1/system/login-logs"}},
 	{key: "dict", parentKey: "system", name: "字典管理", sequence: 7, typ: "menu", path: "/system/dict", icon: "BookMarked", resources: []string{"GET:/api/v1/system/dict/types", "GET:/api/v1/system/dict/items", "GET:/api/v1/system/dict/types/code/:code/items"}},
+}
+
+// viewerMenuKeys is the explicit read-only menu allowlist for OAuth users.
+var viewerMenuKeys = map[string]struct{}{
+	"dashboard":    {},
+	"system":       {},
+	"menu":         {},
+	"api-resource": {},
+	"role":         {},
+	"user":         {},
+	"dict":         {},
 }
 
 var defaultButtons = []seedMenu{
@@ -107,7 +122,112 @@ func createSeedMenu(ctx context.Context, client *ent.Client, item seedMenu, pare
 	return builder.Save(ctx)
 }
 
-// InitDefaultAdmin initializes or repairs the default admin and menus in one
+// viewerReadOnlyMenus returns only explicitly allowlisted menus whose APIs are read-only.
+// Button menus are intentionally excluded because they may bundle read and write APIs.
+func viewerReadOnlyMenus(ctx context.Context, client *ent.Client) ([]*ent.Menu, error) {
+	var result []*ent.Menu
+	for _, item := range defaultMenus {
+		if _, allowed := viewerMenuKeys[item.key]; !allowed {
+			continue
+		}
+		menuItem, err := client.Menu.Query().
+			Where(menu.Name(item.name), menu.Path(item.path), menu.Type(item.typ)).
+			WithAPIResources().
+			Only(ctx)
+		if ent.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("find viewer menu %q: %w", item.name, err)
+		}
+		if !menuHasOnlyReadAPIs(menuItem) {
+			continue
+		}
+		result = append(result, menuItem)
+	}
+	return result, nil
+}
+
+func menuHasOnlyReadAPIs(menuItem *ent.Menu) bool {
+	for _, apiResource := range menuItem.Edges.APIResources {
+		if apiResource.Method != "GET" {
+			return false
+		}
+	}
+	return true
+}
+
+func needsViewerRoleInitialization(ctx context.Context, client *ent.Client) (bool, error) {
+	viewerRole, err := client.Role.Query().
+		Where(role.Name(domain.RoleNameViewer)).
+		WithMenus().
+		Only(ctx)
+	if ent.IsNotFound(err) {
+		return true, nil
+	}
+	if err != nil {
+		return true, fmt.Errorf("get viewer role: %w", err)
+	}
+	if !viewerRole.IsSystem || viewerRole.Status != constants.StatusActive {
+		return true, nil
+	}
+
+	menus, err := viewerReadOnlyMenus(ctx, client)
+	if err != nil {
+		return true, err
+	}
+	if len(viewerRole.Edges.Menus) != len(menus) {
+		return true, nil
+	}
+	menuIDs := make(map[string]struct{}, len(menus))
+	for _, menuItem := range menus {
+		menuIDs[menuItem.ID] = struct{}{}
+	}
+	for _, menuItem := range viewerRole.Edges.Menus {
+		if _, ok := menuIDs[menuItem.ID]; !ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func ensureViewerRole(ctx context.Context, client *ent.Client) error {
+	menus, err := viewerReadOnlyMenus(ctx, client)
+	if err != nil {
+		return err
+	}
+
+	viewerRole, err := client.Role.Query().
+		Where(role.Name(domain.RoleNameViewer)).
+		Only(ctx)
+	if ent.IsNotFound(err) {
+		viewerRole, err = client.Role.Create().
+			SetName(domain.RoleNameViewer).
+			SetIsSystem(true).
+			SetStatus(constants.StatusActive).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("create viewer role: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("get viewer role: %w", err)
+	} else if !viewerRole.IsSystem {
+		return fmt.Errorf("role %q exists but is not a system role", domain.RoleNameViewer)
+	}
+
+	update := client.Role.UpdateOneID(viewerRole.ID).
+		SetStatus(constants.StatusActive).
+		ClearMenus()
+	if len(menus) > 0 {
+		update = update.AddMenus(menus...)
+	}
+	if _, err := update.Save(ctx); err != nil {
+		return fmt.Errorf("bind read-only menus to viewer role: %w", err)
+	}
+	return nil
+}
+
+// InitDefaultAdmin initializes or repairs the default admin, viewer role, and menus in one
 // transaction, including the authorization generation change.
 func InitDefaultAdmin(app *Application) error {
 	ctx := context.Background()
@@ -163,7 +283,10 @@ func needsDefaultAdminInitialization(ctx context.Context, client *ent.Client) (b
 	if err != nil {
 		return true, fmt.Errorf("count admin menu bindings: %w", err)
 	}
-	return menuCount == 0, nil
+	if menuCount == 0 {
+		return true, nil
+	}
+	return needsViewerRoleInitialization(ctx, client)
 }
 
 func initDefaultAdmin(app *Application, ctx context.Context) error {
@@ -180,7 +303,10 @@ func initDefaultAdmin(app *Application, ctx context.Context) error {
 			return err
 		}
 		log.Println("admin user already exists")
-		return initMenu(app.DB, adminRole.ID, ctx)
+		if err := initMenu(app.DB, adminRole.ID, ctx); err != nil {
+			return err
+		}
+		return ensureViewerRole(ctx, app.DB)
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(app.Env.AdminPassword), bcrypt.DefaultCost)
@@ -210,6 +336,9 @@ func initDefaultAdmin(app *Application, ctx context.Context) error {
 
 	if err := initMenu(app.DB, adminRole.ID, ctx); err != nil {
 		return fmt.Errorf("initialize admin menus: %w", err)
+	}
+	if err := ensureViewerRole(ctx, app.DB); err != nil {
+		return err
 	}
 	log.Printf("admin user created: %s", app.Env.AdminUsername)
 	return nil

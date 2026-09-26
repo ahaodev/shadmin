@@ -121,7 +121,7 @@ func (ur *entUserRepository) create(c context.Context, u *domain.User, roleIDs *
 			createQuery = createQuery.SetSource(user.Source(u.Source))
 		}
 		if roleIDs != nil && len(*roleIDs) > 0 {
-			createQuery = createQuery.AddRoleIDs((*roleIDs)...)
+			createQuery = createQuery.AddRoleIDs(*roleIDs...)
 		}
 		var err error
 		created, err = createQuery.Save(txCtx)
@@ -135,6 +135,10 @@ func (ur *entUserRepository) create(c context.Context, u *domain.User, roleIDs *
 	u.Status = entStatusToDomainStatus(created.Status)
 	u.CreatedAt = created.CreatedAt
 	u.UpdatedAt = created.UpdatedAt
+	if roleIDs != nil {
+		u.Roles = append([]string(nil), *roleIDs...)
+		u.IsActive = len(*roleIDs) > 0
+	}
 	return nil
 }
 

@@ -48,7 +48,7 @@ type UserIdentityRepository interface {
 	WithUserBindingTx(ctx context.Context, fn UserIdentityBindingTxFunc) (*User, error)
 }
 
-type UserIdentityBindingTxFunc func(ctx context.Context, userRepo UserRepository, identityRepo UserIdentityRepository) (*User, error)
+type UserIdentityBindingTxFunc func(ctx context.Context, userRepo UserRepository, identityRepo UserIdentityRepository, roleRepo RoleRepository) (*User, error)
 
 // UserIdentityUsecase 第三方登录用例接口
 type UserIdentityUsecase interface {

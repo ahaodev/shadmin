@@ -86,8 +86,8 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 func (u *userIdentityUsecase) resolveOrCreateUser(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
 	var lastErr error
 	for range 2 {
-		user, err := u.identityRepository.WithUserBindingTx(ctx, func(txCtx context.Context, userRepo domain.UserRepository, identityRepo domain.UserIdentityRepository) (*domain.User, error) {
-			return u.resolveOrCreateUserForIdentity(txCtx, userRepo, identityRepo, provider, profile)
+		user, err := u.identityRepository.WithUserBindingTx(ctx, func(txCtx context.Context, userRepo domain.UserRepository, identityRepo domain.UserIdentityRepository, roleRepo domain.RoleRepository) (*domain.User, error) {
+			return u.resolveOrCreateUserForIdentity(txCtx, userRepo, identityRepo, roleRepo, provider, profile)
 		})
 		if err == nil {
 			return user, nil
@@ -104,6 +104,7 @@ func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(
 	ctx context.Context,
 	userRepo domain.UserRepository,
 	identityRepo domain.UserIdentityRepository,
+	roleRepo domain.RoleRepository,
 	provider string,
 	profile domain.UserIdentityProfile,
 ) (*domain.User, error) {
@@ -136,7 +137,7 @@ func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(
 	// 2b. 未关联 → 创建独立用户 + 建立关联记录。
 	// 不按 email 合并：oidc 用户与本地用户完全隔离，不同 provider 账号各自独立；
 	// 同渠道（source）内 email 唯一由 (source, email) 复合唯一索引保证。
-	user, err := u.createUserFromUserIdentity(ctx, userRepo, provider, profile)
+	user, err := u.createUserFromUserIdentity(ctx, userRepo, roleRepo, provider, profile)
 	if err != nil {
 		return nil, fmt.Errorf("create user from user identity profile: %w", err)
 	}
@@ -154,11 +155,20 @@ func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(
 // createUserFromUserIdentity 基于第三方 profile 创建新 shadmin 用户。
 // 第三方来源用户（provider:user）与本地用户（shadmin:user）的区别：
 //   - source = provider
+//   - 新建用户默认绑定 viewer 角色，仅拥有初始化配置的只读权限
 //   - 无本地密码（password = NULL），不可用密码登录
 //   - email 直接采用 provider 返回值，可能为空（存 NULL）
 //   - nickname/avatar 取自 provider，随登录刷新
 //   - username 由 provider + subject 稳定派生，保证全局唯一且可读
-func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, userRepo domain.UserRepository, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
+func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, userRepo domain.UserRepository, roleRepo domain.RoleRepository, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
+	viewerRole, err := roleRepo.GetByName(ctx, domain.RoleNameViewer)
+	if err != nil {
+		return nil, fmt.Errorf("get default identity role: %w", err)
+	}
+	if viewerRole.Status != constants.StatusActive {
+		return nil, fmt.Errorf("default identity role %q is inactive", domain.RoleNameViewer)
+	}
+
 	email := strings.TrimSpace(profile.Email)
 	name := providerDisplayName(profile)
 
@@ -173,8 +183,8 @@ func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, us
 		Status:   constants.UserStatusActive,
 	}
 
-	if err := userRepo.Create(ctx, user); err != nil {
-		return nil, fmt.Errorf("create user identity user: %w", err)
+	if err := userRepo.CreateWithRoles(ctx, user, []string{viewerRole.ID}); err != nil {
+		return nil, fmt.Errorf("create user identity user with default role: %w", err)
 	}
 	return user, nil
 }

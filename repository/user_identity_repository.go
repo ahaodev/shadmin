@@ -142,9 +142,10 @@ func (r *entUserIdentityRepository) WithUserBindingTx(ctx context.Context, fn do
 		txClient := tx.Client()
 		userRepo := NewUserRepository(txClient)
 		identityRepo := &entUserIdentityRepository{client: txClient}
+		roleRepo := NewRoleRepository(txClient)
 
 		var err error
-		user, err = fn(txCtx, userRepo, identityRepo)
+		user, err = fn(txCtx, userRepo, identityRepo, roleRepo)
 		return err
 	})
 	if err != nil {
