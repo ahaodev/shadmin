@@ -81,7 +81,6 @@ func (dc *DictController) GetDictType(c *gin.Context) {
 
 // CreateDictType godoc
 // @Summary      Create a new dictionary type
-// @Description  Create a new dictionary type
 // @Tags         Dictionary
 // @Accept       json
 // @Produce      json
@@ -257,7 +256,6 @@ func (dc *DictController) GetDictItem(c *gin.Context) {
 
 // CreateDictItem godoc
 // @Summary      Create a new dictionary item
-// @Description  Create a new dictionary item
 // @Tags         Dictionary
 // @Accept       json
 // @Produce      json

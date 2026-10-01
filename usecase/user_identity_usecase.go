@@ -152,14 +152,8 @@ func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(
 	return user, nil
 }
 
-// createUserFromUserIdentity 基于第三方 profile 创建新 shadmin 用户。
-// 第三方来源用户（provider:user）与本地用户（shadmin:user）的区别：
-//   - source = provider
-//   - 新建用户默认绑定 viewer 角色，仅拥有初始化配置的只读权限
-//   - 无本地密码（password = NULL），不可用密码登录
-//   - email 直接采用 provider 返回值，可能为空（存 NULL）
-//   - nickname/avatar 取自 provider，随登录刷新
-//   - username 由 provider + subject 稳定派生，保证全局唯一且可读
+// createUserFromUserIdentity 基于第三方资料创建独立用户，绑定启用的 viewer 角色，
+// 不设置本地密码，也不按邮箱合并账号。
 func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, userRepo domain.UserRepository, roleRepo domain.RoleRepository, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
 	viewerRole, err := roleRepo.GetByName(ctx, domain.RoleNameViewer)
 	if err != nil {

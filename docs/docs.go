@@ -1733,7 +1733,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new dictionary item",
                 "consumes": [
                     "application/json"
                 ],
@@ -2072,7 +2071,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new dictionary type",
                 "consumes": [
                     "application/json"
                 ],
@@ -3541,7 +3539,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "menu_ids": {
-                    "description": "Menu permissions managed through Casbin",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -4420,7 +4417,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "menu_ids": {
-                    "description": "Menu permissions managed through Casbin",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -4474,9 +4470,6 @@ const docTemplate = `{
                 "nickname": {
                     "type": "string"
                 },
-                "password": {
-                    "type": "string"
-                },
                 "phone": {
                     "type": "string"
                 },
@@ -4488,7 +4481,6 @@ const docTemplate = `{
                     }
                 },
                 "source": {
-                    "description": "local-本地用户，oauth-第三方来源用户",
                     "type": "string"
                 },
                 "status": {

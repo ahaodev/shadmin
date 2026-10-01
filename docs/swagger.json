@@ -1727,7 +1727,6 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new dictionary item",
                 "consumes": [
                     "application/json"
                 ],
@@ -2066,7 +2065,6 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new dictionary type",
                 "consumes": [
                     "application/json"
                 ],
@@ -3535,7 +3533,6 @@
             ],
             "properties": {
                 "menu_ids": {
-                    "description": "Menu permissions managed through Casbin",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -4414,7 +4411,6 @@
             "type": "object",
             "properties": {
                 "menu_ids": {
-                    "description": "Menu permissions managed through Casbin",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -4468,9 +4464,6 @@
                 "nickname": {
                     "type": "string"
                 },
-                "password": {
-                    "type": "string"
-                },
                 "phone": {
                     "type": "string"
                 },
@@ -4482,7 +4475,6 @@
                     }
                 },
                 "source": {
-                    "description": "local-本地用户，oauth-第三方来源用户",
                     "type": "string"
                 },
                 "status": {

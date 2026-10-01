@@ -150,7 +150,6 @@ definitions:
   domain.CreateRoleRequest:
     properties:
       menu_ids:
-        description: Menu permissions managed through Casbin
         items:
           type: string
         type: array
@@ -740,7 +739,6 @@ definitions:
   domain.UpdateRoleRequest:
     properties:
       menu_ids:
-        description: Menu permissions managed through Casbin
         items:
           type: string
         type: array
@@ -776,8 +774,6 @@ definitions:
         type: boolean
       nickname:
         type: string
-      password:
-        type: string
       phone:
         type: string
       role:
@@ -786,7 +782,6 @@ definitions:
           type: string
         type: array
       source:
-        description: local-本地用户，oauth-第三方来源用户
         type: string
       status:
         description: active, inactive, invited, suspended
@@ -1908,7 +1903,6 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new dictionary item
       parameters:
       - description: Dictionary item creation data
         in: body
@@ -2117,7 +2111,6 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new dictionary type
       parameters:
       - description: Dictionary type creation data
         in: body

@@ -16,10 +16,7 @@ import (
 	"github.com/markbates/goth/gothic"
 )
 
-// UserIdentityController 处理第三方登录入口回调：
-// - 入口路径 GET /auth/identity/:provider        → 重定向到 provider 授权页
-// - 回调路径 GET /auth/identity/:provider/callback → 拿到 profile 后签发 JWT，重定向回前端
-// - 列表接口 GET /auth/identity/providers         → 返回当前已启用的 provider
+// UserIdentityController 处理第三方登录和已启用 provider 查询。
 type UserIdentityController struct {
 	UserIdentityUsecase domain.UserIdentityUsecase
 	LoginLogUsecase     domain.LoginLogUseCase // 记录第三方登录日志，与本地登录保持一致

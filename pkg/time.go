@@ -20,25 +20,6 @@ const UnixDay = UnixHour * 24
 // UnixWeek is one week in UnixTime.
 const UnixWeek = UnixDay * 7
 
-func init() {
-	//nowTime := time.Now().Local()
-	//year, month, day := nowTime.Date()
-	//Log.Info("time now =", nowTime)
-	//Log.Info("time now year=", year)
-	//Log.Info("time now Month=", month, " Int=", int(month))
-	//Log.Info("time now Day=", day)
-	//Log.Info("time now year day=", nowTime.YearDay())
-	//Log.Info("time now Hour=", nowTime.Hour())
-	//Log.Info("time now Minute=", nowTime.Minute())
-	//Log.Info("time now Second=", nowTime.Second())
-	//Log.Info("time now timestamp=", nowTime.Unix())
-	//Log.Info("time now Format2HMS=", Fmt2HMS(time.Now()))
-	//Log.Info("time now Format2Day=", Fmt2Day(time.Now()))
-	//Log.Info("time now Format2Month=", Fmt2Month(time.Now()))
-	//Log.Info("time int64 timestamp to Unix", time.Unix(1669784046, 0))
-	//Log.Info("time string timestamp to Unix", Sec2Time("1669784046"))
-}
-
 // Local returns the current Coordinated Universal Time (CST or ..).
 func Local() time.Time {
 	return time.Now().Local()
