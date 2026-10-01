@@ -216,5 +216,5 @@ func (rc *RoleController) GetRoleMenus(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, domain.RespSuccess(role.MenusIds))
+	c.JSON(http.StatusOK, domain.RespSuccess(role.MenuIDs))
 }

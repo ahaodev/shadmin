@@ -57,26 +57,6 @@ func (r *entUserIdentityRepository) FindByProviderAndSubject(ctx context.Context
 	return entUserIdentityToDomain(a), nil
 }
 
-// FindByUserID 查询某用户关联的全部第三方身份。
-func (r *entUserIdentityRepository) FindByUserID(ctx context.Context, userID string) ([]*domain.UserIdentity, error) {
-	if userID == "" {
-		return nil, nil
-	}
-
-	records, err := r.client.UserIdentity.Query().
-		Where(useridentity.UserID(userID)).
-		All(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("query user identities by user id: %w", err)
-	}
-
-	result := make([]*domain.UserIdentity, 0, len(records))
-	for _, a := range records {
-		result = append(result, entUserIdentityToDomain(a))
-	}
-	return result, nil
-}
-
 // Upsert 以 (provider, provider_subject) 为唯一键写入关联记录：
 // 不存在则新建；已存在则只更新 user_id（该表无 email/name/avatar 等资料列）。
 func (r *entUserIdentityRepository) Upsert(ctx context.Context, account *domain.UserIdentity) error {

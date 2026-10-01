@@ -212,8 +212,7 @@ func (u *userIdentityUsecase) refreshUserProfile(ctx context.Context, userRepo d
 	return nil
 }
 
-// buildOAuthUsername 基于 provider + subject 稳定派生唯一且可读的用户名。
-// subject 在 provider 内唯一，叠加 provider 前缀后全局唯一，无需依赖唯一冲突重试。
+// buildOAuthUsername 基于 provider + subject 稳定派生可读用户名，并通过哈希后缀降低冲突概率。
 func buildOAuthUsername(provider, subject, name string) string {
 	base := slugifyUsername(name)
 	if base == "" {
@@ -237,8 +236,8 @@ func slugifyUsername(s string) string {
 	return b.String()
 }
 
-// usernameSuffix 由 provider+subject 生成稳定的短哈希后缀，保证用户名唯一。
+// usernameSuffix 由 provider+subject 生成稳定的哈希后缀，降低用户名冲突概率。
 func usernameSuffix(provider, subject string) string {
 	sum := sha256.Sum256([]byte(strings.ToLower(provider) + ":" + subject))
-	return hex.EncodeToString(sum[:])[:10]
+	return hex.EncodeToString(sum[:])[:15]
 }

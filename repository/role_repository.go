@@ -41,7 +41,7 @@ func (rr *entRoleRepository) convertEntRoleToDomain(entRole *ent.Role) *domain.R
 		for i, menu := range entRole.Edges.Menus {
 			menuIDs[i] = menu.ID
 		}
-		domainRole.MenusIds = menuIDs
+		domainRole.MenuIDs = menuIDs
 	}
 
 	return domainRole
@@ -59,7 +59,7 @@ func (rr *entRoleRepository) Create(c context.Context, role *domain.Role) error 
 			SetName(role.Name).
 			SetSequence(role.Sequence).
 			SetStatus(role.Status).
-			AddMenuIDs(role.MenusIds...).
+			AddMenuIDs(role.MenuIDs...).
 			SetCreatedAt(role.CreatedAt).
 			SetUpdatedAt(role.UpdatedAt).
 			Save(txCtx)
@@ -164,27 +164,13 @@ func (rr *entRoleRepository) Update(c context.Context, role *domain.Role) error 
 			SetStatus(role.Status).
 			SetUpdatedAt(role.UpdatedAt).
 			ClearMenus().
-			AddMenuIDs(role.MenusIds...).
+			AddMenuIDs(role.MenuIDs...).
 			Save(txCtx)
 		return err
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update role: %w", err)
 	}
-	return nil
-}
-
-func (rr *entRoleRepository) Delete(c context.Context, id string) error {
-	err := WithAuthorizationTx(c, rr.client, func(txCtx context.Context, tx *ent.Tx) error {
-		return tx.Role.DeleteOneID(id).Exec(txCtx)
-	})
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return domain.ErrRoleNotFound
-		}
-		return fmt.Errorf("failed to delete role: %w", err)
-	}
-
 	return nil
 }
 

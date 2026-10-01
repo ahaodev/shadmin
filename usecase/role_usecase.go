@@ -31,7 +31,7 @@ func (ru *roleUsecase) Create(c context.Context, request *domain.CreateRoleReque
 		Name:     request.Name,
 		Sequence: request.Sequence,
 		Status:   request.Status,
-		MenusIds: request.MenuIDs,
+		MenuIDs:  request.MenuIDs,
 	}
 
 	// Set default status if not provided
@@ -46,7 +46,7 @@ func (ru *roleUsecase) Create(c context.Context, request *domain.CreateRoleReque
 	}
 
 	// 注意: casbin权限同步由定时任务自动处理，无需在此手动操作
-	pkg.Log.Printf("Successfully created role %s with %d menus", role.ID, len(role.MenusIds))
+	pkg.Log.Printf("Successfully created role %s with %d menus", role.ID, len(role.MenuIDs))
 
 	return nil
 }
@@ -94,12 +94,12 @@ func (ru *roleUsecase) Update(c context.Context, id string, request *domain.Upda
 
 	// Handle menu permissions update if provided
 	var oldMenuIDs []string
-	if existingRole.MenusIds != nil {
-		oldMenuIDs = existingRole.MenusIds
+	if existingRole.MenuIDs != nil {
+		oldMenuIDs = existingRole.MenuIDs
 	}
 
 	if request.MenuIDs != nil {
-		existingRole.MenusIds = request.MenuIDs
+		existingRole.MenuIDs = request.MenuIDs
 	}
 
 	err = ru.roleRepository.Update(ctx, existingRole)

@@ -24,6 +24,16 @@ func (r *retryBindingRepository) WithUserBindingTx(context.Context, domain.UserI
 	return r.resolved, nil
 }
 
+func TestBuildOAuthUsernameUsesLongHashAndFitsSchemaLimit(t *testing.T) {
+	username := buildOAuthUsername("github", "subject-1", "abcdefghijklmnopqrstuvwxyz")
+	if len(username) != 32 {
+		t.Fatalf("username length = %d, want 32", len(username))
+	}
+	if got := len(usernameSuffix("github", "subject-1")); got != 15 {
+		t.Fatalf("username suffix length = %d, want 15", got)
+	}
+}
+
 func TestResolveOrCreateUserRetriesIdentityConflict(t *testing.T) {
 	resolved := &domain.User{ID: "user-1", Status: domain.UserStatusActive}
 	repo := &retryBindingRepository{

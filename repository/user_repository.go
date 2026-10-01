@@ -128,7 +128,7 @@ func (ur *entUserRepository) create(c context.Context, u *domain.User, roleIDs *
 		return err
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("create user: %w", err)
 	}
 
 	u.ID = created.ID
@@ -248,7 +248,7 @@ func (ur *entUserRepository) GetByIdentifier(c context.Context, identifier strin
 		First(c)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get user by identifier: %w", err)
 	}
 
 	return entUserToDomainUser(u, true), nil
@@ -263,7 +263,7 @@ func (ur *entUserRepository) GetByID(c context.Context, id string) (*domain.User
 		First(c)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get user by ID: %w", err)
 	}
 
 	return entUserToDomainUser(u, true), nil
@@ -293,8 +293,22 @@ func (ur *entUserRepository) update(c context.Context, u *domain.User, roleIDs *
 			UpdateOneID(u.ID).
 			SetUsername(u.Username).
 			SetNickname(u.Nickname).
-			SetAvatar(u.Avatar).
-			SetStatus(domainStatusToEntStatus(u.Status))
+			SetAvatar(u.Avatar)
+
+		if authorizationChanged {
+			updateQuery = updateQuery.SetStatus(domainStatusToEntStatus(u.Status))
+		} else {
+			currentStatus, err := tx.User.Query().
+				Where(user.ID(u.ID)).
+				Select(user.FieldStatus).
+				String(txCtx)
+			if err != nil {
+				return fmt.Errorf("load current user status: %w", err)
+			}
+			if currentStatus != string(domainStatusToEntStatus(u.Status)) {
+				return fmt.Errorf("user status changes require UpdateWithAuthorization")
+			}
+		}
 
 		// email 唯一且可空：空值写 NULL（第三方来源用户可能无邮箱），非空则更新
 		if u.Email == "" {
@@ -316,7 +330,7 @@ func (ur *entUserRepository) update(c context.Context, u *domain.User, roleIDs *
 			updateQuery = updateQuery.SetPassword(u.Password)
 		}
 		if roleIDs != nil {
-			updateQuery = updateQuery.ClearRoles().AddRoleIDs((*roleIDs)...)
+			updateQuery = updateQuery.ClearRoles().AddRoleIDs(*roleIDs...)
 		}
 
 		var err error
@@ -331,7 +345,7 @@ func (ur *entUserRepository) update(c context.Context, u *domain.User, roleIDs *
 		err = withEntTransaction(c, ur.client, mutate)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("update user: %w", err)
 	}
 
 	u.UpdatedAt = updated.UpdatedAt
@@ -351,9 +365,12 @@ func (ur *entUserRepository) UpdateIdentityProfile(ctx context.Context, userID, 
 }
 
 func (ur *entUserRepository) Delete(c context.Context, id string) error {
-	return WithAuthorizationTx(c, ur.client, func(txCtx context.Context, tx *ent.Tx) error {
+	if err := WithAuthorizationTx(c, ur.client, func(txCtx context.Context, tx *ent.Tx) error {
 		return tx.User.DeleteOneID(id).Exec(txCtx)
-	})
+	}); err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+	return nil
 }
 
 // GetStatusByID 只查询用户状态字段，避免加载整条记录。
@@ -377,7 +394,7 @@ func (ur *entUserRepository) GetRoleIDs(c context.Context, id string) ([]string,
 		WithRoles().
 		First(c)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get role IDs for user: %w", err)
 	}
 
 	roleIDs := make([]string, 0, len(u.Edges.Roles))

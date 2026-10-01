@@ -149,6 +149,18 @@ func TestUserRepositoryOrdinaryUpdateDoesNotBumpAuthorizationGeneration(t *testi
 	assertAuthorizationGeneration(t, ctx, client, 1)
 
 	user.Status = domain.UserStatusInactive
+	if err := userRepository.Update(ctx, user); err == nil {
+		t.Fatal("ordinary update unexpectedly changed user status")
+	}
+	assertAuthorizationGeneration(t, ctx, client, 1)
+	stored, err := userRepository.GetByID(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("get user after rejected status update: %v", err)
+	}
+	if stored.Status != domain.UserStatusActive {
+		t.Fatalf("status after rejected ordinary update = %q, want %q", stored.Status, domain.UserStatusActive)
+	}
+
 	if err := userRepository.UpdateWithAuthorization(ctx, user); err != nil {
 		t.Fatalf("authorization user update: %v", err)
 	}
@@ -196,7 +208,7 @@ func TestRoleRepositoryMutationsBumpAuthorizationGeneration(t *testing.T) {
 	}
 	assertAuthorizationGeneration(t, ctx, client, 2)
 
-	if err := repo.Delete(ctx, role.ID); err != nil {
+	if err := repo.DeleteIfUnused(ctx, role.ID, role.Name); err != nil {
 		t.Fatalf("delete role: %v", err)
 	}
 	assertAuthorizationGeneration(t, ctx, client, 3)

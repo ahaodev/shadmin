@@ -38,7 +38,6 @@ var (
 // UserIdentityRepository 第三方身份关联存储接口。
 type UserIdentityRepository interface {
 	FindByProviderAndSubject(ctx context.Context, provider, subject string) (*UserIdentity, error)
-	FindByUserID(ctx context.Context, userID string) ([]*UserIdentity, error)
 	Upsert(ctx context.Context, account *UserIdentity) error
 	WithUserBindingTx(ctx context.Context, fn UserIdentityBindingTxFunc) (*User, error)
 }

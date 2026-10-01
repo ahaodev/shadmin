@@ -29,7 +29,7 @@ type Role struct {
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	MenusIds  []string  `json:"menus"`
+	MenuIDs   []string  `json:"menus"`
 }
 
 // CreateRoleRequest represents a request to create a new role
@@ -72,6 +72,5 @@ type RoleRepository interface {
 	GetByIDs(c context.Context, ids []string) ([]*Role, error)
 	ExistsByName(c context.Context, name string) (bool, error)
 	Update(c context.Context, role *Role) error
-	Delete(c context.Context, id string) error
 	DeleteIfUnused(c context.Context, id, name string) error
 }

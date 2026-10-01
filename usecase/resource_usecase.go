@@ -130,7 +130,7 @@ func (ru *resourceUsecase) getUserRoles(c context.Context, roleIDs []string) ([]
 func (ru *resourceUsecase) collectUserPermissions(c context.Context, roles []*domain.Role) ([]string, []string, error) {
 	var userMenuIDs []string
 	for _, role := range roles {
-		userMenuIDs = append(userMenuIDs, role.MenusIds...)
+		userMenuIDs = append(userMenuIDs, role.MenuIDs...)
 	}
 	if len(userMenuIDs) == 0 {
 		return nil, nil, nil
