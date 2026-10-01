@@ -42,8 +42,14 @@ export interface CreateUserRequest {
 
 export interface InviteUserRequest {
   email: string
-  role_ids?: string[]
+  role_ids: string[]
   message?: string
+}
+
+export interface AcceptInvitationRequest {
+  token: string
+  username: string
+  password: string
 }
 
 export interface UserUpdateRequest {

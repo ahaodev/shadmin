@@ -1,5 +1,20 @@
 basePath: /api/v1
 definitions:
+  domain.AcceptInvitationRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+      token:
+        type: string
+      username:
+        maxLength: 32
+        type: string
+    required:
+    - password
+    - token
+    - username
+    type: object
   domain.ApiResource:
     properties:
       created_at:
@@ -346,17 +361,19 @@ definitions:
   domain.InviteUserRequest:
     properties:
       email:
+        maxLength: 100
         type: string
       message:
-        description: 可选的邀请消息
+        maxLength: 1000
         type: string
       role_ids:
-        description: 角色ID列表
         items:
           type: string
+        minItems: 1
         type: array
     required:
     - email
+    - role_ids
     type: object
   domain.LoginLog:
     properties:
@@ -1140,6 +1157,37 @@ paths:
                   type: array
               type: object
       summary: List enabled identity providers
+      tags:
+      - Authentication
+  /auth/invitations/accept:
+    post:
+      consumes:
+      - application/json
+      description: Set an account username and password using a one-time invitation
+        token
+      parameters:
+      - description: Invitation token and account credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.AcceptInvitationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Invitation accepted
+          schema:
+            $ref: '#/definitions/domain.Response'
+        "400":
+          description: Invitation is invalid or expired
+          schema:
+            $ref: '#/definitions/domain.Response'
+        "409":
+          description: Username already exists
+          schema:
+            $ref: '#/definitions/domain.Response'
+      summary: Accept a user invitation
       tags:
       - Authentication
   /auth/logout:
@@ -2837,7 +2885,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Send invitation to a user to join a specific  with a role
+      description: Create a pending account and send a one-time invitation link
       parameters:
       - description: User invitation data
         in: body
@@ -2849,7 +2897,7 @@ paths:
       - application/json
       responses:
         "201":
-          description: User invitation sent successfully
+          description: Invitation sent
           schema:
             allOf:
             - $ref: '#/definitions/domain.Response'
@@ -2858,20 +2906,28 @@ paths:
                   $ref: '#/definitions/domain.User'
               type: object
         "400":
-          description: Invalid request data
+          description: Invalid request or roles
           schema:
             $ref: '#/definitions/domain.Response'
         "401":
-          description: Unauthorized - user information not found
+          description: Unauthorized
           schema:
             $ref: '#/definitions/domain.Response'
-        "500":
-          description: Internal server error
+        "409":
+          description: User already exists
+          schema:
+            $ref: '#/definitions/domain.Response'
+        "502":
+          description: Invitation email delivery failed
+          schema:
+            $ref: '#/definitions/domain.Response'
+        "503":
+          description: Email sender is not configured
           schema:
             $ref: '#/definitions/domain.Response'
       security:
       - BearerAuth: []
-      summary: Invite user to
+      summary: Invite a user
       tags:
       - user
 securityDefinitions:

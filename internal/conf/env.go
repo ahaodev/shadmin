@@ -69,6 +69,12 @@ type Env struct {
 	GoogleClientSecret    string `mapstructure:"GOOGLE_CLIENT_SECRET"`
 	GitHubClientID        string `mapstructure:"GITHUB_CLIENT_ID"`
 	GitHubClientSecret    string `mapstructure:"GITHUB_CLIENT_SECRET"`
+
+	// 邮件邀请配置
+	ResendKey             string `mapstructure:"RESEND_KEY"`
+	ResendFromEmail       string `mapstructure:"RESEND_FROM_EMAIL"`
+	InvitationAcceptURL   string `mapstructure:"INVITATION_ACCEPT_URL"`
+	InvitationExpiryHours int    `mapstructure:"INVITATION_EXPIRY_HOURS"`
 }
 
 // CacheTypeValue 返回规范化后的缓存类型。
@@ -130,6 +136,12 @@ func setDefaults() {
 		"GOOGLE_CLIENT_SECRET":    "",
 		"GITHUB_CLIENT_ID":        "",
 		"GITHUB_CLIENT_SECRET":    "",
+
+		// 邮件邀请配置
+		"RESEND_KEY":              "",
+		"RESEND_FROM_EMAIL":       "Shadmin <no-reply@send.ahaodev.com>",
+		"INVITATION_ACCEPT_URL":   "http://localhost:5173/accept-invitation",
+		"INVITATION_EXPIRY_HOURS": 72,
 	}
 	// 绑定环境变量
 	viper.AutomaticEnv()
@@ -179,6 +191,10 @@ func generateEnvFile() error {
 		{
 			title: "# 身份登录配置",
 			keys:  []string{"IDENTITY_BASE_URL", "IDENTITY_REDIRECT_URL", "IDENTITY_SESSION_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"},
+		},
+		{
+			title: "# 邀请邮件配置",
+			keys:  []string{"RESEND_KEY", "RESEND_FROM_EMAIL", "INVITATION_ACCEPT_URL", "INVITATION_EXPIRY_HOURS"},
 		},
 	}
 

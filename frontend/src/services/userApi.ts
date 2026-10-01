@@ -4,6 +4,7 @@ import {
   type User,
   type CreateUserRequest,
   type InviteUserRequest,
+  type AcceptInvitationRequest,
   type UserUpdateRequest,
 } from '@/types/user'
 import { buildSearchParams } from '@/lib/query-params'
@@ -28,6 +29,13 @@ export async function createUser(data: CreateUserRequest): Promise<User> {
 export async function inviteUser(data: InviteUserRequest): Promise<User> {
   const response = await apiClient.post('/api/v1/system/user/invite', data)
   return response.data.data
+}
+
+// POST /auth/invitations/accept - Accept a one-time user invitation
+export async function acceptUserInvitation(
+  data: AcceptInvitationRequest
+): Promise<void> {
+  await apiClient.post('/api/v1/auth/invitations/accept', data)
 }
 
 // GET /system/user/{id} - Get user by ID

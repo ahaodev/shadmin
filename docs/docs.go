@@ -484,6 +484,52 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/auth/invitations/accept": {
+            "post": {
+                "description": "Set an account username and password using a one-time invitation token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Accept a user invitation",
+                "parameters": [
+                    {
+                        "description": "Invitation token and account credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.AcceptInvitationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invitation accepted",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Invitation is invalid or expired",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Username already exists",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/logout": {
             "post": {
                 "description": "Logout user and invalidate tokens",
@@ -3032,7 +3078,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Send invitation to a user to join a specific  with a role",
+                "description": "Create a pending account and send a one-time invitation link",
                 "consumes": [
                     "application/json"
                 ],
@@ -3042,7 +3088,7 @@ const docTemplate = `{
                 "tags": [
                     "user"
                 ],
-                "summary": "Invite user to",
+                "summary": "Invite a user",
                 "parameters": [
                     {
                         "description": "User invitation data",
@@ -3056,7 +3102,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "User invitation sent successfully",
+                        "description": "Invitation sent",
                         "schema": {
                             "allOf": [
                                 {
@@ -3074,19 +3120,31 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid request data",
+                        "description": "Invalid request or roles",
                         "schema": {
                             "$ref": "#/definitions/domain.Response"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized - user information not found",
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/domain.Response"
                         }
                     },
-                    "500": {
-                        "description": "Internal server error",
+                    "409": {
+                        "description": "User already exists",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    },
+                    "502": {
+                        "description": "Invitation email delivery failed",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Response"
+                        }
+                    },
+                    "503": {
+                        "description": "Email sender is not configured",
                         "schema": {
                             "$ref": "#/definitions/domain.Response"
                         }
@@ -3321,6 +3379,27 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.AcceptInvitationRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "token",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "minLength": 8
+                },
+                "token": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 32
+                }
+            }
+        },
         "domain.ApiResource": {
             "type": "object",
             "properties": {
@@ -3826,19 +3905,21 @@ const docTemplate = `{
         "domain.InviteUserRequest": {
             "type": "object",
             "required": [
-                "email"
+                "email",
+                "role_ids"
             ],
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "message": {
-                    "description": "可选的邀请消息",
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 1000
                 },
                 "role_ids": {
-                    "description": "角色ID列表",
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "type": "string"
                     }

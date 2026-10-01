@@ -223,15 +223,3 @@ func (uu *userUsecase) GetUserRoles(c context.Context, userID string) ([]string,
 
 	return roleIDs, nil
 }
-
-// InviteUser 邀请用户 (单租户简化版)
-func (uu *userUsecase) InviteUser(c context.Context, request *domain.InviteUserRequest, invitedBy string) (*domain.User, error) {
-	// 在单租户架构下，邀请用户就是直接创建用户
-	createReq := &domain.CreateUserRequest{
-		Username: request.Email, // 使用邮箱作为用户名
-		Email:    request.Email,
-		RoleIDs:  request.RoleIDs,
-	}
-
-	return uu.CreateUser(c, createReq)
-}

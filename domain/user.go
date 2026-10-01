@@ -49,9 +49,9 @@ type CreateUserRequest struct {
 
 // InviteUserRequest 邀请用户请求 (单租户架构)
 type InviteUserRequest struct {
-	Email   string   `json:"email" binding:"required,email"`
-	RoleIDs []string `json:"role_ids,omitempty"` // 角色ID列表
-	Message string   `json:"message,omitempty"`  // 可选的邀请消息
+	Email   string   `json:"email" binding:"required,email,max=100"`
+	RoleIDs []string `json:"role_ids" binding:"required,min=1,dive,required"`
+	Message string   `json:"message,omitempty" binding:"max=1000"`
 }
 
 // UserUpdateRequest 更新用户请求
@@ -105,6 +105,5 @@ type UserUseCase interface {
 	UpdateUserPassword(c context.Context, userID string, passwordUpdate PasswordUpdate) error
 	UpdateUserPartial(c context.Context, userID string, updates UserUpdateRequest) error
 	DeleteUser(c context.Context, id string, currentUserID string) error
-	InviteUser(c context.Context, request *InviteUserRequest, invitedBy string) (*User, error)
 	GetUserRoles(c context.Context, userID string) ([]string, error)
 }

@@ -12,8 +12,9 @@ import (
 )
 
 type UserController struct {
-	UserUsecase domain.UserUseCase
-	Env         *conf.Env
+	UserUsecase           domain.UserUseCase
+	UserInvitationUsecase domain.UserInvitationUseCase
+	Env                   *conf.Env
 }
 
 // GetUsers godoc
@@ -144,17 +145,19 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 }
 
 // InviteUser godoc
-// @Summary      Invite user to
-// @Description  Send invitation to a user to join a specific  with a role
+// @Summary      Invite a user
+// @Description  Create a pending account and send a one-time invitation link
 // @Tags         user
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
 // @Param        request  body      domain.InviteUserRequest  true  "User invitation data"
-// @Success      201      {object}  domain.Response{data=domain.User}  "User invitation sent successfully"
-// @Failure      400      {object}  domain.Response  "Invalid request data"
-// @Failure      401      {object}  domain.Response  "Unauthorized - user information not found"
-// @Failure      500      {object}  domain.Response  "Internal server error"
+// @Success      201      {object}  domain.Response{data=domain.User}  "Invitation sent"
+// @Failure      400      {object}  domain.Response  "Invalid request or roles"
+// @Failure      401      {object}  domain.Response  "Unauthorized"
+// @Failure      409      {object}  domain.Response  "User already exists"
+// @Failure      502      {object}  domain.Response  "Invitation email delivery failed"
+// @Failure      503      {object}  domain.Response  "Email sender is not configured"
 // @Router       /system/user/invite [post]
 func (uc *UserController) InviteUser(c *gin.Context) {
 	var request domain.InviteUserRequest
@@ -162,16 +165,26 @@ func (uc *UserController) InviteUser(c *gin.Context) {
 		return
 	}
 
-	// 获取当前用户ID作为邀请人
-	invitedBy, exists := c.Get("userID")
-	if !exists {
+	invitedBy := contextutil.GetUserID(c)
+	if invitedBy == "" {
 		c.JSON(http.StatusUnauthorized, domain.RespError("未找到用户信息"))
 		return
 	}
 
-	user, err := uc.UserUsecase.InviteUser(c.Request.Context(), &request, invitedBy.(string))
+	user, err := uc.UserInvitationUsecase.Invite(c.Request.Context(), &request, invitedBy)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		switch {
+		case errors.Is(err, domain.ErrUserAlreadyExists):
+			c.JSON(http.StatusConflict, domain.RespError("该邮箱已关联现有用户"))
+		case errors.Is(err, domain.ErrInvitationRoleInvalid):
+			c.JSON(http.StatusBadRequest, domain.RespError("所选角色不可用"))
+		case errors.Is(err, domain.ErrInvitationEmailNotConfigured):
+			c.JSON(http.StatusServiceUnavailable, domain.RespError("邀请邮件服务未配置"))
+		case errors.Is(err, domain.ErrInvitationDeliveryFailed):
+			c.JSON(http.StatusBadGateway, domain.RespError("邀请已保存，但邮件发送失败；可重新提交以重试"))
+		default:
+			c.JSON(http.StatusInternalServerError, domain.RespError("邀请失败"))
+		}
 		return
 	}
 

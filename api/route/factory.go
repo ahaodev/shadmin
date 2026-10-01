@@ -6,6 +6,7 @@ import (
 	"shadmin/domain"
 	"shadmin/internal/auth"
 	captchapkg "shadmin/internal/captcha"
+	"shadmin/internal/mailer"
 	"shadmin/internal/tokenservice"
 	"shadmin/pkg"
 	"shadmin/repository"
@@ -19,13 +20,14 @@ import (
 
 // ControllerFactory creates and manages controller instances
 type ControllerFactory struct {
-	app                   *bootstrap.Application
-	timeout               time.Duration
-	db                    *ent.Client
-	captchaManager        *captchapkg.SlideManager
-	deviceAuthController  *controller.DeviceAuthController
-	sharedLoginLogUsecase domain.LoginLogUseCase     // 共享的无状态 login-log usecase
-	sharedTokenService    *tokenservice.TokenService // 共享的无状态 token 服务
+	app                         *bootstrap.Application
+	timeout                     time.Duration
+	db                          *ent.Client
+	captchaManager              *captchapkg.SlideManager
+	deviceAuthController        *controller.DeviceAuthController
+	sharedLoginLogUsecase       domain.LoginLogUseCase     // 共享的无状态 login-log usecase
+	sharedTokenService          *tokenservice.TokenService // 共享的无状态 token 服务
+	sharedUserInvitationUsecase domain.UserInvitationUseCase
 }
 
 // NewControllerFactory creates a new controller factory
@@ -156,9 +158,35 @@ func (f *ControllerFactory) CreateUserController() *controller.UserController {
 	ur := repository.NewUserRepository(f.db)
 
 	return &controller.UserController{
-		UserUsecase: usecase.NewUserUsecase(ur, f.timeout),
-		Env:         f.app.Env,
+		UserUsecase:           usecase.NewUserUsecase(ur, f.timeout),
+		UserInvitationUsecase: f.userInvitationUsecase(),
+		Env:                   f.app.Env,
 	}
+}
+
+func (f *ControllerFactory) CreateUserInvitationController() *controller.UserInvitationController {
+	return &controller.UserInvitationController{Usecase: f.userInvitationUsecase()}
+}
+
+func (f *ControllerFactory) userInvitationUsecase() domain.UserInvitationUseCase {
+	if f.sharedUserInvitationUsecase != nil {
+		return f.sharedUserInvitationUsecase
+	}
+
+	var emailSender domain.InvitationMailer
+	if f.app.Env.ResendKey != "" {
+		emailSender = mailer.NewResendInvitationMailer(f.app.Env.ResendKey, f.app.Env.ResendFromEmail)
+	}
+
+	f.sharedUserInvitationUsecase = usecase.NewUserInvitationUsecase(
+		repository.NewUserInvitationRepository(f.db),
+		repository.NewRoleRepository(f.db),
+		emailSender,
+		f.app.Env.InvitationAcceptURL,
+		time.Duration(f.app.Env.InvitationExpiryHours)*time.Hour,
+		f.timeout,
+	)
+	return f.sharedUserInvitationUsecase
 }
 
 // CreateRoleController creates a role controller

@@ -62,10 +62,15 @@ export function UsersInviteDialog({
   })
 
   // Convert roles data to options format for SelectDropdown
-  const roleOptions = roles.map((role) => ({
-    label: role.name,
-    value: role.id,
-  }))
+  const roleOptions = roles
+    .filter(
+      (role) =>
+        role.status === 'active' && (!role.is_system || role.name === 'viewer')
+    )
+    .map((role) => ({
+      label: role.name,
+      value: role.id,
+    }))
 
   const onSubmit = async (values: UserInviteForm) => {
     try {

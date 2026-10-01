@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as authAcceptInvitationRouteImport } from './routes/(auth)/accept-invitation'
 import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
 import { Route as authOauthCallbackRouteImport } from './routes/(auth)/oauth-callback'
 import { Route as authOtpRouteImport } from './routes/(auth)/otp'
@@ -38,6 +39,11 @@ import { Route as AuthenticatedSystemUserRouteImport } from './routes/_authentic
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authAcceptInvitationRoute = authAcceptInvitationRouteImport.update({
+  id: '/(auth)/accept-invitation',
+  path: '/accept-invitation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const authForgotPasswordRoute = authForgotPasswordRouteImport.update({
@@ -178,6 +184,7 @@ const AuthenticatedSystemUserRoute = AuthenticatedSystemUserRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
+  '/accept-invitation': typeof authAcceptInvitationRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/oauth-callback': typeof authOauthCallbackRoute
   '/otp': typeof authOtpRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRoutesByTo {
+  '/accept-invitation': typeof authAcceptInvitationRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/oauth-callback': typeof authOauthCallbackRoute
   '/otp': typeof authOtpRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
+  '/(auth)/accept-invitation': typeof authAcceptInvitationRoute
   '/(auth)/forgot-password': typeof authForgotPasswordRoute
   '/(auth)/oauth-callback': typeof authOauthCallbackRoute
   '/(auth)/otp': typeof authOtpRoute
@@ -262,6 +271,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/settings'
+    | '/accept-invitation'
     | '/forgot-password'
     | '/oauth-callback'
     | '/otp'
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/accept-invitation'
     | '/forgot-password'
     | '/oauth-callback'
     | '/otp'
@@ -315,6 +326,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/_authenticated/settings'
+    | '/(auth)/accept-invitation'
     | '/(auth)/forgot-password'
     | '/(auth)/oauth-callback'
     | '/(auth)/otp'
@@ -343,6 +355,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  authAcceptInvitationRoute: typeof authAcceptInvitationRoute
   authForgotPasswordRoute: typeof authForgotPasswordRoute
   authOauthCallbackRoute: typeof authOauthCallbackRoute
   authOtpRoute: typeof authOtpRoute
@@ -362,6 +375,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(auth)/accept-invitation': {
+      id: '/(auth)/accept-invitation'
+      path: '/accept-invitation'
+      fullPath: '/accept-invitation'
+      preLoaderRoute: typeof authAcceptInvitationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(auth)/forgot-password': {
@@ -595,6 +615,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  authAcceptInvitationRoute: authAcceptInvitationRoute,
   authForgotPasswordRoute: authForgotPasswordRoute,
   authOauthCallbackRoute: authOauthCallbackRoute,
   authOtpRoute: authOtpRoute,
