@@ -8,11 +8,6 @@ import (
 	"github.com/markbates/goth"
 )
 
-type UserIdentityProvider struct {
-	Provider string `json:"provider"` // provider 标识，如 Google / GitHub
-	Subject  string `json:"subject"`  // provider 侧的唯一主体 ID（sub / id）
-}
-
 // UserIdentityExchangeRequest 前端用一次性 code 换取 JWT 的请求体
 type UserIdentityExchangeRequest struct {
 	Code string `json:"code" binding:"required"`

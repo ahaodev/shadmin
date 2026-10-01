@@ -191,15 +191,10 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	}
 	baseQuery := ur.client.User.Query().Where(predicates...)
 
-	// 默认排除 admin 用户（除非明确查询）
-	//if filter.Username != "admin" {
-	//	baseQuery = baseQuery.Where(user.Not(user.Username("admin")))
-	//}
-
 	// 获取总数
 	total, err := baseQuery.Clone().Count(c)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("count users: %w", err)
 	}
 
 	// 应用排序（在Select之前）
@@ -223,7 +218,7 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 
 	users, err := query.WithDepartment().All(c)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query users: %w", err)
 	}
 
 	// 列表响应不携带密码哈希，与单条查询共用同一转换函数
@@ -370,7 +365,7 @@ func (ur *entUserRepository) GetStatusByID(c context.Context, id string) (string
 		Select(user.FieldStatus).
 		String(c)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get user status by id: %w", err)
 	}
 	return status, nil
 }

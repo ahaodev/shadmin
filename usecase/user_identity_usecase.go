@@ -219,8 +219,8 @@ func buildOAuthUsername(provider, subject, name string) string {
 	if base == "" {
 		base = strings.ToLower(provider)
 	}
-	if len(base) > 16 {
-		base = base[:16]
+	if runes := []rune(base); len(runes) > 16 {
+		base = string(runes[:16])
 	}
 	suffix := usernameSuffix(provider, subject)
 	return fmt.Sprintf("%s_%s", base, suffix)

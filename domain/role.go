@@ -37,7 +37,7 @@ type CreateRoleRequest struct {
 	Name     string   `json:"name" binding:"required,max=100"`
 	Sequence int      `json:"sequence"`
 	Status   string   `json:"status,omitempty"`
-	MenuIDs  []string `json:"menu_ids,omitempty"` // Menu permissions managed through Casbin
+	MenuIDs  []string `json:"menu_ids,omitempty"`
 }
 
 // UpdateRoleRequest represents a request to update an existing role
@@ -45,7 +45,7 @@ type UpdateRoleRequest struct {
 	Name     *string  `json:"name,omitempty"`
 	Sequence *int     `json:"sequence,omitempty"`
 	Status   *string  `json:"status,omitempty"`
-	MenuIDs  []string `json:"menu_ids,omitempty"` // Menu permissions managed through Casbin
+	MenuIDs  []string `json:"menu_ids,omitempty"`
 }
 
 // RoleFilters represents filters for role queries
