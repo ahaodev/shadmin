@@ -44,6 +44,10 @@ func (dc *DictController) GetDictTypes(c *gin.Context) {
 
 	result, err := dc.DictUseCase.ListDictTypes(c.Request.Context(), params)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidDictStatus) {
+			c.JSON(http.StatusBadRequest, domain.RespError("Invalid dictionary status"))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
 	}
@@ -99,6 +103,10 @@ func (dc *DictController) CreateDictType(c *gin.Context) {
 
 	dictType, err := dc.DictUseCase.CreateDictType(c.Request.Context(), &request)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidDictStatus) {
+			c.JSON(http.StatusBadRequest, domain.RespError("Invalid dictionary status"))
+			return
+		}
 		if errors.Is(err, domain.ErrDictTypeCodeExists) {
 			c.JSON(http.StatusConflict, domain.RespError("Dictionary type code already exists"))
 			return
@@ -135,6 +143,10 @@ func (dc *DictController) UpdateDictType(c *gin.Context) {
 
 	err := dc.DictUseCase.UpdateDictType(c.Request.Context(), id, request)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidDictStatus) {
+			c.JSON(http.StatusBadRequest, domain.RespError("Invalid dictionary status"))
+			return
+		}
 		if errors.Is(err, domain.ErrDictTypeNotFound) {
 			c.JSON(http.StatusNotFound, domain.RespError("Dictionary type not found"))
 			return
@@ -219,6 +231,10 @@ func (dc *DictController) GetDictItems(c *gin.Context) {
 
 	result, err := dc.DictUseCase.ListDictItems(c.Request.Context(), params)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidDictStatus) {
+			c.JSON(http.StatusBadRequest, domain.RespError("Invalid dictionary status"))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
 	}
@@ -274,6 +290,10 @@ func (dc *DictController) CreateDictItem(c *gin.Context) {
 
 	dictItem, err := dc.DictUseCase.CreateDictItem(c.Request.Context(), &request)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidDictStatus) {
+			c.JSON(http.StatusBadRequest, domain.RespError("Invalid dictionary status"))
+			return
+		}
 		if errors.Is(err, domain.ErrDictItemValueExists) {
 			c.JSON(http.StatusConflict, domain.RespError("Dictionary item value already exists in this type"))
 			return
@@ -314,6 +334,10 @@ func (dc *DictController) UpdateDictItem(c *gin.Context) {
 
 	err := dc.DictUseCase.UpdateDictItem(c.Request.Context(), id, request)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidDictStatus) {
+			c.JSON(http.StatusBadRequest, domain.RespError("Invalid dictionary status"))
+			return
+		}
 		if errors.Is(err, domain.ErrDictItemNotFound) {
 			c.JSON(http.StatusNotFound, domain.RespError("Dictionary item not found"))
 			return

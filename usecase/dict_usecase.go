@@ -2,8 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"shadmin/domain"
 	"shadmin/internal/constants"
 	"time"
@@ -12,6 +10,13 @@ import (
 type dictUsecase struct {
 	dictRepository domain.DictRepository
 	contextTimeout time.Duration
+}
+
+func validateDictStatus(status string) error {
+	if status != domain.StatusActive && status != domain.StatusInactive {
+		return domain.ErrInvalidDictStatus
+	}
+	return nil
 }
 
 func NewDictUsecase(dictRepository domain.DictRepository, timeout time.Duration) domain.DictUseCase {
@@ -30,6 +35,9 @@ func (du *dictUsecase) CreateDictType(ctx context.Context, request *domain.Creat
 	// 设置默认状态
 	if request.Status == "" {
 		request.Status = constants.StatusActive
+	}
+	if err := validateDictStatus(request.Status); err != nil {
+		return nil, err
 	}
 
 	// 创建域模型
@@ -67,12 +75,24 @@ func (du *dictUsecase) ListDictTypes(ctx context.Context, params domain.DictType
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
 
+	if params.Status != "" {
+		if err := validateDictStatus(params.Status); err != nil {
+			return nil, err
+		}
+	}
+
 	return du.dictRepository.FetchTypes(ctx, params)
 }
 
 func (du *dictUsecase) UpdateDictType(ctx context.Context, id string, updates domain.UpdateDictTypeRequest) error {
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
+
+	if updates.Status != nil {
+		if err := validateDictStatus(*updates.Status); err != nil {
+			return err
+		}
+	}
 
 	return du.dictRepository.UpdateType(ctx, id, updates)
 }
@@ -94,13 +114,7 @@ func (du *dictUsecase) CreateDictItem(ctx context.Context, request *domain.Creat
 	if request.Status == "" {
 		request.Status = constants.StatusActive
 	}
-
-	// 验证字典类型是否存在
-	_, err := du.dictRepository.GetTypeByID(ctx, request.TypeID)
-	if err != nil {
-		if errors.Is(err, domain.ErrDictTypeNotFound) {
-			return nil, fmt.Errorf("dictionary type not found")
-		}
+	if err := validateDictStatus(request.Status); err != nil {
 		return nil, err
 	}
 
@@ -117,8 +131,7 @@ func (du *dictUsecase) CreateDictItem(ctx context.Context, request *domain.Creat
 	}
 
 	// 调用repository创建
-	err = du.dictRepository.CreateItem(ctx, dictItem)
-	if err != nil {
+	if err := du.dictRepository.CreateItem(ctx, dictItem); err != nil {
 		return nil, err
 	}
 
@@ -136,12 +149,24 @@ func (du *dictUsecase) ListDictItems(ctx context.Context, params domain.DictItem
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
 
+	if params.Status != "" {
+		if err := validateDictStatus(params.Status); err != nil {
+			return nil, err
+		}
+	}
+
 	return du.dictRepository.FetchItems(ctx, params)
 }
 
 func (du *dictUsecase) UpdateDictItem(ctx context.Context, id string, updates domain.UpdateDictItemRequest) error {
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
+
+	if updates.Status != nil {
+		if err := validateDictStatus(*updates.Status); err != nil {
+			return err
+		}
+	}
 
 	return du.dictRepository.UpdateItem(ctx, id, updates)
 }

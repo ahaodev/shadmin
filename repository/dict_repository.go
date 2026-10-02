@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/dictitem"
@@ -11,27 +10,13 @@ import (
 	"time"
 )
 
-// Helper functions for status conversion
+// Helper functions for status conversion. Validation is handled by the usecase.
 func domainStatusToDictTypeStatus(status string) dicttype.Status {
-	switch status {
-	case constants.StatusActive:
-		return dicttype.StatusActive
-	case constants.StatusInactive:
-		return dicttype.StatusInactive
-	default:
-		return dicttype.StatusActive
-	}
+	return dicttype.Status(status)
 }
 
 func domainStatusToDictItemStatus(status string) dictitem.Status {
-	switch status {
-	case constants.StatusActive:
-		return dictitem.StatusActive
-	case constants.StatusInactive:
-		return dictitem.StatusInactive
-	default:
-		return dictitem.StatusActive
-	}
+	return dictitem.Status(status)
 }
 
 func dictTypeStatusToDomainStatus(status dicttype.Status) string {
@@ -93,7 +78,7 @@ func (dr *entDictRepository) convertEntDictItemToDomain(entItem *ent.DictItem) *
 // 字典类型相关实现
 
 func (dr *entDictRepository) CreateType(ctx context.Context, dictType *domain.DictType) error {
-	// 检查code是否已存在
+	// 前置查询提供明确错误，唯一索引负责并发场景下的最终兜底。
 	exists, err := dr.client.DictType.Query().
 		Where(dicttype.Code(dictType.Code)).
 		Exist(ctx)
@@ -117,8 +102,10 @@ func (dr *entDictRepository) CreateType(ctx context.Context, dictType *domain.Di
 		SetCreatedAt(dictType.CreatedAt).
 		SetUpdatedAt(dictType.UpdatedAt).
 		Save(ctx)
-
 	if err != nil {
+		if ent.IsConstraintError(err) {
+			return domain.ErrDictTypeCodeExists
+		}
 		return err
 	}
 
@@ -219,7 +206,7 @@ func (dr *entDictRepository) UpdateType(ctx context.Context, id string, updates 
 	updateQuery := dr.client.DictType.UpdateOneID(id)
 
 	if updates.Code != nil {
-		// 检查新code是否已被其他记录使用
+		// 前置查询提供明确错误，Save 时的唯一索引处理并发冲突。
 		if exists, err := dr.client.DictType.Query().
 			Where(dicttype.And(dicttype.Code(*updates.Code), dicttype.Not(dicttype.ID(id)))).
 			Exist(ctx); err != nil {
@@ -239,106 +226,96 @@ func (dr *entDictRepository) UpdateType(ctx context.Context, id string, updates 
 		updateQuery = updateQuery.SetRemark(*updates.Remark)
 	}
 
-	_, err = updateQuery.Save(ctx)
-	return err
-}
-
-func (dr *entDictRepository) DeleteType(ctx context.Context, id string) error {
-	// 检查是否有关联的字典项
-	hasItems, err := dr.client.DictItem.Query().
-		Where(dictitem.TypeID(id)).
-		Exist(ctx)
-	if err != nil {
-		return err
-	}
-	if hasItems {
-		return domain.ErrDictTypeHasItems
-	}
-
-	// 删除字典类型
-	err = dr.client.DictType.DeleteOneID(id).Exec(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return domain.ErrDictTypeNotFound
+	if _, err = updateQuery.Save(ctx); err != nil {
+		if ent.IsConstraintError(err) {
+			return domain.ErrDictTypeCodeExists
 		}
 		return err
 	}
-
 	return nil
+}
+
+func (dr *entDictRepository) DeleteType(ctx context.Context, id string) error {
+	return withEntTransaction(ctx, dr.client, func(ctx context.Context, tx *ent.Tx) error {
+		// 检查和删除必须在同一事务内，避免并发创建字典项留下孤儿记录。
+		hasItems, err := tx.DictItem.Query().
+			Where(dictitem.TypeID(id)).
+			Exist(ctx)
+		if err != nil {
+			return err
+		}
+		if hasItems {
+			return domain.ErrDictTypeHasItems
+		}
+
+		if err = tx.DictType.DeleteOneID(id).Exec(ctx); err != nil {
+			if ent.IsNotFound(err) {
+				return domain.ErrDictTypeNotFound
+			}
+			return err
+		}
+		return nil
+	})
 }
 
 // 字典项相关实现
 
-func (dr *entDictRepository) CreateItem(ctx context.Context, dictItem *domain.DictItem) (err error) {
-	// 开启事务
-	tx, txErr := dr.client.Tx(ctx)
-	if txErr != nil {
-		return txErr
-	}
-	defer func() {
-		if v := recover(); v != nil {
-			_ = tx.Rollback()
-			err = fmt.Errorf("panic recovered in CreateItem: %v", v)
+func (dr *entDictRepository) CreateItem(ctx context.Context, dictItem *domain.DictItem) error {
+	return withEntTransaction(ctx, dr.client, func(ctx context.Context, tx *ent.Tx) error {
+		// 检查字典类型是否存在
+		typeExists, err := tx.DictType.Query().Where(dicttype.ID(dictItem.TypeID)).Exist(ctx)
+		if err != nil {
+			return err
 		}
-	}()
+		if !typeExists {
+			return domain.ErrDictTypeNotFound
+		}
 
-	// 检查字典类型是否存在
-	typeExists, err := tx.DictType.Query().Where(dicttype.ID(dictItem.TypeID)).Exist(ctx)
-	if err != nil {
-		return tx.Rollback()
-	}
-	if !typeExists {
-		_ = tx.Rollback()
-		return domain.ErrDictTypeNotFound
-	}
+		// 检查同一类型下value是否已存在
+		valueExists, err := tx.DictItem.Query().
+			Where(dictitem.And(dictitem.TypeID(dictItem.TypeID), dictitem.Value(dictItem.Value))).
+			Exist(ctx)
+		if err != nil {
+			return err
+		}
+		if valueExists {
+			return domain.ErrDictItemValueExists
+		}
 
-	// 检查同一类型下value是否已存在
-	valueExists, err := tx.DictItem.Query().
-		Where(dictitem.And(dictitem.TypeID(dictItem.TypeID), dictitem.Value(dictItem.Value))).
-		Exist(ctx)
-	if err != nil {
-		return tx.Rollback()
-	}
-	if valueExists {
-		_ = tx.Rollback()
-		return domain.ErrDictItemValueExists
-	}
+		// 如果设置为默认项，需要清除同类型的其他默认项
+		if dictItem.IsDefault {
+			if _, err = tx.DictItem.Update().
+				Where(dictitem.And(dictitem.TypeID(dictItem.TypeID), dictitem.IsDefault(true))).
+				SetIsDefault(false).
+				Save(ctx); err != nil {
+				return err
+			}
+		}
 
-	// 如果设置为默认项，需要清除同类型的其他默认项
-	if dictItem.IsDefault {
-		_, err = tx.DictItem.Update().
-			Where(dictitem.And(dictitem.TypeID(dictItem.TypeID), dictitem.IsDefault(true))).
-			SetIsDefault(false).
+		now := time.Now()
+		dictItem.CreatedAt = now
+		dictItem.UpdatedAt = now
+
+		created, err := tx.DictItem.
+			Create().
+			SetTypeID(dictItem.TypeID).
+			SetLabel(dictItem.Label).
+			SetValue(dictItem.Value).
+			SetSort(dictItem.Sort).
+			SetIsDefault(dictItem.IsDefault).
+			SetStatus(domainStatusToDictItemStatus(dictItem.Status)).
+			SetNillableColor(&dictItem.Color).
+			SetNillableRemark(&dictItem.Remark).
+			SetCreatedAt(dictItem.CreatedAt).
+			SetUpdatedAt(dictItem.UpdatedAt).
 			Save(ctx)
 		if err != nil {
-			return tx.Rollback()
+			return err
 		}
-	}
 
-	now := time.Now()
-	dictItem.CreatedAt = now
-	dictItem.UpdatedAt = now
-
-	created, err := tx.DictItem.
-		Create().
-		SetTypeID(dictItem.TypeID).
-		SetLabel(dictItem.Label).
-		SetValue(dictItem.Value).
-		SetSort(dictItem.Sort).
-		SetIsDefault(dictItem.IsDefault).
-		SetStatus(domainStatusToDictItemStatus(dictItem.Status)).
-		SetNillableColor(&dictItem.Color).
-		SetNillableRemark(&dictItem.Remark).
-		SetCreatedAt(dictItem.CreatedAt).
-		SetUpdatedAt(dictItem.UpdatedAt).
-		Save(ctx)
-
-	if err != nil {
-		return tx.Rollback()
-	}
-
-	dictItem.ID = created.ID
-	return tx.Commit()
+		dictItem.ID = created.ID
+		return nil
+	})
 }
 
 func (dr *entDictRepository) GetItemByID(ctx context.Context, id string) (*domain.DictItem, error) {
@@ -424,91 +401,74 @@ func (dr *entDictRepository) FetchItems(ctx context.Context, params domain.DictI
 	return domain.NewPagedResult(mapSlice(entItems, dr.convertEntDictItemToDomain), total, params.Page, params.PageSize), nil
 }
 
-func (dr *entDictRepository) UpdateItem(ctx context.Context, id string, updates domain.UpdateDictItemRequest) (err error) {
-	// 开启事务
-	tx, txErr := dr.client.Tx(ctx)
-	if txErr != nil {
-		return txErr
-	}
-	defer func() {
-		if v := recover(); v != nil {
-			_ = tx.Rollback()
-			err = fmt.Errorf("panic recovered in UpdateItem: %v", v)
-		}
-	}()
-
-	// 获取当前记录
-	currentItem, err := tx.DictItem.Query().Where(dictitem.ID(id)).First(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			tx.Rollback()
-			return domain.ErrDictItemNotFound
-		}
-		return tx.Rollback()
-	}
-
-	updateQuery := tx.DictItem.UpdateOneID(id)
-
-	// 检查value唯一性
-	if updates.Value != nil && *updates.Value != currentItem.Value {
-		valueExists, err := tx.DictItem.Query().
-			Where(dictitem.And(
-				dictitem.TypeID(currentItem.TypeID),
-				dictitem.Value(*updates.Value),
-				dictitem.Not(dictitem.ID(id)),
-			)).
-			Exist(ctx)
+func (dr *entDictRepository) UpdateItem(ctx context.Context, id string, updates domain.UpdateDictItemRequest) error {
+	return withEntTransaction(ctx, dr.client, func(ctx context.Context, tx *ent.Tx) error {
+		// 获取当前记录
+		currentItem, err := tx.DictItem.Query().Where(dictitem.ID(id)).First(ctx)
 		if err != nil {
-			return tx.Rollback()
+			if ent.IsNotFound(err) {
+				return domain.ErrDictItemNotFound
+			}
+			return err
 		}
-		if valueExists {
-			tx.Rollback()
-			return domain.ErrDictItemValueExists
-		}
-		updateQuery = updateQuery.SetValue(*updates.Value)
-	}
 
-	if updates.Label != nil {
-		updateQuery = updateQuery.SetLabel(*updates.Label)
-	}
-	if updates.Sort != nil {
-		updateQuery = updateQuery.SetSort(*updates.Sort)
-	}
-	if updates.Status != nil {
-		updateQuery = updateQuery.SetStatus(domainStatusToDictItemStatus(*updates.Status))
-	}
-	if updates.Color != nil {
-		updateQuery = updateQuery.SetColor(*updates.Color)
-	}
-	if updates.Remark != nil {
-		updateQuery = updateQuery.SetRemark(*updates.Remark)
-	}
+		updateQuery := tx.DictItem.UpdateOneID(id)
 
-	// 处理默认项逻辑
-	if updates.IsDefault != nil {
-		if *updates.IsDefault && !currentItem.IsDefault {
-			// 设置为默认项，需要清除同类型的其他默认项
-			_, err = tx.DictItem.Update().
+		// 检查value唯一性
+		if updates.Value != nil && *updates.Value != currentItem.Value {
+			valueExists, err := tx.DictItem.Query().
 				Where(dictitem.And(
 					dictitem.TypeID(currentItem.TypeID),
-					dictitem.IsDefault(true),
+					dictitem.Value(*updates.Value),
 					dictitem.Not(dictitem.ID(id)),
 				)).
-				SetIsDefault(false).
-				Save(ctx)
+				Exist(ctx)
 			if err != nil {
-				return tx.Rollback()
+				return err
 			}
+			if valueExists {
+				return domain.ErrDictItemValueExists
+			}
+			updateQuery = updateQuery.SetValue(*updates.Value)
 		}
-		updateQuery = updateQuery.SetIsDefault(*updates.IsDefault)
-	}
 
-	_, err = updateQuery.Save(ctx)
-	if err != nil {
-		return tx.Rollback()
-	}
+		if updates.Label != nil {
+			updateQuery = updateQuery.SetLabel(*updates.Label)
+		}
+		if updates.Sort != nil {
+			updateQuery = updateQuery.SetSort(*updates.Sort)
+		}
+		if updates.Status != nil {
+			updateQuery = updateQuery.SetStatus(domainStatusToDictItemStatus(*updates.Status))
+		}
+		if updates.Color != nil {
+			updateQuery = updateQuery.SetColor(*updates.Color)
+		}
+		if updates.Remark != nil {
+			updateQuery = updateQuery.SetRemark(*updates.Remark)
+		}
 
-	return tx.Commit()
+		// 处理默认项逻辑
+		if updates.IsDefault != nil {
+			if *updates.IsDefault && !currentItem.IsDefault {
+				// 设置为默认项，需要清除同类型的其他默认项
+				if _, err = tx.DictItem.Update().
+					Where(dictitem.And(
+						dictitem.TypeID(currentItem.TypeID),
+						dictitem.IsDefault(true),
+						dictitem.Not(dictitem.ID(id)),
+					)).
+					SetIsDefault(false).
+					Save(ctx); err != nil {
+					return err
+				}
+			}
+			updateQuery = updateQuery.SetIsDefault(*updates.IsDefault)
+		}
+
+		_, err = updateQuery.Save(ctx)
+		return err
+	})
 }
 
 func (dr *entDictRepository) DeleteItem(ctx context.Context, id string) error {

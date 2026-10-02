@@ -5,6 +5,14 @@ export interface ApiResponse<T> {
   data: T // 泛型数据，可以是任意类型
 }
 
+export interface ApiError {
+  response?: {
+    data?: {
+      msg?: string
+    }
+  }
+}
+
 // 分页结果类型 (与后端 domain.PagedResult 对应)
 export interface PagedResult<T> {
   list: T[]

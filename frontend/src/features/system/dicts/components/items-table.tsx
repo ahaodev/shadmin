@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getDictItemsByTypeId,
   setDictItemAsDefault,
@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { DICT_QUERY_KEYS } from '../hooks/dict-query-keys'
 import { useDicts } from './dicts-provider'
 
 interface ItemsTableProps {
@@ -33,15 +34,9 @@ interface ItemsTableProps {
 }
 
 export function ItemsTable(_props: ItemsTableProps) {
-  const {
-    selectedType,
-    setCurrentItemRow,
-    setShowItemEditDialog,
-    setShowItemDeleteDialog,
-    refreshItems,
-    setRefreshItems,
-  } = useDicts()
+  const { selectedType, setCurrentItemRow, setItemOpen } = useDicts()
   const { hasPermission } = usePermission()
+  const queryClient = useQueryClient()
 
   const canEdit = hasPermission(PERMISSIONS.SYSTEM.DICT.EDIT_ITEM)
   const canDelete = hasPermission(PERMISSIONS.SYSTEM.DICT.DELETE_ITEM)
@@ -51,7 +46,7 @@ export function ItemsTable(_props: ItemsTableProps) {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['dictItems', selectedType?.id, refreshItems],
+    queryKey: [DICT_QUERY_KEYS.items, selectedType?.id],
     queryFn: () => {
       if (!selectedType?.id)
         return { list: [], total: 0, page: 1, page_size: 10, total_pages: 0 }
@@ -62,12 +57,12 @@ export function ItemsTable(_props: ItemsTableProps) {
 
   const handleEdit = (item: DictItem) => {
     setCurrentItemRow(item)
-    setShowItemEditDialog(true)
+    setItemOpen('edit')
   }
 
   const handleDelete = (item: DictItem) => {
     setCurrentItemRow(item)
-    setShowItemDeleteDialog(true)
+    setItemOpen('delete')
   }
 
   const handleToggleDefault = async (item: DictItem) => {
@@ -77,7 +72,9 @@ export function ItemsTable(_props: ItemsTableProps) {
     }
     try {
       await setDictItemAsDefault(item.id)
-      setRefreshItems((prev) => prev + 1)
+      await queryClient.invalidateQueries({
+        queryKey: [DICT_QUERY_KEYS.items],
+      })
       toast.success('设置默认项成功')
     } catch {
       toast.error('设置默认项失败')
@@ -87,7 +84,9 @@ export function ItemsTable(_props: ItemsTableProps) {
   const handleToggleStatus = async (item: DictItem) => {
     try {
       await toggleDictItemStatus(item.id, item.status)
-      setRefreshItems((prev) => prev + 1)
+      await queryClient.invalidateQueries({
+        queryKey: [DICT_QUERY_KEYS.items],
+      })
       toast.success(`${item.status === 'active' ? '禁用' : '启用'}成功`)
     } catch {
       toast.error(`${item.status === 'active' ? '禁用' : '启用'}失败`)

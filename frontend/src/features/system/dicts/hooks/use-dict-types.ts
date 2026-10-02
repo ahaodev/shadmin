@@ -6,16 +6,14 @@ import {
 } from '@/services/dictApi'
 import type { DictTypeQueryParams } from '@/types/dict'
 import { useCrudMutation } from '@/hooks/use-crud-mutation'
-
-// Query keys for React Query
-const DICT_TYPES_QUERY_KEY = 'dict-types'
+import { DICT_QUERY_KEYS } from './dict-query-keys'
 
 // Custom hook for fetching dict types with pagination and filters
 export function useDictTypes(params?: DictTypeQueryParams) {
   return useQuery({
-    queryKey: [DICT_TYPES_QUERY_KEY, params],
+    queryKey: [DICT_QUERY_KEYS.types, params],
     queryFn: () => getDictTypes(params),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000,
   })
 }
 
@@ -24,7 +22,7 @@ export function useDeleteDictTypes() {
   return useCrudMutation({
     mutationFn: (typeIds: string[]) =>
       Promise.all(typeIds.map((id) => deleteDictType(id))),
-    queryKeys: [[DICT_TYPES_QUERY_KEY]],
+    queryKeys: [[DICT_QUERY_KEYS.types]],
     successMessage: (_, typeIds) => `已删除 ${typeIds.length} 个字典类型`,
     errorMessage: '批量删除字典类型失败',
   })
@@ -40,7 +38,7 @@ export function useBulkUpdateDictTypes() {
       typeIds: string[]
       status: 'active' | 'inactive'
     }) => Promise.all(typeIds.map((id) => updateDictType(id, { status }))),
-    queryKeys: [[DICT_TYPES_QUERY_KEY]],
+    queryKeys: [[DICT_QUERY_KEYS.types]],
     successMessage: (_, { typeIds, status }) => {
       const statusText = status === 'active' ? '启用' : '禁用'
       return `已${statusText} ${typeIds.length} 个字典类型`

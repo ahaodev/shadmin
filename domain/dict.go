@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrDictTypeCodeExists      = errors.New("dictionary type code already exists")
+	ErrInvalidDictStatus       = errors.New("invalid dictionary status")
 	ErrDictTypeHasItems        = errors.New("dictionary type has items, cannot delete")
 	ErrDictTypeNotFound        = errors.New("dictionary type not found")
 	ErrDictItemNotFound        = errors.New("dictionary item not found")

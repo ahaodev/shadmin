@@ -19,28 +19,23 @@ import { useDicts } from './dicts-provider'
 
 // Extract actions cell to a proper React component to follow Hooks rules
 function ActionsCell({ dictType }: { dictType: DictType }) {
-  const {
-    setCurrentTypeRow,
-    setShowTypeEditDialog,
-    setShowTypeDeleteDialog,
-    setSelectedType,
-    setShowItemsListDialog,
-  } = useDicts()
+  const { setCurrentTypeRow, setTypeOpen, setSelectedType, setItemsListOpen } =
+    useDicts()
   const { hasPermission } = usePermission()
   const canEdit = hasPermission(PERMISSIONS.SYSTEM.DICT.EDIT_TYPE)
   const canDelete = hasPermission(PERMISSIONS.SYSTEM.DICT.DELETE_TYPE)
 
   const handleEdit = () => {
     setCurrentTypeRow(dictType)
-    setShowTypeEditDialog(true)
+    setTypeOpen('edit')
   }
   const handleDelete = () => {
     setCurrentTypeRow(dictType)
-    setShowTypeDeleteDialog(true)
+    setTypeOpen('delete')
   }
   const handleViewItems = () => {
     setSelectedType(dictType)
-    setShowItemsListDialog(true)
+    setItemsListOpen(true)
   }
 
   return (

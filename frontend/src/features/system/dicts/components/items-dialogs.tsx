@@ -8,6 +8,7 @@ import {
   deleteDictItem,
   updateDictItem,
 } from '@/services/dictApi'
+import type { ApiError } from '@/types/api'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -47,6 +48,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { DICT_QUERY_KEYS } from '../hooks/dict-query-keys'
 import { useDicts } from './dicts-provider'
 
 type DictItemStatus = 'active' | 'inactive'
@@ -62,14 +64,6 @@ const formSchema = z.object({
 })
 
 type DictItemForm = z.infer<typeof formSchema>
-
-interface ApiError {
-  response?: {
-    data?: {
-      msg?: string
-    }
-  }
-}
 
 interface DictItemFormFieldsProps {
   form: ReturnType<typeof useForm<DictItemForm>>
@@ -198,12 +192,8 @@ function DictItemFormFields({ form }: DictItemFormFieldsProps) {
 export function ItemsDialogs() {
   const {
     selectedType,
-    showItemCreateDialog,
-    setShowItemCreateDialog,
-    showItemEditDialog,
-    setShowItemEditDialog,
-    showItemDeleteDialog,
-    setShowItemDeleteDialog,
+    itemOpen,
+    setItemOpen,
     currentItemRow,
     setCurrentItemRow,
   } = useDicts()
@@ -241,13 +231,15 @@ export function ItemsDialogs() {
   }
 
   const refreshData = () => {
-    queryClient.invalidateQueries({ queryKey: ['dictItems'] })
+    queryClient.invalidateQueries({
+      queryKey: [DICT_QUERY_KEYS.items],
+    })
   }
 
   const createMutation = useMutation({
     mutationFn: createDictItem,
     onSuccess: () => {
-      setShowItemCreateDialog(false)
+      setItemOpen(null)
       createForm.reset()
       refreshData()
       toast.success('创建字典项成功')
@@ -259,7 +251,7 @@ export function ItemsDialogs() {
     mutationFn: ({ id, data }: { id: string; data: DictItemForm }) =>
       updateDictItem(id, data),
     onSuccess: () => {
-      setShowItemEditDialog(false)
+      setItemOpen(null)
       setCurrentItemRow(null)
       refreshData()
       toast.success('更新字典项成功')
@@ -270,7 +262,7 @@ export function ItemsDialogs() {
   const deleteMutation = useMutation({
     mutationFn: deleteDictItem,
     onSuccess: () => {
-      setShowItemDeleteDialog(false)
+      setItemOpen(null)
       setCurrentItemRow(null)
       refreshData()
       toast.success('删除字典项成功')
@@ -278,25 +270,17 @@ export function ItemsDialogs() {
     onError: (error: ApiError) => handleApiError(error, '删除失败'),
   })
 
-  const onCreateSubmit = async (values: DictItemForm) => {
+  const onCreateSubmit = (values: DictItemForm) => {
     if (!selectedType) {
       toast.error('请先选择字典类型')
       return
     }
-    try {
-      await createMutation.mutateAsync({ type_id: selectedType.id, ...values })
-    } catch (error) {
-      console.error('Error creating dict item:', error)
-    }
+    createMutation.mutate({ type_id: selectedType.id, ...values })
   }
 
-  const onEditSubmit = async (values: DictItemForm) => {
+  const onEditSubmit = (values: DictItemForm) => {
     if (!currentItemRow) return
-    try {
-      await updateMutation.mutateAsync({ id: currentItemRow.id, data: values })
-    } catch (error) {
-      console.error('Error updating dict item:', error)
-    }
+    updateMutation.mutate({ id: currentItemRow.id, data: values })
   }
 
   const handleDelete = () => {
@@ -305,7 +289,7 @@ export function ItemsDialogs() {
   }
 
   useEffect(() => {
-    if (showItemEditDialog && currentItemRow) {
+    if (itemOpen === 'edit' && currentItemRow) {
       editForm.reset({
         label: currentItemRow.label,
         value: currentItemRow.value,
@@ -316,14 +300,17 @@ export function ItemsDialogs() {
         remark: currentItemRow.remark || '',
       })
     }
-  }, [showItemEditDialog, currentItemRow])
+  }, [itemOpen, currentItemRow, editForm])
 
   const handleEditDialogChange = (open: boolean) => {
-    setShowItemEditDialog(open)
+    setItemOpen(open ? 'edit' : null)
+    if (!open) {
+      setCurrentItemRow(null)
+    }
   }
 
   const handleCreateDialogChange = (open: boolean) => {
-    setShowItemCreateDialog(open)
+    setItemOpen(open ? 'add' : null)
     if (!open) {
       createForm.reset()
     }
@@ -332,10 +319,7 @@ export function ItemsDialogs() {
   return (
     <>
       {/* 创建对话框 */}
-      <Dialog
-        open={showItemCreateDialog}
-        onOpenChange={handleCreateDialogChange}
-      >
+      <Dialog open={itemOpen === 'add'} onOpenChange={handleCreateDialogChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>创建字典项</DialogTitle>
@@ -370,7 +354,7 @@ export function ItemsDialogs() {
       </Dialog>
 
       {/* 编辑对话框 */}
-      <Dialog open={showItemEditDialog} onOpenChange={handleEditDialogChange}>
+      <Dialog open={itemOpen === 'edit'} onOpenChange={handleEditDialogChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>编辑字典项</DialogTitle>
@@ -404,8 +388,13 @@ export function ItemsDialogs() {
 
       {/* 删除确认对话框 */}
       <AlertDialog
-        open={showItemDeleteDialog}
-        onOpenChange={setShowItemDeleteDialog}
+        open={itemOpen === 'delete'}
+        onOpenChange={(open) => {
+          if (!open) {
+            setItemOpen(null)
+            setCurrentItemRow(null)
+          }
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>

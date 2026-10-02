@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button'
 import { useDicts } from './dicts-provider'
 
 export function DictsPrimaryButtons() {
-  const { setShowTypeCreateDialog } = useDicts()
+  const { setTypeOpen } = useDicts()
   const { hasPermission } = usePermission()
 
   const canAddType = hasPermission(PERMISSIONS.SYSTEM.DICT.ADD_TYPE)
 
   const handleCreateTypeClick = () => {
-    setShowTypeCreateDialog(true)
+    setTypeOpen('add')
   }
 
   return (

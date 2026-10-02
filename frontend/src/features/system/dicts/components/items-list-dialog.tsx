@@ -12,18 +12,14 @@ import { useDicts } from './dicts-provider'
 import { ItemsTable } from './items-table'
 
 export function ItemsListDialog() {
-  const {
-    selectedType,
-    showItemsListDialog,
-    setShowItemsListDialog,
-    setShowItemCreateDialog,
-  } = useDicts()
+  const { selectedType, itemsListOpen, setItemsListOpen, setItemOpen } =
+    useDicts()
   const { hasPermission } = usePermission()
 
   const canAddItem = hasPermission(PERMISSIONS.SYSTEM.DICT.ADD_ITEM)
 
   return (
-    <Dialog open={showItemsListDialog} onOpenChange={setShowItemsListDialog}>
+    <Dialog open={itemsListOpen} onOpenChange={setItemsListOpen}>
       <DialogContent className='max-w-4xl'>
         <DialogHeader>
           <DialogTitle>
@@ -40,7 +36,7 @@ export function ItemsListDialog() {
           {canAddItem && (
             <Button
               size='sm'
-              onClick={() => setShowItemCreateDialog(true)}
+              onClick={() => setItemOpen('add')}
               className='space-x-1'
             >
               新增字典项

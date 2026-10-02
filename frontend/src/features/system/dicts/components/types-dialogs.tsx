@@ -8,6 +8,7 @@ import {
   deleteDictType,
   updateDictType,
 } from '@/services/dictApi'
+import type { ApiError } from '@/types/api'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -46,6 +47,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { DICT_QUERY_KEYS } from '../hooks/dict-query-keys'
 import { useDicts } from './dicts-provider'
 
 type DictTypeStatus = 'active' | 'inactive'
@@ -58,14 +60,6 @@ const formSchema = z.object({
 })
 
 type DictTypeForm = z.infer<typeof formSchema>
-
-interface ApiError {
-  response?: {
-    data?: {
-      msg?: string
-    }
-  }
-}
 
 interface DictTypeFormFieldsProps {
   form: ReturnType<typeof useForm<DictTypeForm>>
@@ -139,16 +133,8 @@ function DictTypeFormFields({ form }: DictTypeFormFieldsProps) {
 }
 
 export function TypesDialogs() {
-  const {
-    showTypeCreateDialog,
-    setShowTypeCreateDialog,
-    showTypeEditDialog,
-    setShowTypeEditDialog,
-    showTypeDeleteDialog,
-    setShowTypeDeleteDialog,
-    currentTypeRow,
-    setCurrentTypeRow,
-  } = useDicts()
+  const { typeOpen, setTypeOpen, currentTypeRow, setCurrentTypeRow } =
+    useDicts()
 
   const queryClient = useQueryClient()
 
@@ -177,12 +163,14 @@ export function TypesDialogs() {
   }
 
   const refreshData = () => {
-    queryClient.invalidateQueries({ queryKey: ['dict-types'] })
+    queryClient.invalidateQueries({
+      queryKey: [DICT_QUERY_KEYS.types],
+    })
   }
 
   // 当 currentTypeRow 改变时，更新编辑表单的值
   useEffect(() => {
-    if (currentTypeRow && showTypeEditDialog) {
+    if (currentTypeRow && typeOpen === 'edit') {
       editForm.reset({
         code: currentTypeRow.code,
         name: currentTypeRow.name,
@@ -190,12 +178,12 @@ export function TypesDialogs() {
         remark: currentTypeRow.remark || '',
       })
     }
-  }, [currentTypeRow, showTypeEditDialog, editForm])
+  }, [currentTypeRow, typeOpen, editForm])
 
   const createMutation = useMutation({
     mutationFn: createDictType,
     onSuccess: () => {
-      setShowTypeCreateDialog(false)
+      setTypeOpen(null)
       createForm.reset()
       refreshData()
       toast.success('创建字典类型成功')
@@ -207,7 +195,7 @@ export function TypesDialogs() {
     mutationFn: ({ id, data }: { id: string; data: DictTypeForm }) =>
       updateDictType(id, data),
     onSuccess: () => {
-      setShowTypeEditDialog(false)
+      setTypeOpen(null)
       setCurrentTypeRow(null)
       refreshData()
       toast.success('更新字典类型成功')
@@ -218,7 +206,7 @@ export function TypesDialogs() {
   const deleteMutation = useMutation({
     mutationFn: deleteDictType,
     onSuccess: () => {
-      setShowTypeDeleteDialog(false)
+      setTypeOpen(null)
       setCurrentTypeRow(null)
       refreshData()
       toast.success('删除字典类型成功')
@@ -226,21 +214,13 @@ export function TypesDialogs() {
     onError: (error: ApiError) => handleApiError(error, '删除失败'),
   })
 
-  const onCreateSubmit = async (values: DictTypeForm) => {
-    try {
-      await createMutation.mutateAsync(values)
-    } catch (error) {
-      console.error('Error creating dict type:', error)
-    }
+  const onCreateSubmit = (values: DictTypeForm) => {
+    createMutation.mutate(values)
   }
 
-  const onEditSubmit = async (values: DictTypeForm) => {
+  const onEditSubmit = (values: DictTypeForm) => {
     if (!currentTypeRow) return
-    try {
-      await updateMutation.mutateAsync({ id: currentTypeRow.id, data: values })
-    } catch (error) {
-      console.error('Error updating dict type:', error)
-    }
+    updateMutation.mutate({ id: currentTypeRow.id, data: values })
   }
 
   const handleDelete = () => {
@@ -249,14 +229,14 @@ export function TypesDialogs() {
   }
 
   const handleEditDialogChange = (open: boolean) => {
-    setShowTypeEditDialog(open)
+    setTypeOpen(open ? 'edit' : null)
     if (!open) {
       setCurrentTypeRow(null)
     }
   }
 
   const handleCreateDialogChange = (open: boolean) => {
-    setShowTypeCreateDialog(open)
+    setTypeOpen(open ? 'add' : null)
     if (!open) {
       createForm.reset()
     }
@@ -264,10 +244,7 @@ export function TypesDialogs() {
 
   return (
     <>
-      <Dialog
-        open={showTypeCreateDialog}
-        onOpenChange={handleCreateDialogChange}
-      >
+      <Dialog open={typeOpen === 'add'} onOpenChange={handleCreateDialogChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>创建字典类型</DialogTitle>
@@ -301,7 +278,7 @@ export function TypesDialogs() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showTypeEditDialog} onOpenChange={handleEditDialogChange}>
+      <Dialog open={typeOpen === 'edit'} onOpenChange={handleEditDialogChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>编辑字典类型</DialogTitle>
@@ -335,8 +312,13 @@ export function TypesDialogs() {
 
       {/* 删除确认对话框 */}
       <AlertDialog
-        open={showTypeDeleteDialog}
-        onOpenChange={setShowTypeDeleteDialog}
+        open={typeOpen === 'delete'}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTypeOpen(null)
+            setCurrentTypeRow(null)
+          }
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
