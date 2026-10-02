@@ -25,7 +25,7 @@ Safe cleanup of Shadmin (Go/Gin/Ent backend, React 19 + TypeScript frontend, thi
 | Backend (Go) | `main.go`, `cmd/`, `bootstrap/`, `api/`, `domain/`, `repository/`, `usecase/`, `ent/`, `internal/`, `pkg/` |
 | Frontend (React 19 + TS) | `frontend/src/` |
 | CLI (Go) | `cli/` |
-| Docs | `docs/`, `README.md`, `README.zh.md`, `AGENTS.md`, `CLAUDE.md`, `.agent/*.md` |
+| Docs | `docs/`, `README.md`, `README.zh.md`, `AGENTS.md`, `.agent/*.md` |
 
 **Never edit (generated or owned by tooling):**
 - Generated code: `ent/*.go` (except `ent/schema/`), `frontend/src/routeTree.gen.ts`, `docs/docs.go`, `docs/swagger.*`, `frontend/dist/`
@@ -58,7 +58,7 @@ Safe cleanup of Shadmin (Go/Gin/Ent backend, React 19 + TypeScript frontend, thi
 
 **Documentation:**
 - Delete stale/redundant sections and boilerplate comments
-- Consolidate duplicated content across `README.md`, `README.zh.md`, `AGENTS.md`, `CLAUDE.md`, and `docs/getting-started/*.{en,zh}.md` — keep each fact in one place and cross-reference
+- Consolidate duplicated content across `README.md`, `README.zh.md`, `AGENTS.md` and `docs/getting-started/*.{en,zh}.md` — keep each fact in one place and cross-reference
 - Fix broken links and outdated commands/field names
 
 ## Rules
