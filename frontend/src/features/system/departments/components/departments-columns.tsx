@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import type { Department } from '@/types/department'
 import { ChevronDown, ChevronRight, Edit, Settings, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PERMISSIONS } from '@/constants/permissions'
@@ -11,15 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-export interface FlatDepartment {
-  id: string
-  parent_id: string | null
-  name: string
-  sequence: number
-  leader: string
-  phone: string
-  email: string
-  status: string
+export interface FlatDepartment extends Department {
   level: number
   hasChildren: boolean
   hierarchyIndex: string

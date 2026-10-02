@@ -2,9 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
   useReactTable,
-  type SortingState,
 } from '@tanstack/react-table'
 import type { Department } from '@/types/department'
 import { Loader2 } from 'lucide-react'
@@ -36,21 +34,9 @@ function flattenDepartments(
 
   departments.forEach((dept, index) => {
     const hierarchyIndex = parentIndex ? `${parentIndex}-${index}` : `${index}`
-    const hasChildren = !!(dept.children && dept.children.length > 0)
+    const hasChildren = !!dept.children?.length
 
-    result.push({
-      id: dept.id,
-      parent_id: dept.parent_id,
-      name: dept.name,
-      sequence: dept.sequence,
-      leader: dept.leader,
-      phone: dept.phone,
-      email: dept.email,
-      status: dept.status,
-      level,
-      hasChildren,
-      hierarchyIndex,
-    })
+    result.push({ ...dept, level, hasChildren, hierarchyIndex })
 
     if (hasChildren && expanded[hierarchyIndex]) {
       result.push(
@@ -67,27 +53,12 @@ function flattenDepartments(
   return result
 }
 
-function findDepartmentById(
-  departments: Department[],
-  id: string
-): Department | null {
-  for (const dept of departments) {
-    if (dept.id === id) return dept
-    if (dept.children) {
-      const found = findDepartmentById(dept.children, id)
-      if (found) return found
-    }
-  }
-  return null
-}
-
 export function DepartmentsTable() {
   const { setCurrentRow, setOpen } = useDepartments()
   const { hasPermission } = usePermission()
   const { data: treeData, isLoading, error } = useDepartmentTree()
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const [sorting, setSorting] = useState<SortingState>([])
   const [searchTerm, setSearchTerm] = useState('')
 
   const handleExpandToggle = (hierarchyIndex: string) => {
@@ -112,21 +83,13 @@ export function DepartmentsTable() {
   }, [tableData, searchTerm])
 
   const handleEditClick = (dept: FlatDepartment) => {
-    if (!treeData) return
-    const original = findDepartmentById(treeData, dept.id)
-    if (original) {
-      setCurrentRow(original)
-      setOpen('edit')
-    }
+    setCurrentRow(dept)
+    setOpen('edit')
   }
 
   const handleDeleteClick = (dept: FlatDepartment) => {
-    if (!treeData) return
-    const original = findDepartmentById(treeData, dept.id)
-    if (original) {
-      setCurrentRow(original)
-      setOpen('delete')
-    }
+    setCurrentRow(dept)
+    setOpen('delete')
   }
 
   const columns = createDepartmentColumns({
@@ -141,9 +104,6 @@ export function DepartmentsTable() {
     data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onSortingChange: setSorting,
-    state: { sorting },
   })
 
   if (isLoading) {

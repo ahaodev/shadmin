@@ -1732,7 +1732,12 @@ paths:
         "201":
           description: Successfully created department
           schema:
-            $ref: '#/definitions/domain.Response'
+            allOf:
+            - $ref: '#/definitions/domain.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Department'
+              type: object
         "400":
           description: Bad request
           schema:

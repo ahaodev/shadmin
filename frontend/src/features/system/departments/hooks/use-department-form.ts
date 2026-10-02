@@ -43,16 +43,6 @@ export function useDepartmentForm({
         email: currentRow.email || '',
         status: currentRow.status,
       })
-    } else {
-      form.reset({
-        parent_id: '',
-        name: '',
-        sequence: 0,
-        leader: '',
-        phone: '',
-        email: '',
-        status: 'active',
-      })
     }
   }, [currentRow, form])
 

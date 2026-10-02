@@ -4,14 +4,12 @@ import (
 	"errors"
 	"net/http"
 	"shadmin/domain"
-	"shadmin/internal/conf"
 
 	"github.com/gin-gonic/gin"
 )
 
 type DepartmentController struct {
 	DepartmentUseCase domain.DepartmentUseCase
-	Env               *conf.Env
 }
 
 // GetDepartmentList 按过滤条件返回扁平部门列表
@@ -36,7 +34,7 @@ func (dc *DepartmentController) GetDepartmentList(c *gin.Context) {
 
 	list, err := dc.DepartmentUseCase.FetchList(c.Request.Context(), filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError("获取部门列表失败: "+err.Error()))
+		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(list))
@@ -55,7 +53,7 @@ func (dc *DepartmentController) GetDepartmentList(c *gin.Context) {
 func (dc *DepartmentController) GetDepartmentTree(c *gin.Context) {
 	tree, err := dc.DepartmentUseCase.FetchTree(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError("获取部门树失败: "+err.Error()))
+		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(tree))
@@ -78,10 +76,10 @@ func (dc *DepartmentController) GetDepartment(c *gin.Context) {
 	dept, err := dc.DepartmentUseCase.GetByID(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, domain.ErrDepartmentNotFound) {
-			c.JSON(http.StatusNotFound, domain.RespError("部门不存在"))
+			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, domain.RespError("获取部门失败: "+err.Error()))
+		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(dept))
@@ -95,7 +93,7 @@ func (dc *DepartmentController) GetDepartment(c *gin.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        department  body     domain.CreateDepartmentRequest  true  "Department information"
-// @Success      201         {object} domain.Response  "Successfully created department"
+// @Success      201         {object} domain.Response{data=domain.Department}  "Successfully created department"
 // @Failure      400         {object} domain.Response  "Bad request"
 // @Failure      409         {object} domain.Response  "Conflict - duplicate name"
 // @Router       /system/department [post]
@@ -106,16 +104,16 @@ func (dc *DepartmentController) CreateDepartment(c *gin.Context) {
 		return
 	}
 
-	err := dc.DepartmentUseCase.Create(c.Request.Context(), &req)
+	dept, err := dc.DepartmentUseCase.Create(c.Request.Context(), &req)
 	if err != nil {
 		if errors.Is(err, domain.ErrDepartmentNameExists) {
-			c.JSON(http.StatusConflict, domain.RespError("同级下已存在同名部门"))
+			c.JSON(http.StatusConflict, domain.RespError(err.Error()))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, domain.RespError("创建部门失败: "+err.Error()))
+		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
 	}
-	c.JSON(http.StatusCreated, domain.RespSuccess(nil))
+	c.JSON(http.StatusCreated, domain.RespSuccess(dept))
 }
 
 // UpdateDepartment 更新部门
@@ -143,22 +141,22 @@ func (dc *DepartmentController) UpdateDepartment(c *gin.Context) {
 	dept, err := dc.DepartmentUseCase.Update(c.Request.Context(), id, &req)
 	if err != nil {
 		if errors.Is(err, domain.ErrDepartmentNotFound) {
-			c.JSON(http.StatusNotFound, domain.RespError("部门不存在"))
+			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
 			return
 		}
 		if errors.Is(err, domain.ErrDepartmentNameExists) {
-			c.JSON(http.StatusConflict, domain.RespError("同级下已存在同名部门"))
+			c.JSON(http.StatusConflict, domain.RespError(err.Error()))
 			return
 		}
 		if errors.Is(err, domain.ErrCircularDepartment) {
-			c.JSON(http.StatusBadRequest, domain.RespError("不能将部门移动到其子部门下"))
+			c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
 			return
 		}
 		if errors.Is(err, domain.ErrDepartmentHasActiveChildren) {
-			c.JSON(http.StatusBadRequest, domain.RespError(domain.ErrDepartmentHasActiveChildren.Error()))
+			c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, domain.RespError("更新部门失败: "+err.Error()))
+		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(dept))
@@ -182,22 +180,15 @@ func (dc *DepartmentController) DeleteDepartment(c *gin.Context) {
 	err := dc.DepartmentUseCase.Delete(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, domain.ErrDepartmentNotFound) {
-			c.JSON(http.StatusNotFound, domain.RespError("部门不存在"))
+			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
 			return
 		}
-		if errors.Is(err, domain.ErrDepartmentHasChildren) {
-			c.JSON(http.StatusBadRequest, domain.RespError("该部门下存在子部门，无法删除"))
+		if errors.Is(err, domain.ErrDepartmentHasChildren) || errors.Is(err, domain.ErrDepartmentHasUsers) {
+			c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
 			return
 		}
-		if errors.Is(err, domain.ErrDepartmentHasUsers) {
-			c.JSON(http.StatusBadRequest, domain.RespError("该部门下存在用户，无法删除"))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError("删除部门失败: "+err.Error()))
+		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, domain.RespSuccess(map[string]interface{}{
-		"department_id": id,
-		"message":       "部门删除成功",
-	}))
+	c.JSON(http.StatusOK, domain.RespSuccess(nil))
 }

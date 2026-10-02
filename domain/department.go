@@ -43,12 +43,11 @@ type UpdateDepartmentRequest struct {
 	Status   *string `json:"status,omitempty"`
 }
 
-// DepartmentQueryFilter represents query parameters for department filtering
+// DepartmentQueryFilter represents query parameters for department filtering.
 type DepartmentQueryFilter struct {
 	Name    string `json:"name,omitempty" form:"name"`
 	Status  string `json:"status,omitempty" form:"status"`
 	Keyword string `json:"keyword,omitempty" form:"keyword"`
-	QueryParams
 }
 
 // Department sentinel errors
@@ -77,7 +76,7 @@ type DepartmentRepository interface {
 
 // DepartmentUseCase defines the interface for department business logic
 type DepartmentUseCase interface {
-	Create(ctx context.Context, req *CreateDepartmentRequest) error
+	Create(ctx context.Context, req *CreateDepartmentRequest) (*Department, error)
 	GetByID(ctx context.Context, id string) (*Department, error)
 	FetchTree(ctx context.Context) ([]Department, error)
 	FetchList(ctx context.Context, filter DepartmentQueryFilter) ([]Department, error)

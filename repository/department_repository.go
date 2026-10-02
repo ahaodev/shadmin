@@ -5,6 +5,7 @@ import (
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/department"
+	"shadmin/ent/user"
 	"shadmin/internal/constants"
 )
 
@@ -137,11 +138,7 @@ func (r *entDepartmentRepository) HasChildren(ctx context.Context, id string) (b
 }
 
 func (r *entDepartmentRepository) HasUsers(ctx context.Context, id string) (bool, error) {
-	d, err := r.client.Department.Get(ctx, id)
-	if err != nil {
-		return false, err
-	}
-	return d.QueryUsers().Exist(ctx)
+	return r.client.User.Query().Where(user.DepartmentID(id)).Exist(ctx)
 }
 
 func (r *entDepartmentRepository) GetAllChildrenIDs(ctx context.Context, id string) ([]string, error) {

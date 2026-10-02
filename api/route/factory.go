@@ -250,6 +250,5 @@ func (f *ControllerFactory) CreateDepartmentController() *controller.DepartmentC
 
 	return &controller.DepartmentController{
 		DepartmentUseCase: departmentUseCase,
-		Env:               f.app.Env,
 	}
 }

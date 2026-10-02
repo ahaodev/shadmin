@@ -1423,7 +1423,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Successfully created department",
                         "schema": {
-                            "$ref": "#/definitions/domain.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.Department"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {

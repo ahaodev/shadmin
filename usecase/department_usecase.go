@@ -21,7 +21,7 @@ func NewDepartmentUsecase(departmentRepo domain.DepartmentRepository, timeout ti
 	}
 }
 
-func (u *departmentUsecase) Create(ctx context.Context, req *domain.CreateDepartmentRequest) error {
+func (u *departmentUsecase) Create(ctx context.Context, req *domain.CreateDepartmentRequest) (*domain.Department, error) {
 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
 
@@ -30,11 +30,16 @@ func (u *departmentUsecase) Create(ctx context.Context, req *domain.CreateDepart
 		req.Status = constants.StatusActive
 	}
 
+	// Normalize an empty parent ID to the root-level representation.
+	if req.ParentID != nil && *req.ParentID == "" {
+		req.ParentID = nil
+	}
+
 	// If parent_id is provided, verify parent exists
-	if req.ParentID != nil && *req.ParentID != "" {
+	if req.ParentID != nil {
 		_, err := u.departmentRepo.GetByID(ctx, *req.ParentID)
 		if err != nil {
-			return fmt.Errorf("parent department not found: %w", err)
+			return nil, fmt.Errorf("parent department not found: %w", err)
 		}
 	}
 
@@ -49,9 +54,9 @@ func (u *departmentUsecase) Create(ctx context.Context, req *domain.CreateDepart
 	}
 
 	if err := u.departmentRepo.Create(ctx, dept); err != nil {
-		return fmt.Errorf("create department: %w", err)
+		return nil, fmt.Errorf("create department: %w", err)
 	}
-	return nil
+	return dept, nil
 }
 
 func (u *departmentUsecase) GetByID(ctx context.Context, id string) (*domain.Department, error) {
@@ -82,7 +87,7 @@ func (u *departmentUsecase) Update(ctx context.Context, id string, req *domain.U
 
 	dept, err := u.departmentRepo.GetByID(ctx, id)
 	if err != nil {
-		return nil, domain.ErrDepartmentNotFound
+		return nil, err
 	}
 
 	// Apply partial updates
@@ -150,7 +155,7 @@ func (u *departmentUsecase) Delete(ctx context.Context, id string) error {
 	// Check existence
 	_, err := u.departmentRepo.GetByID(ctx, id)
 	if err != nil {
-		return domain.ErrDepartmentNotFound
+		return err
 	}
 
 	// Check children
