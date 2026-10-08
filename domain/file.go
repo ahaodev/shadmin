@@ -47,11 +47,3 @@ type FileRepository interface {
 	List(c context.Context, bucket, prefix string) ([]FileInfo, error)
 	GetObjectStat(c context.Context, bucket, objectName string) (*FileInfo, error)
 }
-
-type FileUsecase interface {
-	Upload(c context.Context, req *UploadRequest) (*UploadResult, error)
-	Download(c context.Context, req *DownloadRequest) (io.ReadCloser, error)
-	Delete(c context.Context, bucket, objectName string) error
-	List(c context.Context, bucket, prefix string) ([]FileInfo, error)
-	GetObjectStat(c context.Context, bucket, objectName string) (*FileInfo, error)
-}
