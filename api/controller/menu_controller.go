@@ -15,22 +15,23 @@ type MenuController struct {
 }
 
 // GetMenus 获取菜单列表
-// @Summary      Get menus
-// @Description  Retrieve a list of menus with filtering and pagination
-// @Tags         Menus
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        type      query    string  false  "Filter by menu type (menu/button/api)"
-// @Param        status    query    string  false  "Filter by status (active/inactive)"
-// @Param        parent_id query    string  false  "Filter by parent menu ID"
-// @Param        keyword   query    string  false  "Filter by menu name or path"
-// @Param        page      query    int     false  "Page number (default: 1)"
-// @Param        page_size query    int     false  "Page size (default: 20)"
-// @Success      200       {object} domain.Response{data=domain.PagedResult[domain.Menu]}  "Successfully retrieved menus"
-// @Failure      400       {object} domain.Response  "Bad request - invalid parameters"
-// @Failure      500       {object} domain.Response  "Internal server error"
-// @Router       /menu [get]
+//
+//	@Summary		Get menus
+//	@Description	Retrieve a list of menus with filtering and pagination
+//	@Tags			Menus
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			type		query		string													false	"Filter by menu type (menu/button/api)"
+//	@Param			status		query		string													false	"Filter by status (active/inactive)"
+//	@Param			parent_id	query		string													false	"Filter by parent menu ID"
+//	@Param			keyword		query		string													false	"Filter by menu name or path"
+//	@Param			page		query		int														false	"Page number (default: 1)"
+//	@Param			page_size	query		int														false	"Page size (default: 20)"
+//	@Success		200			{object}	domain.Response{data=domain.PagedResult[domain.Menu]}	"Successfully retrieved menus"
+//	@Failure		400			{object}	domain.Response											"Bad request - invalid parameters"
+//	@Failure		500			{object}	domain.Response											"Internal server error"
+//	@Router			/menu [get]
 func (mc *MenuController) GetMenus(c *gin.Context) {
 	var params domain.MenuQueryParams
 	if err := c.ShouldBindQuery(&params); err != nil {
@@ -48,17 +49,18 @@ func (mc *MenuController) GetMenus(c *gin.Context) {
 }
 
 // GetMenuTree 获取菜单树结构
-// @Summary      Get menu tree
-// @Description  Retrieve menus in hierarchical tree structure
-// @Tags         Menus
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        status    query    string  false  "Filter by status (active/inactive)"
-// @Success      200       {object} domain.Response{data=[]domain.MenuTreeNode}  "Successfully retrieved menu tree"
-// @Failure      400       {object} domain.Response  "Bad request - invalid parameters"
-// @Failure      500       {object} domain.Response  "Internal server error"
-// @Router       /menu/tree [get]
+//
+//	@Summary		Get menu tree
+//	@Description	Retrieve menus in hierarchical tree structure
+//	@Tags			Menus
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			status	query		string										false	"Filter by status (active/inactive)"
+//	@Success		200		{object}	domain.Response{data=[]domain.MenuTreeNode}	"Successfully retrieved menu tree"
+//	@Failure		400		{object}	domain.Response								"Bad request - invalid parameters"
+//	@Failure		500		{object}	domain.Response								"Internal server error"
+//	@Router			/menu/tree [get]
 func (mc *MenuController) GetMenuTree(c *gin.Context) {
 
 	menuTree, err := mc.MenuUseCase.GetMenuTree(c.Request.Context())
@@ -71,18 +73,19 @@ func (mc *MenuController) GetMenuTree(c *gin.Context) {
 }
 
 // CreateMenu 创建菜单
-// @Summary      Create menu
-// @Description  Create a new menu item
-// @Tags         Menus
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        menu  body     domain.CreateMenuRequest  true  "Menu information"
-// @Success      201   {object} domain.Response{data=domain.Menu}  "Successfully created menu"
-// @Failure      400   {object} domain.Response  "Bad request - invalid parameters"
-// @Failure      409   {object} domain.Response  "Conflict - menu code already exists"
-// @Failure      500   {object} domain.Response  "Internal server error"
-// @Router       /menu [post]
+//
+//	@Summary		Create menu
+//	@Description	Create a new menu item
+//	@Tags			Menus
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			menu	body		domain.CreateMenuRequest			true	"Menu information"
+//	@Success		201		{object}	domain.Response{data=domain.Menu}	"Successfully created menu"
+//	@Failure		400		{object}	domain.Response						"Bad request - invalid parameters"
+//	@Failure		409		{object}	domain.Response						"Conflict - menu code already exists"
+//	@Failure		500		{object}	domain.Response						"Internal server error"
+//	@Router			/menu [post]
 func (mc *MenuController) CreateMenu(c *gin.Context) {
 	var request domain.CreateMenuRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -108,17 +111,18 @@ func (mc *MenuController) CreateMenu(c *gin.Context) {
 }
 
 // GetMenu 获取单个菜单
-// @Summary      Get menu by ID
-// @Description  Get a specific menu by its ID
-// @Tags         Menus
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id   path     string  true  "Menu ID"
-// @Success      200  {object} domain.Response{data=domain.Menu}  "Successfully retrieved menu"
-// @Failure      404  {object} domain.Response  "Menu not found"
-// @Failure      500  {object} domain.Response  "Internal server error"
-// @Router       /menu/{id} [get]
+//
+//	@Summary		Get menu by ID
+//	@Description	Get a specific menu by its ID
+//	@Tags			Menus
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string								true	"Menu ID"
+//	@Success		200	{object}	domain.Response{data=domain.Menu}	"Successfully retrieved menu"
+//	@Failure		404	{object}	domain.Response						"Menu not found"
+//	@Failure		500	{object}	domain.Response						"Internal server error"
+//	@Router			/menu/{id} [get]
 func (mc *MenuController) GetMenu(c *gin.Context) {
 	id := c.Param("id")
 
@@ -132,19 +136,20 @@ func (mc *MenuController) GetMenu(c *gin.Context) {
 }
 
 // UpdateMenu 更新菜单
-// @Summary      Update menu
-// @Description  Update a specific menu by its ID
-// @Tags         Menus
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id    path     string                    true  "Menu ID"
-// @Param        menu  body     domain.UpdateMenuRequest  true  "Updated menu information"
-// @Success      200   {object} domain.Response{data=domain.Menu}  "Successfully updated menu"
-// @Failure      400   {object} domain.Response  "Bad request - invalid parameters"
-// @Failure      404   {object} domain.Response  "Menu not found"
-// @Failure      500   {object} domain.Response  "Internal server error"
-// @Router       /menu/{id} [put]
+//
+//	@Summary		Update menu
+//	@Description	Update a specific menu by its ID
+//	@Tags			Menus
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string								true	"Menu ID"
+//	@Param			menu	body		domain.UpdateMenuRequest			true	"Updated menu information"
+//	@Success		200		{object}	domain.Response{data=domain.Menu}	"Successfully updated menu"
+//	@Failure		400		{object}	domain.Response						"Bad request - invalid parameters"
+//	@Failure		404		{object}	domain.Response						"Menu not found"
+//	@Failure		500		{object}	domain.Response						"Internal server error"
+//	@Router			/menu/{id} [put]
 func (mc *MenuController) UpdateMenu(c *gin.Context) {
 	id := c.Param("id")
 	var request domain.UpdateMenuRequest
@@ -175,17 +180,18 @@ func (mc *MenuController) UpdateMenu(c *gin.Context) {
 }
 
 // DeleteMenu 删除菜单
-// @Summary      Delete menu
-// @Description  Delete a specific menu by its ID
-// @Tags         Menus
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id   path     string  true  "Menu ID"
-// @Success      200  {object} domain.Response  "Successfully deleted menu"
-// @Failure      404  {object} domain.Response  "Menu not found"
-// @Failure      500  {object} domain.Response  "Internal server error"
-// @Router       /menu/{id} [delete]
+//
+//	@Summary		Delete menu
+//	@Description	Delete a specific menu by its ID
+//	@Tags			Menus
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string			true	"Menu ID"
+//	@Success		200	{object}	domain.Response	"Successfully deleted menu"
+//	@Failure		404	{object}	domain.Response	"Menu not found"
+//	@Failure		500	{object}	domain.Response	"Internal server error"
+//	@Router			/menu/{id} [delete]
 func (mc *MenuController) DeleteMenu(c *gin.Context) {
 	id := c.Param("id")
 

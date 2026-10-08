@@ -19,16 +19,17 @@ func NewDeviceAuthController(deviceAuthUsecase domain.DeviceAuthUsecase) *Device
 }
 
 // RequestCode godoc
-// @Summary      Request device authorization code
-// @Description  Create a device authorization session for CLI login
-// @Tags         Authentication
-// @Accept       json
-// @Produce      json
-// @Param        request  body      domain.DeviceCodeRequest  true  "Device code request"
-// @Success      200  {object}  domain.Response{data=domain.DeviceCodeResponse}
-// @Failure      400  {object}  domain.Response
-// @Failure      500  {object}  domain.Response
-// @Router       /auth/device/code [post]
+//
+//	@Summary		Request device authorization code
+//	@Description	Create a device authorization session for CLI login
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		domain.DeviceCodeRequest	true	"Device code request"
+//	@Success		200		{object}	domain.Response{data=domain.DeviceCodeResponse}
+//	@Failure		400		{object}	domain.Response
+//	@Failure		500		{object}	domain.Response
+//	@Router			/auth/device/code [post]
 func (dc *DeviceAuthController) RequestCode(c *gin.Context) {
 	var request domain.DeviceCodeRequest
 	if !MustBindJSON(c, &request) {
@@ -44,16 +45,17 @@ func (dc *DeviceAuthController) RequestCode(c *gin.Context) {
 }
 
 // PollToken godoc
-// @Summary      Poll device authorization token
-// @Description  Poll until user authorizes a device code, then return JWT tokens
-// @Tags         Authentication
-// @Accept       json
-// @Produce      json
-// @Param        request  body      domain.DeviceTokenRequest  true  "Device token request"
-// @Success      200  {object}  domain.Response{data=domain.LoginResponse}
-// @Failure      400  {object}  domain.Response
-// @Failure      500  {object}  domain.Response
-// @Router       /auth/device/token [post]
+//
+//	@Summary		Poll device authorization token
+//	@Description	Poll until user authorizes a device code, then return JWT tokens
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		domain.DeviceTokenRequest	true	"Device token request"
+//	@Success		200		{object}	domain.Response{data=domain.LoginResponse}
+//	@Failure		400		{object}	domain.Response
+//	@Failure		500		{object}	domain.Response
+//	@Router			/auth/device/token [post]
 func (dc *DeviceAuthController) PollToken(c *gin.Context) {
 	var request domain.DeviceTokenRequest
 	if !MustBindJSON(c, &request) {
@@ -83,17 +85,18 @@ func (dc *DeviceAuthController) PollToken(c *gin.Context) {
 }
 
 // Activate godoc
-// @Summary      Activate device authorization code
-// @Description  Authorize a CLI device code using the current frontend user session
-// @Tags         Authentication
-// @Accept       json
-// @Produce      json
-// @Param        request  body      domain.DeviceActivateRequest  true  "Device activation request"
-// @Success      200  {object}  domain.Response{data=domain.DeviceActivateResponse}
-// @Failure      400  {object}  domain.Response
-// @Failure      401  {object}  domain.Response
-// @Failure      500  {object}  domain.Response
-// @Router       /auth/device/activate [post]
+//
+//	@Summary		Activate device authorization code
+//	@Description	Authorize a CLI device code using the current frontend user session
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		domain.DeviceActivateRequest	true	"Device activation request"
+//	@Success		200		{object}	domain.Response{data=domain.DeviceActivateResponse}
+//	@Failure		400		{object}	domain.Response
+//	@Failure		401		{object}	domain.Response
+//	@Failure		500		{object}	domain.Response
+//	@Router			/auth/device/activate [post]
 func (dc *DeviceAuthController) Activate(c *gin.Context) {
 	var request domain.DeviceActivateRequest
 	if !MustBindJSON(c, &request) {

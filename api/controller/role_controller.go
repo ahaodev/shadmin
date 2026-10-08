@@ -37,15 +37,16 @@ func (rc *RoleController) writeRoleMutationError(c *gin.Context, err error, forb
 }
 
 // GetRoles 获取所有角色
-// @Summary      Get all roles
-// @Description  Retrieve a list of all available roles in the system
-// @Tags         Roles
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Success      200  {object} domain.Response{data=[]domain.Role}  "Successfully retrieved roles"
-// @Failure      500  {object} domain.Response  "Internal server error"
-// @Router       /system/role [get]
+//
+//	@Summary		Get all roles
+//	@Description	Retrieve a list of all available roles in the system
+//	@Tags			Roles
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	domain.Response{data=[]domain.Role}	"Successfully retrieved roles"
+//	@Failure		500	{object}	domain.Response						"Internal server error"
+//	@Router			/system/role [get]
 func (rc *RoleController) GetRoles(c *gin.Context) {
 	// 获取所有角色
 	roles, err := rc.RoleUseCase.Fetch(c.Request.Context())
@@ -58,18 +59,19 @@ func (rc *RoleController) GetRoles(c *gin.Context) {
 }
 
 // CreateRole 创建自定义角色
-// @Summary      Create a new custom role
-// @Description  Create a new custom role in the system
-// @Tags         Roles
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        request  body     domain.CreateRoleRequest  true  "Role creation information"
-// @Success      201      {object} domain.Response{data=domain.Role}  "Successfully created role"
-// @Failure      400      {object} domain.Response  "Bad request - invalid parameters"
-// @Failure      409      {object} domain.Response  "Role code already exists"
-// @Failure      500      {object} domain.Response  "Internal server error"
-// @Router       /system/role [post]
+//
+//	@Summary		Create a new custom role
+//	@Description	Create a new custom role in the system
+//	@Tags			Roles
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		domain.CreateRoleRequest			true	"Role creation information"
+//	@Success		201		{object}	domain.Response{data=domain.Role}	"Successfully created role"
+//	@Failure		400		{object}	domain.Response						"Bad request - invalid parameters"
+//	@Failure		409		{object}	domain.Response						"Role code already exists"
+//	@Failure		500		{object}	domain.Response						"Internal server error"
+//	@Router			/system/role [post]
 func (rc *RoleController) CreateRole(c *gin.Context) {
 	var request domain.CreateRoleRequest
 	if !MustBindJSON(c, &request) {
@@ -113,17 +115,18 @@ func (rc *RoleController) getRoleByID(c *gin.Context) *domain.Role {
 }
 
 // GetRole 获取角色详情
-// @Summary      Get role by ID
-// @Description  Get a specific role by its ID
-// @Tags         Roles
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id   path     string  true  "Role ID"
-// @Success      200  {object} domain.Response{data=domain.Role}  "Successfully retrieved role"
-// @Failure      404  {object} domain.Response  "Role not found"
-// @Failure      500  {object} domain.Response  "Internal server error"
-// @Router       /system/role/{id} [get]
+//
+//	@Summary		Get role by ID
+//	@Description	Get a specific role by its ID
+//	@Tags			Roles
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string								true	"Role ID"
+//	@Success		200	{object}	domain.Response{data=domain.Role}	"Successfully retrieved role"
+//	@Failure		404	{object}	domain.Response						"Role not found"
+//	@Failure		500	{object}	domain.Response						"Internal server error"
+//	@Router			/system/role/{id} [get]
 func (rc *RoleController) GetRole(c *gin.Context) {
 	role := rc.getRoleByID(c)
 	if role == nil {
@@ -134,20 +137,21 @@ func (rc *RoleController) GetRole(c *gin.Context) {
 }
 
 // UpdateRole 更新角色
-// @Summary      Update role
-// @Description  Update an existing role
-// @Tags         Roles
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id       path     string                     true  "Role ID"
-// @Param        request  body     domain.UpdateRoleRequest   true  "Role update information"
-// @Success      200      {object} domain.Response{data=domain.Role}  "Successfully updated role"
-// @Failure      400      {object} domain.Response  "Bad request - invalid parameters"
-// @Failure      404      {object} domain.Response  "Role not found"
-// @Failure      409      {object} domain.Response  "Role code already exists"
-// @Failure      500      {object} domain.Response  "Internal server error"
-// @Router       /system/role/{id} [put]
+//
+//	@Summary		Update role
+//	@Description	Update an existing role
+//	@Tags			Roles
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string								true	"Role ID"
+//	@Param			request	body		domain.UpdateRoleRequest			true	"Role update information"
+//	@Success		200		{object}	domain.Response{data=domain.Role}	"Successfully updated role"
+//	@Failure		400		{object}	domain.Response						"Bad request - invalid parameters"
+//	@Failure		404		{object}	domain.Response						"Role not found"
+//	@Failure		409		{object}	domain.Response						"Role code already exists"
+//	@Failure		500		{object}	domain.Response						"Internal server error"
+//	@Router			/system/role/{id} [put]
 func (rc *RoleController) UpdateRole(c *gin.Context) {
 	roleID, ok := rc.getRoleIDOrBadRequest(c)
 	if !ok {
@@ -169,17 +173,18 @@ func (rc *RoleController) UpdateRole(c *gin.Context) {
 }
 
 // DeleteRole 删除角色
-// @Summary      Delete role
-// @Description  Delete an existing role
-// @Tags         Roles
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id   path     string  true  "Role ID"
-// @Success      200  {object} domain.Response  "Successfully deleted role"
-// @Failure      404  {object} domain.Response  "Role not found"
-// @Failure      500  {object} domain.Response  "Internal server error"
-// @Router       /system/role/{id} [delete]
+//
+//	@Summary		Delete role
+//	@Description	Delete an existing role
+//	@Tags			Roles
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string			true	"Role ID"
+//	@Success		200	{object}	domain.Response	"Successfully deleted role"
+//	@Failure		404	{object}	domain.Response	"Role not found"
+//	@Failure		500	{object}	domain.Response	"Internal server error"
+//	@Router			/system/role/{id} [delete]
 func (rc *RoleController) DeleteRole(c *gin.Context) {
 	roleID, ok := rc.getRoleIDOrBadRequest(c)
 	if !ok {
@@ -198,18 +203,19 @@ func (rc *RoleController) DeleteRole(c *gin.Context) {
 }
 
 // GetRoleMenus 获取角色的菜单权限
-// @Summary      Get role menu permissions
-// @Description  Get menu permissions assigned to a role
-// @Tags         Roles
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id   path     string  true  "Role ID"
-// @Success      200  {object} domain.Response{data=[]string}  "Successfully retrieved role menu permissions"
-// @Failure      400  {object} domain.Response  "Bad request - Role ID is required"
-// @Failure      404  {object} domain.Response  "Role not found"
-// @Failure      500  {object} domain.Response  "Internal server error"
-// @Router       /system/role/{id}/menus [get]
+//
+//	@Summary		Get role menu permissions
+//	@Description	Get menu permissions assigned to a role
+//	@Tags			Roles
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string							true	"Role ID"
+//	@Success		200	{object}	domain.Response{data=[]string}	"Successfully retrieved role menu permissions"
+//	@Failure		400	{object}	domain.Response					"Bad request - Role ID is required"
+//	@Failure		404	{object}	domain.Response					"Role not found"
+//	@Failure		500	{object}	domain.Response					"Internal server error"
+//	@Router			/system/role/{id}/menus [get]
 func (rc *RoleController) GetRoleMenus(c *gin.Context) {
 	role := rc.getRoleByID(c)
 	if role == nil {

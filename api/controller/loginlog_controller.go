@@ -17,27 +17,28 @@ type LoginLogController struct {
 }
 
 // GetLoginLogs godoc
-// @Summary      Get login logs
-// @Description  Retrieve login logs with pagination and optional filtering (admin only)
-// @Tags         System
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        page      query  int     false  "Page number (default: 1)"
-// @Param        page_size query  int     false  "Page size (default: 20)"
-// @Param        email     query  string  false  "Filter by email"
-// @Param        login_ip  query  string  false  "Filter by login IP"
-// @Param        status    query  string  false  "Filter by status (success, failed)"
-// @Param        browser   query  string  false  "Filter by browser"
-// @Param        os        query  string  false  "Filter by operating system"
-// @Param        start_time query string false  "Start time (RFC3339 format, e.g., 2023-01-01T00:00:00Z)"
-// @Param        end_time   query string false  "End time (RFC3339 format, e.g., 2023-01-31T23:59:59Z)"
-// @Param        sort_by   query  string  false  "Sort by field (login_time, email, login_ip, status)"
-// @Param        order     query  string  false  "Sort order (asc, desc, default: desc)"
-// @Success      200       {object}  domain.Response{data=domain.LoginLogPagedResult}  "Login logs retrieved successfully"
-// @Failure      400       {object}  domain.Response  "Invalid request parameters"
-// @Failure      500       {object}  domain.Response  "Internal server error"
-// @Router       /system/login-logs [get]
+//
+//	@Summary		Get login logs
+//	@Description	Retrieve login logs with pagination and optional filtering (admin only)
+//	@Tags			System
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			page		query		int													false	"Page number (default: 1)"
+//	@Param			page_size	query		int													false	"Page size (default: 20)"
+//	@Param			email		query		string												false	"Filter by email"
+//	@Param			login_ip	query		string												false	"Filter by login IP"
+//	@Param			status		query		string												false	"Filter by status (success, failed)"
+//	@Param			browser		query		string												false	"Filter by browser"
+//	@Param			os			query		string												false	"Filter by operating system"
+//	@Param			start_time	query		string												false	"Start time (RFC3339 format, e.g., 2023-01-01T00:00:00Z)"
+//	@Param			end_time	query		string												false	"End time (RFC3339 format, e.g., 2023-01-31T23:59:59Z)"
+//	@Param			sort_by		query		string												false	"Sort by field (login_time, email, login_ip, status)"
+//	@Param			order		query		string												false	"Sort order (asc, desc, default: desc)"
+//	@Success		200			{object}	domain.Response{data=domain.LoginLogPagedResult}	"Login logs retrieved successfully"
+//	@Failure		400			{object}	domain.Response										"Invalid request parameters"
+//	@Failure		500			{object}	domain.Response										"Internal server error"
+//	@Router			/system/login-logs [get]
 func (llc *LoginLogController) GetLoginLogs(c *gin.Context) {
 	// 构建查询过滤器
 	var filter domain.LoginLogQueryFilter
@@ -107,15 +108,16 @@ func (llc *LoginLogController) GetLoginLogs(c *gin.Context) {
 }
 
 // ClearLoginLogs godoc
-// @Summary      Clear all login logs
-// @Description  Clear all login logs (admin only)
-// @Tags         System
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Success      200  {object}  domain.Response  "Login logs cleared successfully"
-// @Failure      500  {object}  domain.Response  "Internal server error"
-// @Router       /system/login-logs [delete]
+//
+//	@Summary		Clear all login logs
+//	@Description	Clear all login logs (admin only)
+//	@Tags			System
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	domain.Response	"Login logs cleared successfully"
+//	@Failure		500	{object}	domain.Response	"Internal server error"
+//	@Router			/system/login-logs [delete]
 func (llc *LoginLogController) ClearLoginLogs(c *gin.Context) {
 	err := llc.LoginLogUsecase.ClearAllLoginLogs(c.Request.Context())
 	if err != nil {

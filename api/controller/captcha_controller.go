@@ -14,14 +14,15 @@ type CaptchaController struct {
 }
 
 // GetSlideCaptcha godoc
-// @Summary      Get slide captcha challenge
-// @Description  Generate a new slide captcha challenge for login. Pass old_captcha_id to invalidate the previous challenge when refreshing.
-// @Tags         Authentication
-// @Produce      json
-// @Param        old_captcha_id  query     string  false  "Previous captcha id to invalidate"
-// @Success      200  {object}  domain.Response{data=domain.SlideCaptchaChallenge}
-// @Failure      500  {object}  domain.Response
-// @Router       /auth/captcha/slide [get]
+//
+//	@Summary		Get slide captcha challenge
+//	@Description	Generate a new slide captcha challenge for login. Pass old_captcha_id to invalidate the previous challenge when refreshing.
+//	@Tags			Authentication
+//	@Produce		json
+//	@Param			old_captcha_id	query		string	false	"Previous captcha id to invalidate"
+//	@Success		200				{object}	domain.Response{data=domain.SlideCaptchaChallenge}
+//	@Failure		500				{object}	domain.Response
+//	@Router			/auth/captcha/slide [get]
 func (cc *CaptchaController) GetSlideCaptcha(c *gin.Context) {
 	if cc.CaptchaUsecase == nil {
 		c.JSON(http.StatusInternalServerError, domain.RespError("captcha service not initialized"))

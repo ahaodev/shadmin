@@ -35,12 +35,13 @@ func injectProvider(c *gin.Context) {
 }
 
 // BeginLogin godoc
-// @Summary      Begin identity login
-// @Description  Redirect to the OAuth provider authorization page
-// @Tags         Authentication
-// @Produce      json
-// @Param        provider  path  string  true  "OAuth provider (google / github)"
-// @Router       /auth/identity/{provider} [get]
+//
+//	@Summary		Begin identity login
+//	@Description	Redirect to the OAuth provider authorization page
+//	@Tags			Authentication
+//	@Produce		json
+//	@Param			provider	path	string	true	"OAuth provider (google / github)"
+//	@Router			/auth/identity/{provider} [get]
 func (sc *UserIdentityController) BeginLogin(c *gin.Context) {
 	if _, err := goth.GetProvider(c.Param("provider")); err != nil {
 		c.JSON(http.StatusBadRequest, domain.RespError(domain.ErrUserIdentityProviderDisabled.Error()))
@@ -51,12 +52,13 @@ func (sc *UserIdentityController) BeginLogin(c *gin.Context) {
 }
 
 // Callback godoc
-// @Summary      User identity login callback
-// @Description  OAuth provider redirects here; exchanges code for profile and issues JWT
-// @Tags         Authentication
-// @Produce      json
-// @Param        provider  path  string  true  "OAuth provider (google / github)"
-// @Router       /auth/identity/{provider}/callback [get]
+//
+//	@Summary		User identity login callback
+//	@Description	OAuth provider redirects here; exchanges code for profile and issues JWT
+//	@Tags			Authentication
+//	@Produce		json
+//	@Param			provider	path	string	true	"OAuth provider (google / github)"
+//	@Router			/auth/identity/{provider}/callback [get]
 func (sc *UserIdentityController) Callback(c *gin.Context) {
 	injectProvider(c)
 
@@ -125,16 +127,17 @@ func (sc *UserIdentityController) recordIdentityLoginLog(c *gin.Context, provide
 }
 
 // Exchange godoc
-// @Summary      Exchange identity-login callback code for JWT tokens
-// @Description  Exchanges a one-time code issued by the OAuth callback for access/refresh tokens.
-// @Tags         Authentication
-// @Accept       json
-// @Produce      json
-// @Param        request  body      domain.UserIdentityExchangeRequest  true  "Identity login callback code"
-// @Success      200  {object}  domain.Response{data=domain.UserIdentityResult}  "Tokens exchanged successfully"
-// @Failure      400  {object}  domain.Response  "Invalid request"
-// @Failure      404  {object}  domain.Response  "Code expired or invalid"
-// @Router       /auth/identity/exchange [post]
+//
+//	@Summary		Exchange identity-login callback code for JWT tokens
+//	@Description	Exchanges a one-time code issued by the OAuth callback for access/refresh tokens.
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		domain.UserIdentityExchangeRequest				true	"Identity login callback code"
+//	@Success		200		{object}	domain.Response{data=domain.UserIdentityResult}	"Tokens exchanged successfully"
+//	@Failure		400		{object}	domain.Response									"Invalid request"
+//	@Failure		404		{object}	domain.Response									"Code expired or invalid"
+//	@Router			/auth/identity/exchange [post]
 func (sc *UserIdentityController) Exchange(c *gin.Context) {
 	var req domain.UserIdentityExchangeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -158,12 +161,13 @@ func (sc *UserIdentityController) Exchange(c *gin.Context) {
 }
 
 // ListProviders godoc
-// @Summary      List enabled identity providers
-// @Description  Returns the list of OAuth providers enabled by the backend
-// @Tags         Authentication
-// @Produce      json
-// @Success      200  {object}  domain.Response{data=[]string}
-// @Router       /auth/identity/providers [get]
+//
+//	@Summary		List enabled identity providers
+//	@Description	Returns the list of OAuth providers enabled by the backend
+//	@Tags			Authentication
+//	@Produce		json
+//	@Success		200	{object}	domain.Response{data=[]string}
+//	@Router			/auth/identity/providers [get]
 func (sc *UserIdentityController) ListProviders(c *gin.Context) {
 	providers := goth.GetProviders()
 	list := make([]string, 0, len(providers))
