@@ -18,3 +18,7 @@
 ### Cleanup
 
 - Removed unused frontend components, hooks, utilities, and legacy domain types.
+
+### Tooling
+
+- Updated the frontend package manager pin to pnpm 12.10.1.
