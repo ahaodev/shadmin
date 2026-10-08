@@ -35,8 +35,8 @@
 
 ### Prerequisites
 
-- Go 1.26+
-- Node.js 18+ & pnpm
+- Go 1.27.1+
+- Node.js 22+ & pnpm 11+
 
 ### Run
 

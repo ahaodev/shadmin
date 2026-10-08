@@ -387,23 +387,19 @@ import (
 	"context"
 	"fmt"
 	"shadmin/domain"
-	"shadmin/ent"
 	"time"
 )
 
 type projectUsecase struct {
-	client            *ent.Client
 	projectRepository domain.ProjectRepository
 	contextTimeout    time.Duration
 }
 
 func NewProjectUsecase(
-	client *ent.Client,
 	projectRepository domain.ProjectRepository,
 	timeout time.Duration,
 ) domain.ProjectUseCase {
 	return &projectUsecase{
-		client:            client,
 		projectRepository: projectRepository,
 		contextTimeout:    timeout,
 	}
@@ -714,19 +710,23 @@ func (pr *ProtectedRoutes) SetupSystemRoutes(...) {
 - `casbinMiddleware.CheckAPIPermission()` 自动检查 API 级别权限
 - RESTful 风格：GET 列表、POST 创建、GET/:id 详情、PUT/:id 更新、DELETE/:id 删除
 
-### 第 7 步：接入工厂
+### 第 7 步：接入用例与工厂
 
-在 `api/route/factory.go` 中添加构造方法：
+先在 `bootstrap/usecases.go` 中构造用例：在 `Usecases` 中添加字段，并在 `newUsecases` 中赋值：
+
+```go
+Project: usecase.NewProjectUsecase(repository.NewProjectRepository(db), timeout),
+```
+
+然后在 `api/route/factory.go` 中添加 controller 构造方法，它只使用 usecase：
 
 ```go
 func (f *ControllerFactory) CreateProjectController() *controller.ProjectController {
-	projectRepository := repository.NewProjectRepository(f.db)
-	projectUseCase := usecase.NewProjectUsecase(f.db, projectRepository, f.timeout)
-	return &controller.ProjectController{ProjectUseCase: projectUseCase}
+	return &controller.ProjectController{ProjectUseCase: f.uc.Project}
 }
 ```
 
-工厂负责组装依赖链：`Repository → Usecase → Controller`。这是 Shadmin 的手动 DI 方式，不使用框架。
+Shadmin 的装配分两段：`bootstrap` 中完成 `Repository → Usecase`，工厂中完成 `Usecase → Controller`。这是手动 DI 方式，不使用框架。
 
 ### 第 8 步：生成 Swagger 文档
 

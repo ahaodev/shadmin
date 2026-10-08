@@ -6,7 +6,7 @@
 
 | 层 | 技术                                    |
 |----|---------------------------------------|
-| 后端框架 | Go 1.26 + Gin                         |
+| 后端框架 | Go 1.27 + Gin                         |
 | 数据库 ORM | Ent（支持 SQLite / PostgreSQL / MySQL）   |
 | 认证 | JWT（access + refresh token）           |
 | 授权 | Casbin RBAC（基于路径 + 方法的策略）             |
@@ -45,10 +45,10 @@ graph TB
 shadmin/
 ├── main.go              # 入口，调用 cmd.Run()
 ├── cmd/                 # 应用启动与版本管理
-├── bootstrap/           # 启动装配：DB、Casbin、存储、种子数据
+├── bootstrap/           # 启动装配：DB、Casbin、存储、种子数据、usecase 装配 (usecases.go)
 ├── api/
 │   ├── controller/      # HTTP 控制器（请求解析 + 响应，无业务逻辑）
-│   ├── route/           # 路由注册 + 中间件挂载 + DI 工厂
+│   ├── route/           # 路由注册 + 中间件挂载 + controller 工厂
 │   └── middleware/      # JWT 认证、Casbin 授权、日志
 ├── domain/              # 领域层：实体、DTO、接口契约、错误定义、响应包装
 ├── usecase/             # 用例层：业务编排、校验、超时控制
@@ -88,26 +88,33 @@ Route → Controller → Usecase → Repository → Ent/DB
 | Domain | `domain/` | 实体、DTO、Repository/UseCase 接口、错误定义 | 纯定义，不依赖任何实现 |
 | Schema | `ent/schema/` | 数据库表结构 | 修改后必须 `go generate ./ent` |
 | Repository | `repository/` | Ent 数据读写 + domain↔ent 转换 | 仅做数据访问，不含 HTTP 或业务逻辑 |
-| Usecase | `usecase/` | 业务编排、校验、超时控制 | 每个方法 `context.WithTimeout`，错误用 `%w` 包装 |
+| Usecase | `usecase/` | 业务编排、校验、超时控制 | 每个方法 `context.WithTimeout`，错误用 `%w` 包装；只依赖 domain 接口 |
 | Controller | `api/controller/` | HTTP 请求解析 + 响应返回 | 仅做解析和调用 Usecase，不含业务逻辑 |
 | Route | `api/route/` | 路由注册、中间件挂载 | REST 风格，系统路由用 Casbin 中间件 |
-| Factory | `api/route/factory.go` | DI 工厂：组装 Repo → Usecase → Controller | 依赖来自 `f.db` / `f.app` / `f.timeout` |
+| Wiring | `bootstrap/usecases.go` | 组装 Repo → Usecase（`bootstrap.Usecases`） | 唯一构造用例所需仓储的位置 |
+| Factory | `api/route/factory.go` | 基于 usecase 组装 Controller | 使用 `f.uc` / `f.app`；不 import `ent` 或 `repository` |
 
 ### 依赖注入
 
 Shadmin 使用 **工厂模式** 进行手动依赖注入，没有 DI 框架：
 
 ```go
-// api/route/factory.go
-func (f *ControllerFactory) CreateUserController() *controller.UserController {
-    ur := repository.NewUserRepository(f.db, f.app.CasManager)
-    rr := repository.NewRoleRepository(f.db)
-    return &controller.UserController{
-        UserUsecase: usecase.NewUserUsecase(f.db, ur, rr, f.timeout),
-        Env:         f.app.Env,
+// bootstrap/usecases.go —— 唯一进行 repository → usecase 装配的位置
+func newUsecases(app *Application) *Usecases {
+    timeout := time.Duration(app.Env.ContextTimeout) * time.Second
+    return &Usecases{
+        User: usecase.NewUserUsecase(repository.NewUserRepository(app.DB), timeout),
+        // ...
     }
 }
+
+// api/route/factory.go —— 只基于 usecase 组装 controller
+func (f *ControllerFactory) CreateUserController() *controller.UserController {
+    return &controller.UserController{UserUsecase: f.uc.User}
+}
 ```
+
+Usecase 依赖 domain 中声明的接口（端口），由基础设施实现（例如 `internal/tokenservice` 实现 `TokenIssuer`，`repository` 实现 `AuthorizationSource` 与 `UnitOfWork`），再由 `bootstrap` 注入。
 
 ### 统一响应格式
 

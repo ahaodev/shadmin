@@ -75,9 +75,9 @@ Request flow: **Route → Middleware (JWT + Casbin) → Controller → Usecase �
 | Controller | `api/controller/` | HTTP parsing only (`ShouldBindJSON`/`Query`/`Param`), Swagger annotations, no business logic |
 | Middleware | `api/middleware/` | `JwtAuthMiddleware`, `CasbinMiddleware.CheckAPIPermission()`, request logging |
 | Route | `api/route/` | `public.go` (auth, health) + `protected.go` (system/*); middleware wiring |
-| Factory | `api/route/factory.go` | DI: creates Repository → Usecase → Controller chains |
+| Factory | `api/route/factory.go` | DI: builds Controllers from `bootstrap.Usecases` (no repository) |
 | Internal | `internal/` | `casbin/` in-memory snapshot manager, `tokenservice/`, `auth/` login security (3-strike lockout), `scheduler/` authorization-generation trigger with fallback polling, plus `cacher/`, `captcha/`, `conf/`, `constants/`, `contextutil/`, `tokenutil/` |
-| Bootstrap | `bootstrap/` | App init, DB, Casbin, storage, seed data |
+| Bootstrap | `bootstrap/` | App init, DB, Casbin, storage, seed data, repository → usecase wiring (`usecases.go`) |
 | Shared | `pkg/` | Cross-package utilities (logging, etc.) |
 
 ### Frontend — Feature-Based Structure
@@ -140,7 +140,7 @@ frontend/src/
 4. `usecase/<resource>_usecase.go` — `context.WithTimeout`, validation, cross-repo orchestration, `fmt.Errorf("...: %w", err)`
 5. `api/controller/<resource>_controller.go` — Parse request, call usecase, return `domain.RespSuccess()`/`domain.RespError()` with proper HTTP status
 6. `api/route/` — Register routes (REST: GET list, POST create, GET :id, PUT :id, DELETE :id). Protected system routes use `casbinMiddleware.CheckAPIPermission()`
-7. `api/route/factory.go` — Wire Repository → Usecase → Controller using `f.db`/`f.app`/`f.timeout`
+7. `bootstrap/usecases.go` — Wire Repository → Usecase; `api/route/factory.go` — build the Controller from `f.uc`
 
 ### Adding a Frontend Feature
 
@@ -148,7 +148,7 @@ frontend/src/
 2. `frontend/src/services/<resource>Api.ts` — Axios CRUD wrappers using `apiClient`
 3. `frontend/src/features/<feature>/` — Page index, `components/` (table, dialog, form), `hooks/` (TanStack Query), `data/schema.ts` (Zod)
 4. `frontend/src/routes/_authenticated/` — Route file referencing feature component; `routeTree.gen.ts` regenerates on dev/build
-5. `frontend/src/constants/permissions.ts` — Add permission strings matching `system:<resource>:<action>`; bind menu + API resource to role via admin UI (or `bootstrap/admin_init.go` for seed data)
+5. `frontend/src/constants/permissions.ts` — Add permission strings matching `system:<resource>:<action>`; bind menu + API resource to role via admin UI (or `bootstrap/user_init.go` for seed data)
 
 ### Response Format (backend)
 
@@ -165,7 +165,7 @@ All API responses use `domain.Response{Code, Msg, Data}`. Code `0` = success, `1
 
 - **Go files/packages**: `lower_snake` (e.g., `loginlog_repository.go`)
 - **Go exports**: PascalCase; receivers: short and meaningful
-- **Frontend components**: PascalCase `.tsx` (e.g., `UsersTable.tsx`)
+- **Frontend components**: kebab-case `.tsx` (e.g., `users-table.tsx`); component names are PascalCase exports
 - **Frontend utilities/hooks**: kebab-case `.ts` (e.g., `use-debounce.ts`, `handle-server-error.ts`)
 - **Frontend imports**: always use `@/` alias, never relative paths beyond `./`
 

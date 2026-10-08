@@ -33,8 +33,8 @@ Guide full-stack feature development through Shadmin's clean architecture, produ
 | Usecase | `usecase/` | Business logic, validation, `context.WithTimeout` |
 | Controller | `api/controller/` | HTTP parsing only, Swagger annotations, status code mapping |
 | Route | `api/route/` | Route registration, middleware wiring |
-| Factory | `api/route/factory.go` | DI: repo → usecase → controller construction |
-| Bootstrap | `bootstrap/` | App init, DB, Casbin, seeds |
+| Factory | `api/route/factory.go` | DI: usecase → controller construction (no repository) |
+| Bootstrap | `bootstrap/` | App init, DB, Casbin, seeds, repository → usecase wiring (`usecases.go`) |
 
 **Frontend layers:**
 
@@ -101,7 +101,7 @@ Quick reference for key conventions:
 - **Response**: `domain.RespSuccess(data)` (code=0) / `domain.RespError(msg)` (code=1)
 - **Usecase**: every method starts with `context.WithTimeout` + `defer cancel()`
 - **Errors**: sentinel errors in domain, `%w` wrapping, map to HTTP status in controller
-- **Factory**: repo → usecase → controller, dependencies from `f.db`, `f.app`, `f.timeout`
+- **Wiring**: repo → usecase in `bootstrap/usecases.go`; factory builds controllers from `f.uc` and `f.app`
 - **Routes**: protected system routes use `casbinMiddleware.CheckAPIPermission()`
 
 ### Step 4: Implement Frontend
@@ -188,7 +188,7 @@ Things to never do:
 - **No business logic in controllers** — controllers parse HTTP, call usecase, return response
 - **No HTTP/permission logic in repositories** — repositories do data access only
 - **No bypassing Casbin** on protected APIs
-- **No new globals** — use factory's `f.db`, `f.app`, `f.timeout`
+- **No new globals** — use `bootstrap.Usecases` (`f.uc`) and `f.app`
 - **No inline API calls in React** — all API access goes through `services/` wrappers
 - **No direct localStorage for auth** — use `useAuthStore`
 - **No editing `components/ui/`** — shadcn-generated primitives

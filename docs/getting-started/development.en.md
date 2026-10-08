@@ -387,23 +387,19 @@ import (
 	"context"
 	"fmt"
 	"shadmin/domain"
-	"shadmin/ent"
 	"time"
 )
 
 type projectUsecase struct {
-	client            *ent.Client
 	projectRepository domain.ProjectRepository
 	contextTimeout    time.Duration
 }
 
 func NewProjectUsecase(
-	client *ent.Client,
 	projectRepository domain.ProjectRepository,
 	timeout time.Duration,
 ) domain.ProjectUseCase {
 	return &projectUsecase{
-		client:            client,
 		projectRepository: projectRepository,
 		contextTimeout:    timeout,
 	}
@@ -714,19 +710,23 @@ func (pr *ProtectedRoutes) SetupSystemRoutes(...) {
 - `casbinMiddleware.CheckAPIPermission()` automatically checks API-level permissions
 - RESTful style: GET list, POST create, GET/:id detail, PUT/:id update, DELETE/:id delete
 
-### Step 7: Wire Up the Factory
+### Step 7: Wire Up Usecase and Factory
 
-Add the constructor method in `api/route/factory.go`:
+First, construct the usecase in `bootstrap/usecases.go`. Add a field to `Usecases` and set it in `newUsecases`:
+
+```go
+Project: usecase.NewProjectUsecase(repository.NewProjectRepository(db), timeout),
+```
+
+Then add the controller constructor in `api/route/factory.go`. It only uses the usecase:
 
 ```go
 func (f *ControllerFactory) CreateProjectController() *controller.ProjectController {
-	projectRepository := repository.NewProjectRepository(f.db)
-	projectUseCase := usecase.NewProjectUsecase(f.db, projectRepository, f.timeout)
-	return &controller.ProjectController{ProjectUseCase: projectUseCase}
+	return &controller.ProjectController{ProjectUseCase: f.uc.Project}
 }
 ```
 
-The factory assembles the dependency chain: `Repository → Usecase → Controller`. This is Shadmin's manual DI approach — no DI framework is used.
+Shadmin's wiring is `Repository → Usecase` in `bootstrap`, then `Usecase → Controller` in the factory. This is manual DI without a framework.
 
 ### Step 8: Generate Swagger Documentation
 

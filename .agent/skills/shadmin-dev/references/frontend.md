@@ -156,7 +156,7 @@ Component-level gating: `usePermission()` + conditional render — `hasPermissio
 
 | Type | Naming | Example |
 |------|--------|---------|
-| Components | PascalCase `.tsx` | `ProjectsTable.tsx` |
+| Components | `kebab-case.tsx` (PascalCase export) | `projects-table.tsx` |
 | Hooks | `use-kebab-case.ts` | `use-projects.ts` |
 | Services | `camelCaseApi.ts` | `projectApi.ts` |
 | Types | `kebab-case.ts` | `project.ts` |

@@ -6,7 +6,7 @@ This document helps you understand Shadmin's overall design so you can quickly n
 
 | Layer | Technology                                                     |
 |-------|----------------------------------------------------------------|
-| Backend Framework | Go 1.26 + Gin                                                  |
+| Backend Framework | Go 1.27 + Gin                                                  |
 | Database ORM | Ent (supports SQLite / PostgreSQL / MySQL)                     |
 | Authentication | JWT (access + refresh tokens)                                  |
 | Authorization | Casbin RBAC (path + method based policies)                     |
@@ -45,10 +45,10 @@ graph TB
 shadmin/
 ├── main.go              # Entry point, calls cmd.Run()
 ├── cmd/                 # Application startup & version management
-├── bootstrap/           # Bootstrap wiring: DB, Casbin, storage, seed data
+├── bootstrap/           # Bootstrap wiring: DB, Casbin, storage, seed data, usecase wiring (usecases.go)
 ├── api/
 │   ├── controller/      # HTTP controllers (request parsing + response, no business logic)
-│   ├── route/           # Route registration + middleware mounting + DI factory
+│   ├── route/           # Route registration + middleware mounting + controller factory
 │   └── middleware/      # JWT auth, Casbin authorization, logging
 ├── domain/              # Domain layer: entities, DTOs, interface contracts, error definitions, response wrappers
 ├── usecase/             # Usecase layer: business orchestration, validation, timeout control
@@ -88,26 +88,33 @@ Route → Controller → Usecase → Repository → Ent/DB
 | Domain | `domain/` | Entities, DTOs, Repository/UseCase interfaces, error definitions | Pure definitions, no implementation dependencies |
 | Schema | `ent/schema/` | Database table structure | Must run `go generate ./ent` after changes |
 | Repository | `repository/` | Ent data read/write + domain↔ent conversion | Data access only, no HTTP or business logic |
-| Usecase | `usecase/` | Business orchestration, validation, timeout control | Every method uses `context.WithTimeout`, wrap errors with `%w` |
+| Usecase | `usecase/` | Business orchestration, validation, timeout control | Every method uses `context.WithTimeout`, wrap errors with `%w`; depends only on domain interfaces |
 | Controller | `api/controller/` | HTTP request parsing + response formatting | Parse and call Usecase only, no business logic |
 | Route | `api/route/` | Route registration, middleware mounting | RESTful style, system routes use Casbin middleware |
-| Factory | `api/route/factory.go` | DI factory: assembles Repo → Usecase → Controller | Dependencies come from `f.db` / `f.app` / `f.timeout` |
+| Wiring | `bootstrap/usecases.go` | Assembles Repo → Usecase (`bootstrap.Usecases`) | The only place repositories are constructed for usecases |
+| Factory | `api/route/factory.go` | Assembles Controller from usecases | Uses `f.uc` / `f.app`; does not import `ent` or `repository` |
 
 ### Dependency Injection
 
 Shadmin uses the **Factory Pattern** for manual dependency injection, with no DI framework:
 
 ```go
-// api/route/factory.go
-func (f *ControllerFactory) CreateUserController() *controller.UserController {
-    ur := repository.NewUserRepository(f.db, f.app.CasManager)
-    rr := repository.NewRoleRepository(f.db)
-    return &controller.UserController{
-        UserUsecase: usecase.NewUserUsecase(f.db, ur, rr, f.timeout),
-        Env:         f.app.Env,
+// bootstrap/usecases.go — the only place repository → usecase wiring happens
+func newUsecases(app *Application) *Usecases {
+    timeout := time.Duration(app.Env.ContextTimeout) * time.Second
+    return &Usecases{
+        User: usecase.NewUserUsecase(repository.NewUserRepository(app.DB), timeout),
+        // ...
     }
 }
+
+// api/route/factory.go — builds controllers from usecases only
+func (f *ControllerFactory) CreateUserController() *controller.UserController {
+    return &controller.UserController{UserUsecase: f.uc.User}
+}
 ```
+
+Usecases depend on domain interfaces (ports). Infrastructure implements them (for example, `TokenIssuer` in `internal/tokenservice`, `AuthorizationSource` and `UnitOfWork` in `repository`), and `bootstrap` injects them.
 
 ### Unified Response Format
 
