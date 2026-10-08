@@ -11,6 +11,7 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table'
+import type { LoginLog } from '@/types/login-log'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
@@ -22,7 +23,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
-import type { LoginLog } from '../data/schema'
 import { loginLogsColumns } from './login-logs-columns'
 
 type DataTableProps = {

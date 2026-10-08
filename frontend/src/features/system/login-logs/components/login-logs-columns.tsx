@@ -1,7 +1,7 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import type { LoginLog } from '@/types/login-log'
 import { USER_SOURCE_LOCAL, userSourceLabel } from '@/constants/user-source'
 import { Badge } from '@/components/ui/badge'
-import type { LoginLog } from '../data/schema'
 
 export const loginLogsColumns: ColumnDef<LoginLog>[] = [
   {
