@@ -10,6 +10,7 @@ import (
 	"shadmin/ent"
 	"shadmin/ent/role"
 	"shadmin/ent/user"
+	"shadmin/repository"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -33,7 +34,7 @@ func newSnapshotTestService(t *testing.T) (*ent.Client, *CasManager, *SyncServic
 	}
 
 	manager := &CasManager{stale: true}
-	return client, manager, NewSyncService(client, manager)
+	return client, manager, NewSyncService(repository.NewAuthorizationRepository(client), manager)
 }
 
 func addSnapshotTestData(t *testing.T, client *ent.Client) string {
@@ -205,7 +206,7 @@ func TestInstancesIndependentlyApplySharedGeneration(t *testing.T) {
 	}
 
 	secondManager := &CasManager{stale: true}
-	secondService := NewSyncService(client, secondManager)
+	secondService := NewSyncService(repository.NewAuthorizationRepository(client), secondManager)
 	if err := secondService.SyncFromDatabase(ctx); err != nil {
 		t.Fatalf("initial second sync: %v", err)
 	}

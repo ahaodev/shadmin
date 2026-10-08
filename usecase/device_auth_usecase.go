@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"shadmin/domain"
-	"shadmin/internal/tokenservice"
 	"shadmin/pkg"
 )
 
@@ -26,7 +25,7 @@ const (
 type deviceAuthUsecase struct {
 	repo               domain.DeviceAuthRepository
 	userRepository     domain.UserRepository
-	tokenService       *tokenservice.TokenService
+	tokenService       domain.TokenIssuer
 	accessTokenSecret  string
 	refreshTokenSecret string
 	accessTokenExpiry  int
@@ -37,7 +36,7 @@ type deviceAuthUsecase struct {
 func NewDeviceAuthUsecase(
 	repo domain.DeviceAuthRepository,
 	userRepository domain.UserRepository,
-	tokenService *tokenservice.TokenService,
+	tokenService domain.TokenIssuer,
 	accessTokenSecret string,
 	refreshTokenSecret string,
 	accessTokenExpiry int,

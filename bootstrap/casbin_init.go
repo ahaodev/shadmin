@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"shadmin/ent"
+	"shadmin/domain"
 	"shadmin/internal/casbin"
 )
 
@@ -15,9 +15,9 @@ type CasbinInitializer struct {
 	manager     casbin.Manager
 }
 
-func NewCasbinInitializer(entClient *ent.Client, manager casbin.Manager) *CasbinInitializer {
+func NewCasbinInitializer(source domain.AuthorizationSource, manager casbin.Manager) *CasbinInitializer {
 	return &CasbinInitializer{
-		syncService: casbin.NewSyncService(entClient, manager),
+		syncService: casbin.NewSyncService(source, manager),
 		manager:     manager,
 	}
 }

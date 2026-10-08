@@ -4,9 +4,32 @@ import (
 	"context"
 	"shadmin/domain"
 	"shadmin/internal/constants"
+	"shadmin/pkg"
 	"strings"
 	"time"
 )
+
+// writeLoginLog 异步记录一次登录尝试，不阻塞登录流程。
+// 使用 WithoutCancel：请求结束/超时后仍要落库，否则日志会丢。
+func writeLoginLog(parent context.Context, logUsecase domain.LoginLogUseCase, meta domain.LoginMeta, source, status, failureReason, email string) {
+	if logUsecase == nil {
+		return
+	}
+	logRequest := &domain.CreateLoginLogRequest{
+		Email:         email,
+		LoginIP:       meta.ClientIP,
+		UserAgent:     meta.UserAgent,
+		Status:        status,
+		Source:        source,
+		FailureReason: failureReason,
+	}
+	ctx := context.WithoutCancel(parent)
+	go func() {
+		if _, err := logUsecase.CreateLoginLog(ctx, logRequest); err != nil {
+			pkg.Log.WithError(err).Warn("failed to record login log")
+		}
+	}()
+}
 
 type loginLogUsecase struct {
 	loginLogRepository domain.LoginLogRepository

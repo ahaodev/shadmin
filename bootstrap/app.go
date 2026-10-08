@@ -27,7 +27,8 @@ type Application struct {
 	CasbinScheduler   *scheduler.CasbinSyncScheduler // Casbin同步调度器
 	CaptchaManager    *captchapkg.SlideManager       // 滑块验证码管理器（内部使用共享 Cacher）
 	UserStatusCache   *auth.Cache                    // 用户状态TTL缓存，用于登录/刷新/中间件检查
-	TokenBlacklist    auth.JWTBlacklist              // JWT 登出黑名单（内存或 Redis）
+	TokenBlacklist    domain.TokenBlacklist          // JWT 登出黑名单（内存或 Redis）
+	Usecases          *Usecases                      // 装配完成的全部用例
 	Version           string                         // 应用版本
 }
 
@@ -82,7 +83,7 @@ func App() *Application {
 	app.CaptchaManager = cm
 
 	// 初始化 Casbin 快照构建与同步服务；首个快照在服务启动前构建。
-	app.CasbinInitializer = NewCasbinInitializer(app.DB, app.CasManager)
+	app.CasbinInitializer = NewCasbinInitializer(repository.NewAuthorizationRepository(app.DB), app.CasManager)
 
 	// Each process refreshes its local snapshot from the shared generation.
 	syncService := app.CasbinInitializer.GetSyncService()
@@ -105,6 +106,7 @@ func App() *Application {
 	// 保证 admin 禁用/启用/邀请/恢复用户后，下一次请求即可看到新状态。
 	app.registerUserStatusCacheHook()
 
+	app.Usecases = newUsecases(app)
 	return app
 }
 func (app *Application) CloseDBConnection() {

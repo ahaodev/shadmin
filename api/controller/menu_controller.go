@@ -4,14 +4,12 @@ import (
 	"errors"
 	"net/http"
 	"shadmin/domain"
-	"shadmin/internal/conf"
 
 	"github.com/gin-gonic/gin"
 )
 
 type MenuController struct {
 	MenuUseCase domain.MenuUseCase
-	Env         *conf.Env
 }
 
 // GetMenus 获取菜单列表

@@ -22,7 +22,7 @@ func NewProtectedRoutes(factory *ControllerFactory) *ProtectedRoutes {
 }
 
 // Setup configures all protected routes with authentication middleware
-func (pr *ProtectedRoutes) Setup(router *gin.RouterGroup, app *bootstrap.Application, engine *gin.Engine) {
+func (pr *ProtectedRoutes) Setup(router *gin.RouterGroup, app *bootstrap.Application) {
 	// Apply authentication middleware first, then enforce token state checks.
 	protectedRouter := router.Group("")
 	protectedRouter.Use(middleware.JwtAuthMiddleware(app.Env.AccessTokenSecret, app.TokenBlacklist))
@@ -30,7 +30,7 @@ func (pr *ProtectedRoutes) Setup(router *gin.RouterGroup, app *bootstrap.Applica
 
 	// Setup different route groups
 	pr.setupUserRoutes(protectedRouter, app)
-	pr.setupSystemRoutes(protectedRouter, app, engine)
+	pr.setupSystemRoutes(protectedRouter, app)
 }
 
 // setupUserRoutes configures basic user functionality routes
@@ -72,7 +72,7 @@ func (pr *ProtectedRoutes) setupDeviceAuthRoutes(group *gin.RouterGroup) {
 }
 
 // setupSystemRoutes configures system administration routes
-func (pr *ProtectedRoutes) setupSystemRoutes(router *gin.RouterGroup, app *bootstrap.Application, engine *gin.Engine) {
+func (pr *ProtectedRoutes) setupSystemRoutes(router *gin.RouterGroup, app *bootstrap.Application) {
 	casbinMiddleware := middleware.NewCasbinMiddleware(app.CasManager)
 	systemGroup := router.Group("/system")
 
@@ -80,7 +80,7 @@ func (pr *ProtectedRoutes) setupSystemRoutes(router *gin.RouterGroup, app *boots
 	pr.setupUserManagement(systemGroup, casbinMiddleware)
 	pr.setupRoleManagement(systemGroup, casbinMiddleware)
 	pr.setupMenuManagement(systemGroup, casbinMiddleware)
-	pr.setupApiResourceManagement(systemGroup, casbinMiddleware, engine)
+	pr.setupApiResourceManagement(systemGroup, casbinMiddleware)
 	pr.setupLoginLogManagement(systemGroup, casbinMiddleware)
 	pr.setupDictionaryManagement(systemGroup, casbinMiddleware)
 	pr.setupDepartmentManagement(systemGroup, casbinMiddleware)

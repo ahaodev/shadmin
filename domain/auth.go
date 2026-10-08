@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 // LoginRequest 登录请求
@@ -50,6 +51,45 @@ type LogoutRequest struct {
 type LoginMeta struct {
 	ClientIP  string
 	UserAgent string
+}
+
+// TokenClaims 是应用层视角的令牌声明，不暴露 JWT 库类型。
+// ID 为用户 ID，JTI 为登出黑名单的键；刷新令牌只填充 ID/JTI/ExpiresAt。
+type TokenClaims struct {
+	ID        string
+	Name      string
+	Email     string
+	IsAdmin   bool
+	Roles     []string
+	Subject   string
+	JTI       string
+	ExpiresAt time.Time
+}
+
+// TokenIssuer 签发与解析令牌（由 internal/tokenservice 实现）。
+type TokenIssuer interface {
+	CreateAccessToken(user *User, secret string, expiry int) (string, error)
+	CreateAccessTokenWithIdentity(user *User, secret string, expiry int, provider, providerSubject, source string) (string, error)
+	CreateRefreshToken(user *User, secret string, expiry int) (string, error)
+	ParseAccessClaims(token, secret string) (*TokenClaims, error)
+	ParseRefreshClaims(token, secret string) (*TokenClaims, error)
+	ExtractJTIAndExpiry(token, secret string) (string, time.Time, bool)
+}
+
+// TokenBlacklist 记录已登出令牌的 jti，直到其原始过期时间（由 internal/auth 实现）。
+type TokenBlacklist interface {
+	// Add 将 jti 加入黑名单直到 expiry；expiry 已过则直接忽略。
+	Add(ctx context.Context, jti string, expiry time.Time) error
+	// Exists 检查 jti 是否在黑名单中且仍有效。
+	Exists(ctx context.Context, jti string) (bool, error)
+}
+
+// LoginSecurity 按账号统计连续登录失败次数（由 internal/auth 实现）。
+type LoginSecurity interface {
+	IsLocked(ctx context.Context, identifier string) bool
+	RecordFailedAttempt(ctx context.Context, identifier string) int
+	RecordSuccessfulLogin(ctx context.Context, identifier string)
+	MaxFailures() int
 }
 
 var (

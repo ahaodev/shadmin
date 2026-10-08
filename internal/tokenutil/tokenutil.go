@@ -16,6 +16,29 @@ import (
 // refresh token 不带 iss，缺少该校验时会被误判为 access token。
 const accessTokenIssuer = "shadmin"
 
+// AccessClaims 是 access token 的 JWT 声明。
+type AccessClaims struct {
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Email   string   `json:"email"`
+	IsAdmin bool     `json:"is_admin"`
+	Roles   []string `json:"roles"`
+	jwt.RegisteredClaims
+}
+
+// JTI 返回登出黑名单使用的 jti。必须提供：外层 ID 字段遮蔽了内嵌的 RegisteredClaims.ID，
+// 直接写 claims.ID 会拿到用户 ID。
+func (c *AccessClaims) JTI() string { return c.RegisteredClaims.ID }
+
+// RefreshClaims 是 refresh token 的 JWT 声明。
+type RefreshClaims struct {
+	ID string `json:"id"`
+	jwt.RegisteredClaims
+}
+
+// JTI 返回登出黑名单使用的 jti，原因同 AccessClaims.JTI。
+func (c *RefreshClaims) JTI() string { return c.RegisteredClaims.ID }
+
 // hmacKeyFunc 只接受 HS256。
 func hmacKeyFunc(secret string) jwt.Keyfunc {
 	return func(token *jwt.Token) (any, error) {
@@ -37,7 +60,7 @@ func CreateAccessTokenWithIdentity(user *domain.User, secret string, expiry int,
 	// OIDC Provider    provider:provider_subject
 	subject := provider + ":" + providerSubject
 
-	claims := &domain.JwtCustomClaims{
+	claims := &AccessClaims{
 		Name:    user.Username,
 		ID:      user.ID,
 		Email:   user.Email,
@@ -60,7 +83,7 @@ func CreateAccessTokenWithIdentity(user *domain.User, secret string, expiry int,
 
 func CreateRefreshToken(user *domain.User, secret string, expiry int) (refreshToken string, err error) {
 	exp := jwt.NewNumericDate(time.Now().Add(time.Minute * time.Duration(expiry)))
-	claimsRefresh := &domain.JwtCustomRefreshClaims{
+	claimsRefresh := &RefreshClaims{
 		ID: user.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: exp,
@@ -77,8 +100,8 @@ func CreateRefreshToken(user *domain.User, secret string, expiry int) (refreshTo
 
 // ParseAccessClaims 校验签名、exp 与 iss，并解析 access token 的全部 claims。
 // 必须校验 iss：refresh token 没有 iss，缺少该校验时会被当作 access token 接受。
-func ParseAccessClaims(requestToken string, secret string) (*domain.JwtCustomClaims, error) {
-	claims := new(domain.JwtCustomClaims)
+func ParseAccessClaims(requestToken string, secret string) (*AccessClaims, error) {
+	claims := new(AccessClaims)
 	token, err := jwt.ParseWithClaims(requestToken, claims, hmacKeyFunc(secret), jwt.WithIssuer(accessTokenIssuer))
 	if err != nil {
 		return nil, err
@@ -90,8 +113,8 @@ func ParseAccessClaims(requestToken string, secret string) (*domain.JwtCustomCla
 }
 
 // ParseRefreshClaims 校验签名与 exp，并解析 refresh token 的全部 claims。
-func ParseRefreshClaims(requestToken string, secret string) (*domain.JwtCustomRefreshClaims, error) {
-	claims := new(domain.JwtCustomRefreshClaims)
+func ParseRefreshClaims(requestToken string, secret string) (*RefreshClaims, error) {
+	claims := new(RefreshClaims)
 	token, err := jwt.ParseWithClaims(requestToken, claims, hmacKeyFunc(secret))
 	if err != nil {
 		return nil, err

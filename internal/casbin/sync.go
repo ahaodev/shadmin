@@ -7,10 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"shadmin/ent"
-	"shadmin/ent/role"
-	"shadmin/ent/user"
-	"shadmin/internal/constants"
+	"shadmin/domain"
 
 	"github.com/casbin/casbin/v3"
 )
@@ -19,18 +16,18 @@ const snapshotBuildAttempts = 3
 
 var errAuthorizationChanged = errors.New("authorization data changed while building casbin snapshot")
 
-// SyncService projects Ent authorization relationships into an in-memory Casbin snapshot.
+// SyncService projects the authoritative authorization facts into an in-memory Casbin snapshot.
 type SyncService struct {
-	entClient *ent.Client
-	manager   Manager
-	mu        sync.Mutex
+	source  domain.AuthorizationSource
+	manager Manager
+	mu      sync.Mutex
 }
 
-func NewSyncService(entClient *ent.Client, manager Manager) *SyncService {
-	return &SyncService{entClient: entClient, manager: manager}
+func NewSyncService(source domain.AuthorizationSource, manager Manager) *SyncService {
+	return &SyncService{source: source, manager: manager}
 }
 
-// SyncFromDatabase rebuilds the complete snapshot from the authoritative Ent data.
+// SyncFromDatabase rebuilds the complete snapshot from the authoritative data source.
 func (s *SyncService) SyncFromDatabase(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -97,11 +94,7 @@ func (s *SyncService) rebuildLocked(ctx context.Context) error {
 }
 
 func (s *SyncService) currentGeneration(ctx context.Context) (int64, error) {
-	state, err := s.entClient.AuthzState.Get(ctx, constants.AuthorizationStateID)
-	if err != nil {
-		return 0, fmt.Errorf("read authorization generation: %w", err)
-	}
-	return state.Generation, nil
+	return s.source.Generation(ctx)
 }
 
 type snapshotCounts struct {
@@ -116,36 +109,26 @@ func (s *SyncService) buildEnforcer(ctx context.Context) (*casbin.SyncedEnforcer
 		return nil, snapshotCounts{}, fmt.Errorf("create snapshot enforcer: %w", err)
 	}
 
-	users, err := s.entClient.User.Query().
-		Where(user.StatusEQ("active")).
-		WithRoles(func(q *ent.RoleQuery) {
-			q.Where(role.StatusEQ("active"))
-		}).
-		All(ctx)
+	bindings, err := s.source.ActiveUserRoles(ctx)
 	if err != nil {
-		return nil, snapshotCounts{}, fmt.Errorf("query active user-role relationships: %w", err)
+		return nil, snapshotCounts{}, err
 	}
-	for _, u := range users {
-		for _, r := range u.Edges.Roles {
-			if _, err := enforcer.AddRoleForUser(u.ID, r.ID); err != nil {
-				return nil, snapshotCounts{}, fmt.Errorf("add role %s for user %s: %w", r.ID, u.ID, err)
+	for _, b := range bindings {
+		for _, roleID := range b.RoleIDs {
+			if _, err := enforcer.AddRoleForUser(b.UserID, roleID); err != nil {
+				return nil, snapshotCounts{}, fmt.Errorf("add role %s for user %s: %w", roleID, b.UserID, err)
 			}
 		}
 	}
 
-	roles, err := s.entClient.Role.Query().
-		Where(role.StatusEQ("active")).
-		WithMenus(func(q *ent.MenuQuery) {
-			q.WithAPIResources()
-		}).
-		All(ctx)
+	roles, err := s.source.ActiveRoles(ctx)
 	if err != nil {
-		return nil, snapshotCounts{}, fmt.Errorf("query active role permissions: %w", err)
+		return nil, snapshotCounts{}, err
 	}
 
 	policyCount := 0
 	for _, r := range roles {
-		for _, rule := range desiredRolePolicies(r.Name, r.Edges.Menus) {
+		for _, rule := range desiredRolePolicies(r.Name, r.Resources) {
 			if _, err := enforcer.AddNamedPolicy("p", r.ID, rule.obj, rule.act); err != nil {
 				return nil, snapshotCounts{}, fmt.Errorf("add policy for role %s: %w", r.ID, err)
 			}
@@ -153,7 +136,7 @@ func (s *SyncService) buildEnforcer(ctx context.Context) (*casbin.SyncedEnforcer
 		}
 	}
 
-	return enforcer, snapshotCounts{users: len(users), roles: len(roles), policies: policyCount}, nil
+	return enforcer, snapshotCounts{users: len(bindings), roles: len(roles), policies: policyCount}, nil
 }
 
 // policyRule is the object/action portion of a Casbin p rule.
@@ -164,25 +147,23 @@ type policyRule struct {
 
 // desiredRolePolicies computes the p rules for one role. Keep existing semantics:
 // the admin role receives the wildcard policy, and public API resources are omitted.
-func desiredRolePolicies(roleName string, menus []*ent.Menu) []policyRule {
+func desiredRolePolicies(roleName string, resources []domain.AuthorizedResource) []policyRule {
 	if roleName == "admin" {
 		return []policyRule{{obj: "*", act: "*"}}
 	}
 
 	rules := make([]policyRule, 0)
 	seen := make(map[policyRule]struct{})
-	for _, menu := range menus {
-		for _, apiRes := range menu.Edges.APIResources {
-			if apiRes.IsPublic {
-				continue
-			}
-			rule := policyRule{obj: apiRes.Path, act: apiRes.Method}
-			if _, ok := seen[rule]; ok {
-				continue
-			}
-			seen[rule] = struct{}{}
-			rules = append(rules, rule)
+	for _, res := range resources {
+		if res.IsPublic {
+			continue
 		}
+		rule := policyRule{obj: res.Path, act: res.Method}
+		if _, ok := seen[rule]; ok {
+			continue
+		}
+		seen[rule] = struct{}{}
+		rules = append(rules, rule)
 	}
 	return rules
 }

@@ -19,6 +19,13 @@ type SlideCaptchaChallenge struct {
 	ExpiresIn    int    `json:"expires_in"`
 }
 
+// SlideCaptchaManager 滑块验证码的挑战生成与校验（由 internal/captcha 实现）。
+type SlideCaptchaManager interface {
+	Generate(ctx context.Context, oldID string) (*SlideCaptchaChallenge, error)
+	Verify(ctx context.Context, id string, x, y int) error
+	Invalidate(ctx context.Context, id string)
+}
+
 // CaptchaUsecase Slide 验证码用例接口
 type CaptchaUsecase interface {
 	GenerateSlide(ctx context.Context, oldID string) (*SlideCaptchaChallenge, error)

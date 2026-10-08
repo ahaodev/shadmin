@@ -3,21 +3,17 @@ package casbin
 import (
 	"testing"
 
-	"shadmin/ent"
+	"shadmin/domain"
 )
 
 func TestDesiredRolePolicies(t *testing.T) {
-	menus := []*ent.Menu{
-		{
-			Edges: ent.MenuEdges{APIResources: []*ent.ApiResource{
-				{Path: "/api/v1/system/user", Method: "GET"},
-				{Path: "/api/v1/system/user", Method: "GET"},
-				{Path: "/api/v1/health", Method: "GET", IsPublic: true},
-			}},
-		},
+	resources := []domain.AuthorizedResource{
+		{Path: "/api/v1/system/user", Method: "GET"},
+		{Path: "/api/v1/system/user", Method: "GET"},
+		{Path: "/api/v1/health", Method: "GET", IsPublic: true},
 	}
 
-	got := desiredRolePolicies("dev", menus)
+	got := desiredRolePolicies("dev", resources)
 	want := []policyRule{{obj: "/api/v1/system/user", act: "GET"}}
 	if len(got) != len(want) || got[0] != want[0] {
 		t.Fatalf("desiredRolePolicies = %v, want %v", got, want)
@@ -29,22 +25,12 @@ func TestDesiredRolePolicies_DevRoleForAhao(t *testing.T) {
 		userID = "ahao"
 		roleID = "dev"
 	)
-	menus := []*ent.Menu{
-		{
-			Name: "用户管理",
-			Edges: ent.MenuEdges{APIResources: []*ent.ApiResource{
-				{Path: "/api/v1/system/user", Method: "GET"},
-				{Path: "/api/v1/system/user", Method: "POST"},
-				{Path: "/api/v1/system/user/:id", Method: "GET"},
-			}},
-		},
-		{
-			Name: "角色管理",
-			Edges: ent.MenuEdges{APIResources: []*ent.ApiResource{
-				{Path: "/api/v1/system/role", Method: "GET"},
-				{Path: "/api/v1/system/role/:id", Method: "PUT"},
-			}},
-		},
+	resources := []domain.AuthorizedResource{
+		{Path: "/api/v1/system/user", Method: "GET"},
+		{Path: "/api/v1/system/user", Method: "POST"},
+		{Path: "/api/v1/system/user/:id", Method: "GET"},
+		{Path: "/api/v1/system/role", Method: "GET"},
+		{Path: "/api/v1/system/role/:id", Method: "PUT"},
 	}
 
 	enforcer, err := newEnforcer()
@@ -54,7 +40,7 @@ func TestDesiredRolePolicies_DevRoleForAhao(t *testing.T) {
 	if _, err := enforcer.AddRoleForUser(userID, roleID); err != nil {
 		t.Fatalf("AddRoleForUser: %v", err)
 	}
-	for _, rule := range desiredRolePolicies(roleID, menus) {
+	for _, rule := range desiredRolePolicies(roleID, resources) {
 		if _, err := enforcer.AddNamedPolicy("p", roleID, rule.obj, rule.act); err != nil {
 			t.Fatalf("AddNamedPolicy(%q, %q): %v", rule.obj, rule.act, err)
 		}

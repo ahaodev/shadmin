@@ -9,19 +9,20 @@ import (
 	"shadmin/domain"
 )
 
-type retryBindingRepository struct {
-	domain.UserIdentityRepository
-	attempts int
-	firstErr error
-	resolved *domain.User
+// fakeUnitOfWork 依次返回 failures 中的错误（不执行 fn）；失败用尽后真正执行 fn。
+type fakeUnitOfWork struct {
+	failures []error
+	calls    int
 }
 
-func (r *retryBindingRepository) WithUserBindingTx(context.Context, domain.UserIdentityBindingTxFunc) (*domain.User, error) {
-	r.attempts++
-	if r.attempts == 1 {
-		return nil, r.firstErr
+func (f *fakeUnitOfWork) Do(ctx context.Context, fn func(context.Context) error) error {
+	f.calls++
+	if len(f.failures) > 0 {
+		err := f.failures[0]
+		f.failures = f.failures[1:]
+		return err
 	}
-	return r.resolved, nil
+	return fn(ctx)
 }
 
 func TestBuildOAuthUsernameUsesLongHashAndFitsSchemaLimit(t *testing.T) {
@@ -36,11 +37,14 @@ func TestBuildOAuthUsernameUsesLongHashAndFitsSchemaLimit(t *testing.T) {
 
 func TestResolveOrCreateUserRetriesIdentityConflict(t *testing.T) {
 	resolved := &domain.User{ID: "user-1", Status: domain.UserStatusActive}
-	repo := &retryBindingRepository{
-		firstErr: fmt.Errorf("transaction rolled back: %w", domain.ErrUserIdentityConflict),
-		resolved: resolved,
+	uow := &fakeUnitOfWork{failures: []error{
+		fmt.Errorf("transaction rolled back: %w", domain.ErrUserIdentityConflict),
+	}}
+	usecase := &userIdentityUsecase{
+		uow:                uow,
+		userRepository:     &identityUserRepository{user: resolved},
+		identityRepository: &identityRepositoryFake{existing: &domain.UserIdentity{UserID: "user-1"}},
 	}
-	usecase := &userIdentityUsecase{identityRepository: repo}
 
 	got, err := usecase.resolveOrCreateUser(context.Background(), "github", domain.UserIdentityProfile{UserID: "subject-1"})
 	if err != nil {
@@ -49,42 +53,36 @@ func TestResolveOrCreateUserRetriesIdentityConflict(t *testing.T) {
 	if got != resolved {
 		t.Fatalf("resolved user = %#v, want %#v", got, resolved)
 	}
-	if repo.attempts != 2 {
-		t.Fatalf("transaction attempts = %d, want 2", repo.attempts)
+	if uow.calls != 2 {
+		t.Fatalf("transaction attempts = %d, want 2", uow.calls)
 	}
 }
 
 func TestResolveOrCreateUserDoesNotRetryOtherConstraintErrors(t *testing.T) {
 	firstErr := errors.New("foreign key constraint failed")
-	repo := &retryBindingRepository{firstErr: firstErr}
-	usecase := &userIdentityUsecase{identityRepository: repo}
+	uow := &fakeUnitOfWork{failures: []error{firstErr}}
+	usecase := &userIdentityUsecase{uow: uow}
 
 	_, err := usecase.resolveOrCreateUser(context.Background(), "github", domain.UserIdentityProfile{UserID: "subject-1"})
 	if !errors.Is(err, firstErr) {
 		t.Fatalf("resolveOrCreateUser error = %v, want %v", err, firstErr)
 	}
-	if repo.attempts != 1 {
-		t.Fatalf("transaction attempts = %d, want 1", repo.attempts)
+	if uow.calls != 1 {
+		t.Fatalf("transaction attempts = %d, want 1", uow.calls)
 	}
 }
 
-type newIdentityBindingRepository struct {
+type identityRepositoryFake struct {
 	domain.UserIdentityRepository
-	userRepo domain.UserRepository
-	roleRepo domain.RoleRepository
-	bound    *domain.UserIdentity
 	existing *domain.UserIdentity
+	bound    *domain.UserIdentity
 }
 
-func (r *newIdentityBindingRepository) WithUserBindingTx(ctx context.Context, fn domain.UserIdentityBindingTxFunc) (*domain.User, error) {
-	return fn(ctx, r.userRepo, r, r.roleRepo)
-}
-
-func (r *newIdentityBindingRepository) FindByProviderAndSubject(context.Context, string, string) (*domain.UserIdentity, error) {
+func (r *identityRepositoryFake) FindByProviderAndSubject(context.Context, string, string) (*domain.UserIdentity, error) {
 	return r.existing, nil
 }
 
-func (r *newIdentityBindingRepository) Upsert(_ context.Context, identity *domain.UserIdentity) error {
+func (r *identityRepositoryFake) Upsert(_ context.Context, identity *domain.UserIdentity) error {
 	r.bound = identity
 	return nil
 }
@@ -135,11 +133,13 @@ func TestNewIdentityUserReceivesViewerRole(t *testing.T) {
 		Name:   domain.RoleNameViewer,
 		Status: domain.RoleStatusActive,
 	}}
-	identityRepo := &newIdentityBindingRepository{
-		userRepo: userRepo,
-		roleRepo: roleRepo,
+	identityRepo := &identityRepositoryFake{}
+	usecase := &userIdentityUsecase{
+		uow:                &fakeUnitOfWork{},
+		userRepository:     userRepo,
+		roleRepository:     roleRepo,
+		identityRepository: identityRepo,
 	}
-	usecase := &userIdentityUsecase{identityRepository: identityRepo}
 
 	user, err := usecase.resolveOrCreateUser(
 		context.Background(),
@@ -170,12 +170,12 @@ func TestExistingIdentityDoesNotRestoreRemovedViewerRole(t *testing.T) {
 		Name:   domain.RoleNameViewer,
 		Status: domain.RoleStatusActive,
 	}}
-	identityRepo := &newIdentityBindingRepository{
-		userRepo: userRepo,
-		roleRepo: roleRepo,
-		existing: &domain.UserIdentity{UserID: "user-1"},
+	usecase := &userIdentityUsecase{
+		uow:                &fakeUnitOfWork{},
+		userRepository:     userRepo,
+		roleRepository:     roleRepo,
+		identityRepository: &identityRepositoryFake{existing: &domain.UserIdentity{UserID: "user-1"}},
 	}
-	usecase := &userIdentityUsecase{identityRepository: identityRepo}
 
 	user, err := usecase.resolveOrCreateUser(
 		context.Background(),

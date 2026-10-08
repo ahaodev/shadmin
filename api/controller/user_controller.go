@@ -3,7 +3,6 @@ package controller
 import (
 	"errors"
 	"net/http"
-	"shadmin/internal/conf"
 	"shadmin/internal/contextutil"
 
 	"shadmin/domain"
@@ -14,7 +13,6 @@ import (
 type UserController struct {
 	UserUsecase           domain.UserUseCase
 	UserInvitationUsecase domain.UserInvitationUseCase
-	Env                   *conf.Env
 }
 
 // GetUsers godoc

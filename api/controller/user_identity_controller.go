@@ -7,8 +7,6 @@ import (
 	"net/url"
 
 	"shadmin/domain"
-	"shadmin/internal/auth"
-	"shadmin/internal/constants"
 	"shadmin/internal/contextutil"
 
 	"github.com/gin-gonic/gin"
@@ -16,21 +14,18 @@ import (
 	"github.com/markbates/goth/gothic"
 )
 
-// UserIdentityController 处理第三方登录和已启用 provider 查询。
+// UserIdentityController 处理第三方登录的 HTTP 协议部分（OAuth 跳转、回调重定向、code 交换）。
+// 登录逻辑与日志由 UserIdentityUsecase 负责。
 type UserIdentityController struct {
 	UserIdentityUsecase domain.UserIdentityUsecase
-	LoginLogUsecase     domain.LoginLogUseCase // 记录第三方登录日志，与本地登录保持一致
-	RedirectURL         string                 // 登录成功后将短期 code 重定向的前端地址
-	CodeStore           *auth.UserIdentityCodeStore
+	RedirectURL         string // 登录成功后将短期 code 重定向的前端地址
 }
-
-const providerCtxKey = "provider"
 
 // 因为 gin 的 :provider 路径参数不会进入 req.URL.Query()，而 gothic 默认从 query
 // 或 ctx 中读取 provider，因此这里把 provider 注入 request context 再交给 gothic。
 func injectProvider(c *gin.Context) {
 	provider := c.Param("provider")
-	req := c.Request.WithContext(context.WithValue(c.Request.Context(), providerCtxKey, provider))
+	req := c.Request.WithContext(context.WithValue(c.Request.Context(), gothic.ProviderParamKey, provider))
 	c.Request = req
 }
 
@@ -63,33 +58,26 @@ func (sc *UserIdentityController) Callback(c *gin.Context) {
 	injectProvider(c)
 
 	provider := c.Param("provider")
+	meta := domain.LoginMeta{
+		ClientIP:  contextutil.GetClientIP(c),
+		UserAgent: c.Request.Header.Get("User-Agent"),
+	}
 
 	// 在后端回调中完成 provider 身份校验并拿到第三方用户资料。
 	oidcUser, err := gothic.CompleteUserAuth(c.Writer, c.Request)
 	if err != nil {
-		sc.recordIdentityLoginLog(c, provider, "", "failed", "第三方身份认证失败")
+		sc.UserIdentityUsecase.RecordFailure(c.Request.Context(), provider, meta, "第三方身份认证失败")
 		sc.redirectError(c)
 		return
 	}
 
-	result, err := sc.UserIdentityUsecase.HandleCallback(c.Request.Context(), provider, oidcUser)
+	code, err := sc.UserIdentityUsecase.HandleCallback(c.Request.Context(), provider, toIdentityProfile(oidcUser), meta)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserDisabled) {
-			sc.recordIdentityLoginLog(c, provider, oidcUser.Email, "failed", "账户已停用或未启用")
 			sc.redirectTo(c, sc.errorRedirectURL("disabled"))
 			return
 		}
-		sc.recordIdentityLoginLog(c, provider, oidcUser.Email, "failed", "第三方登录处理失败")
 		sc.redirectError(c)
-		return
-	}
-
-	sc.recordIdentityLoginLog(c, provider, oidcUser.Email, constants.StatusSuccess, "")
-
-	//  避免 JWT 放进 URL；改为生成一次性短码，供前端随后 POST /exchange 换取 token。
-	code, err := sc.CodeStore.Put(c.Request.Context(), result)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError("failed to prepare identity login callback"))
 		return
 	}
 
@@ -98,32 +86,22 @@ func (sc *UserIdentityController) Callback(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, domain.RespError("identity redirect not configured"))
 		return
 	}
+	// 避免 JWT 放进 URL；改为一次性短码，供前端随后 POST /exchange 换取 token。
 	q := target.Query()
 	q.Set("code", code)
 	target.RawQuery = q.Encode()
 	c.Redirect(http.StatusFound, target.String())
 }
 
-// recordIdentityLoginLog 异步记录第三方登录日志，来源记为 provider 名（github/google），
-func (sc *UserIdentityController) recordIdentityLoginLog(c *gin.Context, provider, email, status, failureReason string) {
-	if sc.LoginLogUsecase == nil {
-		return
+// toIdentityProfile 把 provider SDK 的用户资料转换为 domain 类型，使 usecase 不依赖 goth。
+func toIdentityProfile(u goth.User) domain.UserIdentityProfile {
+	return domain.UserIdentityProfile{
+		UserID:    u.UserID,
+		Email:     u.Email,
+		Name:      u.Name,
+		NickName:  u.NickName,
+		AvatarURL: u.AvatarURL,
 	}
-	logRequest := &domain.CreateLoginLogRequest{
-		Email:         email,
-		LoginIP:       contextutil.GetClientIP(c),
-		UserAgent:     c.Request.Header.Get("User-Agent"),
-		Status:        status,
-		Source:        provider,
-		FailureReason: failureReason,
-	}
-	// 回调随后会 Redirect，请求 context 会被取消；用 WithoutCancel 保留取值但脱离取消，
-	// 避免异步写日志因 "context canceled" 失败。
-	ctx := context.WithoutCancel(c.Request.Context())
-	go func() {
-		// 日志失败不影响登录流程，仅忽略。
-		_, _ = sc.LoginLogUsecase.CreateLoginLog(ctx, logRequest)
-	}()
 }
 
 // Exchange godoc
@@ -145,14 +123,13 @@ func (sc *UserIdentityController) Exchange(c *gin.Context) {
 		return
 	}
 
-	// 一次性消费短码：成功即删除，避免重放；过期/无效返回 404。
-	result, err := sc.CodeStore.Consume(c.Request.Context(), req.Code)
+	result, err := sc.UserIdentityUsecase.Exchange(c.Request.Context(), req.Code)
 	if err != nil {
+		if errors.Is(err, domain.ErrUserIdentityCodeInvalid) {
+			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, domain.RespError("failed to exchange identity login code"))
-		return
-	}
-	if result == nil {
-		c.JSON(http.StatusNotFound, domain.RespError("identity login code expired or invalid"))
 		return
 	}
 

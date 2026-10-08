@@ -20,12 +20,12 @@ import (
 
 const testSecret = "0123456789abcdef0123456789abcdef"
 
-func newBlacklist(t *testing.T) auth.JWTBlacklist {
+func newBlacklist(t *testing.T) domain.TokenBlacklist {
 	t.Helper()
 	return auth.NewTokenBlacklist(cacher.NewMemoryCache(cacher.MemoryConfig{CleanupInterval: time.Minute}))
 }
 
-func newProbeRouter(secret string, blacklist auth.JWTBlacklist) *gin.Engine {
+func newProbeRouter(secret string, blacklist domain.TokenBlacklist) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.GET("/probe", JwtAuthMiddleware(secret, blacklist), func(c *gin.Context) {
@@ -84,7 +84,7 @@ func TestJwtAuthMiddleware_AcceptsValidTokenWithoutBlacklist(t *testing.T) {
 
 // 无 jti 的令牌无法吊销，配置了黑名单时必须拒绝
 func TestJwtAuthMiddleware_RejectsTokenWithoutJTI(t *testing.T) {
-	claims := &domain.JwtCustomClaims{
+	claims := &tokenutil.AccessClaims{
 		ID:        "u-1",
 		Name:      "alice",
 		Email:     "alice@example.com",

@@ -74,7 +74,7 @@ func (rr *entRoleRepository) Create(c context.Context, role *domain.Role) error 
 }
 
 func (rr *entRoleRepository) Fetch(c context.Context) ([]*domain.Role, error) {
-	entRoles, err := rr.client.Role.Query().
+	entRoles, err := clientFromContext(c, rr.client).Role.Query().
 		WithMenus().
 		Order(ent.Asc(role.FieldSequence)).
 		All(c)
@@ -91,7 +91,7 @@ func (rr *entRoleRepository) Fetch(c context.Context) ([]*domain.Role, error) {
 }
 
 func (rr *entRoleRepository) GetByID(c context.Context, id string) (*domain.Role, error) {
-	entRole, err := rr.client.Role.Query().
+	entRole, err := clientFromContext(c, rr.client).Role.Query().
 		Where(role.ID(id)).
 		WithMenus().
 		Only(c)
@@ -106,7 +106,7 @@ func (rr *entRoleRepository) GetByID(c context.Context, id string) (*domain.Role
 }
 
 func (rr *entRoleRepository) GetByName(c context.Context, name string) (*domain.Role, error) {
-	entRole, err := rr.client.Role.Query().
+	entRole, err := clientFromContext(c, rr.client).Role.Query().
 		Where(role.Name(name)).
 		WithMenus().
 		Only(c)
@@ -125,7 +125,7 @@ func (rr *entRoleRepository) GetByIDs(c context.Context, ids []string) ([]*domai
 		return nil, nil
 	}
 
-	entRoles, err := rr.client.Role.Query().
+	entRoles, err := clientFromContext(c, rr.client).Role.Query().
 		Where(role.IDIn(ids...)).
 		WithMenus().
 		All(c)
@@ -142,7 +142,7 @@ func (rr *entRoleRepository) GetByIDs(c context.Context, ids []string) ([]*domai
 
 // ExistsByName 仅判定角色名称是否被占用
 func (rr *entRoleRepository) ExistsByName(c context.Context, name string) (bool, error) {
-	exists, err := rr.client.Role.Query().
+	exists, err := clientFromContext(c, rr.client).Role.Query().
 		Where(role.Name(name)).
 		Exist(c)
 	if err != nil {

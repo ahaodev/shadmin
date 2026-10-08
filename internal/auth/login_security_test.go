@@ -22,12 +22,12 @@ func TestLoginSecurityManager_LocksAfterMaxFailures(t *testing.T) {
 	m := newTestManager()
 
 	var attempts int
-	for i := 0; i < m.MaxFailures; i++ {
+	for i := 0; i < m.MaxFailures(); i++ {
 		attempts = m.RecordFailedAttempt(ctx, "alice")
 	}
 
-	if attempts != m.MaxFailures {
-		t.Fatalf("returned attempts = %d, want %d", attempts, m.MaxFailures)
+	if attempts != m.MaxFailures() {
+		t.Fatalf("returned attempts = %d, want %d", attempts, m.MaxFailures())
 	}
 	if !m.IsLocked(ctx, "alice") {
 		t.Fatal("alice should be locked after reaching MaxFailures")
@@ -56,7 +56,7 @@ func TestLoginSecurityManager_LockExpiresWithTTL(t *testing.T) {
 	m := newTestManager()
 	m.LockDuration = 20 * time.Millisecond
 
-	for i := 0; i < m.MaxFailures; i++ {
+	for i := 0; i < m.MaxFailures(); i++ {
 		m.RecordFailedAttempt(ctx, "alice")
 	}
 	if !m.IsLocked(ctx, "alice") {
@@ -104,7 +104,7 @@ func TestLoginSecurityManager_CacheFailureFailsOpen(t *testing.T) {
 	ctx := context.Background()
 	m := NewLoginSecurityManager(brokenCacher{})
 
-	for i := 0; i < m.MaxFailures+1; i++ {
+	for i := 0; i < m.MaxFailures()+1; i++ {
 		m.RecordFailedAttempt(ctx, "alice")
 	}
 
@@ -118,7 +118,7 @@ func TestLoginSecurityManager_CacheFailureFailsOpen(t *testing.T) {
 func TestLoginSecurityManager_ConcurrentFailuresAreCounted(t *testing.T) {
 	ctx := context.Background()
 	m := newTestManager()
-	m.MaxFailures = 1 << 30 // 只验证计数，不在中途触发锁定
+	m.maxFailures = 1 << 30 // 只验证计数，不在中途触发锁定
 
 	const writers, perWriter = 8, 25
 

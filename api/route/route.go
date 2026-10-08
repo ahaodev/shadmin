@@ -4,7 +4,6 @@ import (
 	"shadmin/bootstrap"
 	"shadmin/frontend"
 	"shadmin/internal/conf"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,7 +11,7 @@ import (
 const ApiUri = "/api/v1"
 
 // Setup initializes and configures all routes and server settings
-func Setup(app *bootstrap.Application, timeout time.Duration, engine *gin.Engine) error {
+func Setup(app *bootstrap.Application, engine *gin.Engine) error {
 	// Apply server configuration
 	config := DefaultServerConfig()
 	if err := config.Apply(engine); err != nil {
@@ -26,15 +25,15 @@ func Setup(app *bootstrap.Application, timeout time.Duration, engine *gin.Engine
 	setupSwagger(engine)
 
 	// Setup API routes
-	setupApiRoutes(app, timeout, engine)
+	setupApiRoutes(app, engine)
 
 	return nil
 }
 
 // setupApiRoutes configures all API routes
-func setupApiRoutes(app *bootstrap.Application, timeout time.Duration, engine *gin.Engine) {
+func setupApiRoutes(app *bootstrap.Application, engine *gin.Engine) {
 	apiV1 := engine.Group(ApiUri)
-	factory := NewControllerFactory(app, timeout, app.DB)
+	factory := NewControllerFactory(app)
 
 	// Setup public routes (no authentication required)
 	publicRoutes := NewPublicRoutes(factory)
@@ -42,5 +41,5 @@ func setupApiRoutes(app *bootstrap.Application, timeout time.Duration, engine *g
 
 	// Setup protected routes (authentication required)
 	protectedRoutes := NewProtectedRoutes(factory)
-	protectedRoutes.Setup(apiV1, app, engine)
+	protectedRoutes.Setup(apiV1, app)
 }

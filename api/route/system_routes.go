@@ -55,10 +55,10 @@ func (pr *ProtectedRoutes) setupMenuManagement(systemGroup *gin.RouterGroup, cas
 }
 
 // setupApiResourceManagement configures API resource management routes with unified API permission check
-func (pr *ProtectedRoutes) setupApiResourceManagement(systemGroup *gin.RouterGroup, casbinMiddleware *middleware.CasbinMiddleware, engine *gin.Engine) {
+func (pr *ProtectedRoutes) setupApiResourceManagement(systemGroup *gin.RouterGroup, casbinMiddleware *middleware.CasbinMiddleware) {
 	apiGroup := systemGroup.Group("/api-resources")
 	apiGroup.Use(casbinMiddleware.CheckAPIPermission())
-	apiResourceController := pr.factory.CreateApiResourceController(engine)
+	apiResourceController := pr.factory.CreateApiResourceController()
 
 	apiGroup.GET("", apiResourceController.GetApiResources)
 }

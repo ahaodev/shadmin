@@ -88,7 +88,7 @@ func (s *consoleFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	}
 	timeStamp := entry.Time.Format(TimeFormat)
 	var newLog string
-	if entry.HasCaller() {
+	if entry.Caller != nil {
 		fName := filepath.Base(entry.Caller.File)
 		newLog = fmt.Sprintf("[%s] %s %s:%d:%s%s\n",
 			entry.Level,
@@ -119,7 +119,7 @@ func (s *mineFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	}
 	timeStamp := entry.Time.Format(TimeFormat)
 	var newLog string
-	if entry.HasCaller() {
+	if entry.Caller != nil {
 		fName := filepath.Base(entry.Caller.File)
 		newLog = fmt.Sprintf("[%s][%s][%s:%d %s] %s%s\n",
 			timeStamp,

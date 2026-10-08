@@ -5,17 +5,16 @@ import (
 	"time"
 
 	"shadmin/domain"
-	captchapkg "shadmin/internal/captcha"
 )
 
-// captchaUsecase 包装 SlideManager，添加 context 超时控制以遵循项目 usecase 层约定
+// captchaUsecase 包装 SlideCaptchaManager，添加 context 超时控制以遵循项目 usecase 层约定
 type captchaUsecase struct {
-	manager *captchapkg.SlideManager
+	manager domain.SlideCaptchaManager
 	timeout time.Duration
 }
 
 // NewCaptchaUsecase 创建 Slide 验证码用例
-func NewCaptchaUsecase(manager *captchapkg.SlideManager, timeout time.Duration) domain.CaptchaUsecase {
+func NewCaptchaUsecase(manager domain.SlideCaptchaManager, timeout time.Duration) domain.CaptchaUsecase {
 	return &captchaUsecase{
 		manager: manager,
 		timeout: timeout,

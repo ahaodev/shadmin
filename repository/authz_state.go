@@ -73,7 +73,7 @@ func withEntTransaction(ctx context.Context, client *ent.Client, mutate func(con
 	defer tx.Rollback()
 
 	state := &authorizationTxState{tx: tx}
-	txCtx := context.WithValue(ctx, authorizationTxContextKey{}, state)
+	txCtx := ent.NewTxContext(context.WithValue(ctx, authorizationTxContextKey{}, state), tx)
 	if err := mutate(txCtx, tx); err != nil {
 		return err
 	}

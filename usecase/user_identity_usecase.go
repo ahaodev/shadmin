@@ -11,12 +11,16 @@ import (
 
 	"shadmin/domain"
 	"shadmin/internal/constants"
-	"shadmin/internal/tokenservice"
 )
 
 type userIdentityUsecase struct {
+	uow                domain.UnitOfWork
+	userRepository     domain.UserRepository
+	roleRepository     domain.RoleRepository
 	identityRepository domain.UserIdentityRepository
-	tokenService       *tokenservice.TokenService
+	tokenService       domain.TokenIssuer
+	codeStore          domain.UserIdentityCodeStore
+	loginLogUsecase    domain.LoginLogUseCase
 	accessTokenSecret  string
 	refreshTokenSecret string
 	accessTokenExpiry  int
@@ -24,17 +28,27 @@ type userIdentityUsecase struct {
 	contextTimeout     time.Duration
 }
 
-// NewUserIdentityUsecase 构造第三方登录用例。不引入独立的令牌签发流程。
+// NewUserIdentityUsecase 构造第三方登录用例。绑定事务由 uow 统一开启，不引入独立的令牌签发流程。
 func NewUserIdentityUsecase(
+	uow domain.UnitOfWork,
+	userRepository domain.UserRepository,
+	roleRepository domain.RoleRepository,
 	identityRepository domain.UserIdentityRepository,
-	tokenService *tokenservice.TokenService,
+	tokenService domain.TokenIssuer,
+	codeStore domain.UserIdentityCodeStore,
+	loginLogUsecase domain.LoginLogUseCase,
 	accessTokenSecret, refreshTokenSecret string,
 	accessTokenExpiry, refreshTokenExpiry int,
 	timeout time.Duration,
 ) domain.UserIdentityUsecase {
 	return &userIdentityUsecase{
+		uow:                uow,
+		userRepository:     userRepository,
+		roleRepository:     roleRepository,
 		identityRepository: identityRepository,
 		tokenService:       tokenService,
+		codeStore:          codeStore,
+		loginLogUsecase:    loginLogUsecase,
 		accessTokenSecret:  accessTokenSecret,
 		refreshTokenSecret: refreshTokenSecret,
 		accessTokenExpiry:  accessTokenExpiry,
@@ -43,14 +57,58 @@ func NewUserIdentityUsecase(
 	}
 }
 
-// HandleCallback 处理 provider 回调：解析第三方 profile，查找/创建用户，
-// 复用既有 JWT 体系签发令牌对。
-// 登录只认 (provider, provider_subject) 关联：已关联 → 登录该用户并刷新资料；
-// 未关联 → 创建独立用户（不按 email 合并，与本地用户完全隔离）。
-func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.UserIdentityResult, error) {
+// HandleCallback 处理 provider 回调：解析第三方 profile，查找/创建用户，签发令牌对，
+// 记录登录日志，并把令牌对存入一次性 code 返回给 controller。
+func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider string, profile domain.UserIdentityProfile, meta domain.LoginMeta) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
 
+	result, err := u.issueTokens(ctx, provider, profile)
+	if err != nil {
+		reason := "第三方登录处理失败"
+		if errors.Is(err, domain.ErrUserDisabled) {
+			reason = "账户已停用或未启用"
+		}
+		u.recordLoginLog(ctx, meta, provider, profile.Email, constants.StatusFailed, reason)
+		return "", err
+	}
+
+	u.recordLoginLog(ctx, meta, provider, profile.Email, constants.StatusSuccess, "")
+
+	code, err := u.codeStore.Put(ctx, result)
+	if err != nil {
+		return "", fmt.Errorf("store identity login code: %w", err)
+	}
+	return code, nil
+}
+
+// RecordFailure 记录 provider 认证阶段的失败（此时尚无第三方资料，邮箱留空）。
+func (u *userIdentityUsecase) RecordFailure(ctx context.Context, provider string, meta domain.LoginMeta, reason string) {
+	u.recordLoginLog(ctx, meta, provider, "", constants.StatusFailed, reason)
+}
+
+// Exchange 一次性消费 code 换取令牌对；成功即删除，避免重放。
+func (u *userIdentityUsecase) Exchange(ctx context.Context, code string) (*domain.UserIdentityResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
+	defer cancel()
+
+	result, err := u.codeStore.Consume(ctx, code)
+	if err != nil {
+		return nil, fmt.Errorf("consume identity login code: %w", err)
+	}
+	if result == nil {
+		return nil, domain.ErrUserIdentityCodeInvalid
+	}
+	return result, nil
+}
+
+// recordLoginLog 第三方登录日志，来源记为 provider 名（github/google）。
+func (u *userIdentityUsecase) recordLoginLog(ctx context.Context, meta domain.LoginMeta, provider, email, status, failureReason string) {
+	writeLoginLog(ctx, u.loginLogUsecase, meta, provider, status, failureReason, email)
+}
+
+// issueTokens 绑定或创建用户后，复用既有 TokenService 签发 JWT 令牌对（sub = provider:provider_subject）。
+func (u *userIdentityUsecase) issueTokens(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.UserIdentityResult, error) {
 	provider = strings.TrimSpace(strings.ToLower(provider))
 	if provider == "" {
 		return nil, fmt.Errorf("provider is required: %w", domain.ErrUserIdentityAuthFailed)
@@ -64,7 +122,6 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 		return nil, err
 	}
 
-	// 复用既有 TokenService 签发 JWT 令牌对（sub = provider:provider_subject）。
 	accessToken, err := u.tokenService.CreateAccessTokenWithIdentity(user, u.accessTokenSecret, u.accessTokenExpiry, provider, profile.UserID, provider)
 	if err != nil {
 		return nil, fmt.Errorf("create access token: %w", err)
@@ -82,12 +139,15 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 
 // resolveOrCreateUser 解析 (provider, provider_subject) 对应的用户：
 // 已关联 → 返回关联用户并刷新资料；未关联 → 创建独立用户并建立关联记录。
-// 并发首次登录可能同时建号，唯一约束冲突时重试一次。
+// 并发首次登录可能同时建号，唯一约束冲突时在新事务中重试一次。
 func (u *userIdentityUsecase) resolveOrCreateUser(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
 	var lastErr error
 	for range 2 {
-		user, err := u.identityRepository.WithUserBindingTx(ctx, func(txCtx context.Context, userRepo domain.UserRepository, identityRepo domain.UserIdentityRepository, roleRepo domain.RoleRepository) (*domain.User, error) {
-			return u.resolveOrCreateUserForIdentity(txCtx, userRepo, identityRepo, roleRepo, provider, profile)
+		var user *domain.User
+		err := u.uow.Do(ctx, func(txCtx context.Context) error {
+			var err error
+			user, err = u.resolveOrCreateUserForIdentity(txCtx, provider, profile)
+			return err
 		})
 		if err == nil {
 			return user, nil
@@ -100,23 +160,16 @@ func (u *userIdentityUsecase) resolveOrCreateUser(ctx context.Context, provider 
 	return nil, lastErr
 }
 
-func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(
-	ctx context.Context,
-	userRepo domain.UserRepository,
-	identityRepo domain.UserIdentityRepository,
-	roleRepo domain.RoleRepository,
-	provider string,
-	profile domain.UserIdentityProfile,
-) (*domain.User, error) {
+func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
 	// 1. 先查该 (provider, provider_subject) 是否已关联
-	account, err := identityRepo.FindByProviderAndSubject(ctx, provider, profile.UserID)
+	account, err := u.identityRepository.FindByProviderAndSubject(ctx, provider, profile.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("find identity account: %w", err)
 	}
 
 	if account != nil {
 		// 2a. 已关联 → 取出对应用户
-		user, err := userRepo.GetByID(ctx, account.UserID)
+		user, err := u.userRepository.GetByID(ctx, account.UserID)
 		if err != nil {
 			return nil, fmt.Errorf("get bound user: %w", err)
 		}
@@ -128,7 +181,7 @@ func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(
 
 		// 按 provider 最新资料刷新 nickname/avatar（email 不刷新：
 		// provider email 变化可能撞上 (source, email) 唯一约束，登录路径不应因邮箱冲突而失败）。
-		if err := u.refreshUserProfile(ctx, userRepo, user, profile); err != nil {
+		if err := u.refreshUserProfile(ctx, user, profile); err != nil {
 			return nil, err
 		}
 		return user, nil
@@ -137,11 +190,11 @@ func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(
 	// 2b. 未关联 → 创建独立用户 + 建立关联记录。
 	// 不按 email 合并：oidc 用户与本地用户完全隔离，不同 provider 账号各自独立；
 	// 同渠道（source）内 email 唯一由 (source, email) 复合唯一索引保证。
-	user, err := u.createUserFromUserIdentity(ctx, userRepo, roleRepo, provider, profile)
+	user, err := u.createUserFromUserIdentity(ctx, provider, profile)
 	if err != nil {
 		return nil, fmt.Errorf("create user from user identity profile: %w", err)
 	}
-	err = identityRepo.Upsert(ctx, &domain.UserIdentity{
+	err = u.identityRepository.Upsert(ctx, &domain.UserIdentity{
 		UserID:          user.ID,
 		Provider:        provider,
 		ProviderSubject: profile.UserID,
@@ -154,8 +207,8 @@ func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(
 
 // createUserFromUserIdentity 基于第三方资料创建独立用户，绑定启用的 viewer 角色，
 // 不设置本地密码，也不按邮箱合并账号。
-func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, userRepo domain.UserRepository, roleRepo domain.RoleRepository, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
-	viewerRole, err := roleRepo.GetByName(ctx, domain.RoleNameViewer)
+func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, provider string, profile domain.UserIdentityProfile) (*domain.User, error) {
+	viewerRole, err := u.roleRepository.GetByName(ctx, domain.RoleNameViewer)
 	if err != nil {
 		return nil, fmt.Errorf("get default identity role: %w", err)
 	}
@@ -177,7 +230,7 @@ func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, us
 		Status:   constants.UserStatusActive,
 	}
 
-	if err := userRepo.CreateWithRoles(ctx, user, []string{viewerRole.ID}); err != nil {
+	if err := u.userRepository.CreateWithRoles(ctx, user, []string{viewerRole.ID}); err != nil {
 		return nil, fmt.Errorf("create user identity user with default role: %w", err)
 	}
 	return user, nil
@@ -195,10 +248,10 @@ func providerDisplayName(profile domain.UserIdentityProfile) string {
 // refreshUserProfile 按 provider 最新资料刷新用户昵称与头像。
 // email 不在此处刷新：provider email 变化可能撞上 (source, email) 唯一约束，
 // 登录路径不应因邮箱冲突而失败（email 仅在建号时写入）。
-func (u *userIdentityUsecase) refreshUserProfile(ctx context.Context, userRepo domain.UserRepository, user *domain.User, profile domain.UserIdentityProfile) error {
+func (u *userIdentityUsecase) refreshUserProfile(ctx context.Context, user *domain.User, profile domain.UserIdentityProfile) error {
 	nickname := providerDisplayName(profile)
 	avatar := strings.TrimSpace(profile.AvatarURL)
-	if err := userRepo.UpdateIdentityProfile(ctx, user.ID, nickname, avatar); err != nil {
+	if err := u.userRepository.UpdateIdentityProfile(ctx, user.ID, nickname, avatar); err != nil {
 		return fmt.Errorf("refresh user profile: %w", err)
 	}
 	user.Nickname = nickname

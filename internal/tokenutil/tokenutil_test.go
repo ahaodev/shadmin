@@ -113,7 +113,7 @@ func TestParseClaims_RejectsInvalidTokens(t *testing.T) {
 	tampered := parts[0] + "." + parts[1] + "." + strings.Repeat("A", len(parts[2]))
 
 	// alg=none 伪造令牌（算法混淆攻击）
-	noneToken, err := jwt.NewWithClaims(jwt.SigningMethodNone, &domain.JwtCustomClaims{
+	noneToken, err := jwt.NewWithClaims(jwt.SigningMethodNone, &AccessClaims{
 		ID:        "attacker",
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 	}).SignedString(jwt.UnsafeAllowNoneSignatureType)
@@ -148,7 +148,7 @@ func TestParseClaims_RejectsInvalidTokens(t *testing.T) {
 
 // 签发端只用 HS256，因此三个解析入口都只接受 HS256。
 func TestParseClaims_OnlyAcceptsHS256(t *testing.T) {
-	claims := &domain.JwtCustomClaims{
+	claims := &AccessClaims{
 		ID:    "u-1",
 		Name:  "alice",
 		Email: "alice@example.com",
@@ -238,7 +238,7 @@ func TestParseAccessClaims_RejectsRefreshTokenAndForeignIssuer(t *testing.T) {
 			name = "missing"
 		}
 		t.Run("issuer="+name, func(t *testing.T) {
-			claims := &domain.JwtCustomClaims{
+			claims := &AccessClaims{
 				ID: user.ID,
 				RegisteredClaims: jwt.RegisteredClaims{
 					Issuer:    issuer,

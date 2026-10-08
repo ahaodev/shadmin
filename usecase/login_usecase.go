@@ -9,9 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"shadmin/domain"
-	"shadmin/internal/auth"
 	"shadmin/internal/constants"
-	"shadmin/internal/tokenservice"
 	"shadmin/pkg"
 )
 
@@ -19,9 +17,9 @@ type loginUsecase struct {
 	userRepository           domain.UserRepository
 	captchaUsecase           domain.CaptchaUsecase
 	loginLogUsecase          domain.LoginLogUseCase
-	securityManager          *auth.LoginSecurityManager
-	tokenService             *tokenservice.TokenService
-	tokenBlacklist           auth.JWTBlacklist
+	securityManager          domain.LoginSecurity
+	tokenService             domain.TokenIssuer
+	tokenBlacklist           domain.TokenBlacklist
 	accessTokenSecret        string
 	refreshTokenSecret       string
 	accessTokenExpiryMinute  int
@@ -33,9 +31,9 @@ func NewLoginUsecase(
 	userRepository domain.UserRepository,
 	captchaUsecase domain.CaptchaUsecase,
 	loginLogUsecase domain.LoginLogUseCase,
-	securityManager *auth.LoginSecurityManager,
-	tokenService *tokenservice.TokenService,
-	tokenBlacklist auth.JWTBlacklist,
+	securityManager domain.LoginSecurity,
+	tokenService domain.TokenIssuer,
+	tokenBlacklist domain.TokenBlacklist,
 	accessTokenSecret, refreshTokenSecret string,
 	accessTokenExpiryMinute, refreshTokenExpiryMinute int,
 	timeout time.Duration,
@@ -98,10 +96,10 @@ func (lu *loginUsecase) Login(c context.Context, req *domain.LoginRequest, meta 
 		attempts := lu.securityManager.RecordFailedAttempt(ctx, req.Identifier)
 		lu.recordLoginLog(c, meta, constants.StatusFailed, "密码错误", user.Email)
 
-		if attempts >= lu.securityManager.MaxFailures {
+		if attempts >= lu.securityManager.MaxFailures() {
 			return nil, lu.accountLockedError()
 		}
-		return nil, fmt.Errorf("%w，还可尝试 %d 次", domain.ErrInvalidCredentials, lu.securityManager.MaxFailures-attempts)
+		return nil, fmt.Errorf("%w，还可尝试 %d 次", domain.ErrInvalidCredentials, lu.securityManager.MaxFailures()-attempts)
 	}
 
 	lu.securityManager.RecordSuccessfulLogin(ctx, req.Identifier)
@@ -132,11 +130,11 @@ func (lu *loginUsecase) Refresh(c context.Context, refreshToken string) (*domain
 
 	if lu.tokenBlacklist != nil {
 		// 黑名单以 jti 为键：无 jti 的令牌无法吊销，直接拒绝
-		if claims.JTI() == "" {
+		if claims.JTI == "" {
 			return nil, domain.ErrInvalidRefreshToken
 		}
 
-		revoked, err := lu.tokenBlacklist.Exists(ctx, claims.JTI())
+		revoked, err := lu.tokenBlacklist.Exists(ctx, claims.JTI)
 		if err != nil {
 			return nil, domain.ErrInvalidRefreshToken
 		}
@@ -166,8 +164,8 @@ func (lu *loginUsecase) Refresh(c context.Context, refreshToken string) (*domain
 
 	// 轮换：新令牌全部签发成功后吊销旧 refresh token，阻断旧令牌重放。
 	// 吊销失败时旧令牌仍有效，客户端重试即可，不会造成会话中断。
-	if lu.tokenBlacklist != nil && claims.JTI() != "" && claims.ExpiresAt != nil {
-		if err := lu.tokenBlacklist.Add(ctx, claims.JTI(), claims.ExpiresAt.Time); err != nil {
+	if lu.tokenBlacklist != nil && claims.JTI != "" && !claims.ExpiresAt.IsZero() {
+		if err := lu.tokenBlacklist.Add(ctx, claims.JTI, claims.ExpiresAt); err != nil {
 			return nil, fmt.Errorf("revoke rotated refresh token: %w", err)
 		}
 	}
@@ -214,26 +212,8 @@ func (lu *loginUsecase) accountLockedError() error {
 	return &domain.AccountLockedError{}
 }
 
-// recordLoginLog 异步记录登录日志，不阻塞登录流程。
-// 使用 WithoutCancel：请求结束/超时后仍要落库，否则日志会丢。
 func (lu *loginUsecase) recordLoginLog(parent context.Context, meta domain.LoginMeta, status, failureReason, email string) {
-	if lu.loginLogUsecase == nil {
-		return
-	}
-	logRequest := &domain.CreateLoginLogRequest{
-		Email:         email,
-		LoginIP:       meta.ClientIP,
-		UserAgent:     meta.UserAgent,
-		Status:        status,
-		Source:        constants.UserSourceLocal,
-		FailureReason: failureReason,
-	}
-	ctx := context.WithoutCancel(parent)
-	go func() {
-		if _, err := lu.loginLogUsecase.CreateLoginLog(ctx, logRequest); err != nil {
-			pkg.Log.WithError(err).Warn("failed to record login log")
-		}
-	}()
+	writeLoginLog(parent, lu.loginLogUsecase, meta, constants.UserSourceLocal, status, failureReason, email)
 }
 
 func (lu *loginUsecase) GetUserByIdentifier(c context.Context, identifier string) (*domain.User, error) {

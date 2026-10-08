@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"shadmin/domain"
-	"shadmin/internal/auth"
 	"shadmin/internal/constants"
 	"shadmin/internal/contextutil"
 	"shadmin/internal/tokenservice"
@@ -13,7 +12,7 @@ import (
 )
 
 // JwtAuthMiddleware 校验 access token 的合法性、黑名单状态，并把 claims 注入 gin context。
-func JwtAuthMiddleware(secret string, tokenBlacklist auth.JWTBlacklist) gin.HandlerFunc {
+func JwtAuthMiddleware(secret string, tokenBlacklist domain.TokenBlacklist) gin.HandlerFunc {
 	tokenService := tokenservice.NewTokenService()
 
 	return func(c *gin.Context) {
@@ -33,13 +32,13 @@ func JwtAuthMiddleware(secret string, tokenBlacklist auth.JWTBlacklist) gin.Hand
 
 		if tokenBlacklist != nil {
 			// 黑名单以 jti 为键：无 jti 的令牌无法吊销，直接拒绝
-			if claims.JTI() == "" {
+			if claims.JTI == "" {
 				c.JSON(http.StatusUnauthorized, domain.RespError("令牌无效"))
 				c.Abort()
 				return
 			}
 
-			revoked, rErr := tokenBlacklist.Exists(c.Request.Context(), claims.JTI())
+			revoked, rErr := tokenBlacklist.Exists(c.Request.Context(), claims.JTI)
 			if rErr != nil {
 				c.JSON(http.StatusUnauthorized, domain.RespError("令牌无法验证"))
 				c.Abort()

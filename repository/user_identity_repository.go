@@ -42,7 +42,7 @@ func (r *entUserIdentityRepository) FindByProviderAndSubject(ctx context.Context
 		return nil, nil
 	}
 
-	a, err := r.client.UserIdentity.Query().
+	a, err := clientFromContext(ctx, r.client).UserIdentity.Query().
 		Where(
 			useridentity.Provider(provider),
 			useridentity.ProviderSubject(subject),
@@ -67,7 +67,7 @@ func (r *entUserIdentityRepository) Upsert(ctx context.Context, account *domain.
 		return fmt.Errorf("provider and provider_subject are required")
 	}
 
-	existing, err := r.client.UserIdentity.Query().
+	existing, err := clientFromContext(ctx, r.client).UserIdentity.Query().
 		Where(
 			useridentity.Provider(account.Provider),
 			useridentity.ProviderSubject(account.ProviderSubject),
@@ -78,7 +78,7 @@ func (r *entUserIdentityRepository) Upsert(ctx context.Context, account *domain.
 	}
 
 	if ent.IsNotFound(err) || existing == nil {
-		created, createErr := r.client.UserIdentity.Create().
+		created, createErr := clientFromContext(ctx, r.client).UserIdentity.Create().
 			SetUserID(account.UserID).
 			SetProvider(account.Provider).
 			SetProviderSubject(account.ProviderSubject).
@@ -112,30 +112,8 @@ func isUniqueConstraintError(err error) bool {
 		strings.Contains(message, "duplicate entry")
 }
 
-func (r *entUserIdentityRepository) WithUserBindingTx(ctx context.Context, fn domain.UserIdentityBindingTxFunc) (*domain.User, error) {
-	if fn == nil {
-		return nil, fmt.Errorf("user identity transaction function is nil")
-	}
-
-	var user *domain.User
-	err := withEntTransaction(ctx, r.client, func(txCtx context.Context, tx *ent.Tx) error {
-		txClient := tx.Client()
-		userRepo := NewUserRepository(txClient)
-		identityRepo := &entUserIdentityRepository{client: txClient}
-		roleRepo := NewRoleRepository(txClient)
-
-		var err error
-		user, err = fn(txCtx, userRepo, identityRepo, roleRepo)
-		return err
-	})
-	if err != nil {
-		return nil, fmt.Errorf("bind user identity transaction: %w", err)
-	}
-	return user, nil
-}
-
 func (r *entUserIdentityRepository) updateOne(ctx context.Context, id string, account *domain.UserIdentity) error {
-	updated, err := r.client.UserIdentity.UpdateOneID(id).
+	updated, err := clientFromContext(ctx, r.client).UserIdentity.UpdateOneID(id).
 		SetUserID(account.UserID).
 		Save(ctx)
 	if err != nil {

@@ -19,7 +19,7 @@ func TestAuthorizationGenerationHookTriggersAfterCommit(t *testing.T) {
 	}
 
 	manager := casbin.NewCasManager()
-	syncService := casbin.NewSyncService(client, manager)
+	syncService := casbin.NewSyncService(repository.NewAuthorizationRepository(client), manager)
 	scheduler := schedulers.NewCasbinSyncScheduler(syncService, time.Hour)
 	app := &Application{DB: client, CasbinScheduler: scheduler}
 	app.registerAuthorizationGenerationHook()
@@ -60,7 +60,7 @@ func TestAuthorizationGenerationHookDoesNotTriggerOnRollback(t *testing.T) {
 	}
 
 	manager := casbin.NewCasManager()
-	syncService := casbin.NewSyncService(client, manager)
+	syncService := casbin.NewSyncService(repository.NewAuthorizationRepository(client), manager)
 	scheduler := schedulers.NewCasbinSyncScheduler(syncService, time.Hour)
 	app := &Application{DB: client, CasbinScheduler: scheduler}
 	app.registerAuthorizationGenerationHook()

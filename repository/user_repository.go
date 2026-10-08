@@ -189,7 +189,7 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	if filter.DepartmentID != "" {
 		predicates = append(predicates, user.DepartmentID(filter.DepartmentID))
 	}
-	baseQuery := ur.client.User.Query().Where(predicates...)
+	baseQuery := clientFromContext(c, ur.client).User.Query().Where(predicates...)
 
 	// 获取总数
 	total, err := baseQuery.Clone().Count(c)
@@ -231,7 +231,7 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 }
 
 func (ur *entUserRepository) GetByIdentifier(c context.Context, identifier string) (*domain.User, error) {
-	u, err := ur.client.User.
+	u, err := clientFromContext(c, ur.client).User.
 		Query().
 		Where(user.And(
 			user.Or(
@@ -255,7 +255,7 @@ func (ur *entUserRepository) GetByIdentifier(c context.Context, identifier strin
 }
 
 func (ur *entUserRepository) GetByID(c context.Context, id string) (*domain.User, error) {
-	u, err := ur.client.User.
+	u, err := clientFromContext(c, ur.client).User.
 		Query().
 		Where(user.ID(id)).
 		WithRoles().
@@ -354,7 +354,7 @@ func (ur *entUserRepository) update(c context.Context, u *domain.User, roleIDs *
 
 // UpdateIdentityProfile refreshes OIDC presentation fields without changing authorization state.
 func (ur *entUserRepository) UpdateIdentityProfile(ctx context.Context, userID, nickname, avatar string) error {
-	_, err := ur.client.User.UpdateOneID(userID).
+	_, err := clientFromContext(ctx, ur.client).User.UpdateOneID(userID).
 		SetNickname(nickname).
 		SetAvatar(avatar).
 		Save(ctx)
@@ -376,7 +376,7 @@ func (ur *entUserRepository) Delete(c context.Context, id string) error {
 // GetStatusByID 只查询用户状态字段，避免加载整条记录。
 // 用在登录/刷新/中间件等高频路径上。
 func (ur *entUserRepository) GetStatusByID(c context.Context, id string) (string, error) {
-	status, err := ur.client.User.
+	status, err := clientFromContext(c, ur.client).User.
 		Query().
 		Where(user.ID(id)).
 		Select(user.FieldStatus).
@@ -388,7 +388,7 @@ func (ur *entUserRepository) GetStatusByID(c context.Context, id string) (string
 }
 
 func (ur *entUserRepository) GetRoleIDs(c context.Context, id string) ([]string, error) {
-	u, err := ur.client.User.
+	u, err := clientFromContext(c, ur.client).User.
 		Query().
 		Where(user.ID(id)).
 		WithRoles().

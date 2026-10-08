@@ -14,7 +14,7 @@ const loginFailNS = "auth:login:fail"
 type LoginSecurityManager struct {
 	cacher cacher.Cacher
 
-	MaxFailures  int           // 最大失败次数
+	maxFailures  int
 	LockDuration time.Duration // 计数的有效期，即锁定窗口
 }
 
@@ -25,10 +25,13 @@ func NewLoginSecurityManager(c cacher.Cacher) *LoginSecurityManager {
 	}
 	return &LoginSecurityManager{
 		cacher:       c,
-		MaxFailures:  3,           // 最大失败3次
+		maxFailures:  3,           // 最大失败3次
 		LockDuration: time.Minute, // 锁定1分钟
 	}
 }
+
+// MaxFailures 返回触发锁定的连续失败次数上限。
+func (lsm *LoginSecurityManager) MaxFailures() int { return lsm.maxFailures }
 
 // failCount 读取窗口内的失败次数
 func (lsm *LoginSecurityManager) failCount(ctx context.Context, identifier string) int {
@@ -51,7 +54,7 @@ func (lsm *LoginSecurityManager) failCount(ctx context.Context, identifier strin
 
 // IsLocked 检查该 identifier 是否已达失败上限。缓存不可用时返回 false（放行）。
 func (lsm *LoginSecurityManager) IsLocked(ctx context.Context, identifier string) bool {
-	return lsm.failCount(ctx, identifier) >= lsm.MaxFailures
+	return lsm.failCount(ctx, identifier) >= lsm.maxFailures
 }
 
 // RecordFailedAttempt 记录一次失败并返回累计次数；返回值 >= MaxFailures 即已锁定。
