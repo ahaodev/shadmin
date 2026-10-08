@@ -3,7 +3,6 @@ import { getRoles } from '@/services/roleApi'
 import {
   createUser,
   deleteUser,
-  getUser,
   getUserRoleList,
   getUsers,
   inviteUser,
@@ -52,15 +51,6 @@ export function useUsers(params?: QueryParams) {
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-  })
-}
-
-// Custom hook for fetching single user
-export function useUser(id: string, enabled = true) {
-  return useQuery({
-    queryKey: [USER_QUERY_KEY, id],
-    queryFn: () => getUser(id),
-    enabled: !!id && enabled,
   })
 }
 
@@ -114,15 +104,6 @@ export function useInviteUser() {
     successMessage: '邀请发送成功',
     errorMessage: '邀请用户失败',
   })
-}
-
-// Custom hook for refreshing users data
-export function useRefreshUsers() {
-  const queryClient = useQueryClient()
-
-  return () => {
-    queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
-  }
 }
 
 // Custom hook for bulk status updates
