@@ -48,14 +48,38 @@ Run `go generate ./ent` after any schema change.
 - **Fetch**: call `params.Paginate()` first to get offset/limit; clone query for count before applying them; default sort by `created_at` DESC
 - **Update**: check each pointer field before calling `Set*()`; wrap `ent.IsNotFound` → sentinel error
 - All errors wrapped with `fmt.Errorf("...: %w", err)`
+- Methods that can run inside a `domain.UnitOfWork` must query through `clientFromContext(ctx, r.client)` (not `r.client`), so they join the transaction carried in `ctx`
 
 ## Usecase (`usecase/<resource>_usecase.go`)
 
-- Constructor: `func New<Resource>Usecase(client *ent.Client, repo domain.ResourceRepository, timeout time.Duration) domain.ResourceUseCase`
+- Constructor: `func New<Resource>Usecase(repo domain.ResourceRepository, timeout time.Duration) domain.ResourceUseCase`
+- Dependencies are domain interfaces only — never `*ent.Client`, `gin`, or concrete `internal/` types (see Ports below)
 - Every method: `ctx, cancel := context.WithTimeout(ctx, uc.contextTimeout); defer cancel()`
 - Business validation lives here (status enums, uniqueness checks, cross-entity rules)
 - Set defaults on create requests (e.g., `if req.Status == "" { req.Status = "active" }`)
 - Errors wrapped with `fmt.Errorf("...: %w", err)`
+
+### Ports and transactions
+
+Usecases depend only on interfaces declared in `domain/`. Implementations live in `repository/` or `internal/` and are injected in `bootstrap/usecases.go`.
+
+| Port | Implemented by |
+|------|----------------|
+| `TokenIssuer`, `TokenBlacklist` | `internal/tokenservice`, `internal/auth` |
+| `LoginSecurity`, `UserIdentityCodeStore` | `internal/auth` |
+| `SlideCaptchaManager` | `internal/captcha` |
+| `AuthorizationSource` | `repository` (ent), consumed by `internal/casbin` |
+| `UnitOfWork` | `repository` (ent) |
+
+When several repositories must change atomically, the usecase wraps the work in `UnitOfWork.Do`. The transaction travels in `ctx`, so every repository call inside the callback must use the callback's `txCtx`:
+
+```go
+err := u.uow.Do(ctx, func(txCtx context.Context) error {
+    return u.userRepository.CreateWithRoles(txCtx, user, []string{roleID})
+})
+```
+
+`repository.WithAuthorizationTx` joins a transaction already in `ctx` and advances the authorization generation once.
 
 ## Controller (`api/controller/<resource>_controller.go`)
 
@@ -89,18 +113,22 @@ REST convention:
 
 All system routes use `group.Use(casbinMiddleware.CheckAPIPermission())`.
 
-## Factory (`api/route/factory.go`)
+## Wiring (`bootstrap/usecases.go` → `api/route/factory.go`)
 
-Wire in one method:
+Wiring has two steps, each with one job.
+
+1. **Usecase wiring** — `bootstrap/usecases.go` is the only place where repositories are turned into usecases. Add a field to `bootstrap.Usecases` and construct it in `newUsecases`:
 ```go
-func (f *ControllerFactory) Create<Resource>Controller() *controller.ResourceController {
-    repo := repository.NewResourceRepository(f.db)
-    uc := usecase.NewResourceUsecase(f.db, repo, f.timeout)
-    return &controller.ResourceController{ResourceUseCase: uc}
+Resource: usecase.NewResourceUsecase(repository.NewResourceRepository(db), timeout),
+```
+2. **Controller factory** — `api/route/factory.go` builds controllers from usecases only:
+```go
+func (f *ControllerFactory) CreateResourceController() *controller.ResourceController {
+    return &controller.ResourceController{ResourceUseCase: f.uc.Resource}
 }
 ```
 
-Available factory fields: `f.db` (`*ent.Client`), `f.app` (`*bootstrap.Application` — has `CasManager`, `FileStorage`, `ApiEngine`), `f.timeout` (`time.Duration`).
+The factory must not import `ent` or `repository`. Its fields are `f.uc` (`*bootstrap.Usecases`) and `f.app` (`*bootstrap.Application`, for configuration values such as `f.app.Env.IdentityRedirectURL`).
 
 ## Auth & Middleware
 
