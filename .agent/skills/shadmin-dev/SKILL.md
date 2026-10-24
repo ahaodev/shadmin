@@ -1,212 +1,88 @@
 ---
 name: shadmin-dev
-description: Apply Shadmin feature-development standards (backend Go/Gin/Ent + frontend React/TS). Use when adding/modifying features, CRUD modules, API routes/controllers/usecases/repositories, Ent schemas, frontend pages/routes, React components, TanStack hooks, or any full-stack work in this project. Trigger whenever the user mentions new features, backend changes, frontend changes, database schema changes, permissions, UI pages, tables, forms, or API endpoints — even if they don't explicitly say "feature development."
+description: Shadmin feature-development standards (backend Go/Gin/Ent + frontend React/TS). Use for any new feature, CRUD module, API route/controller/usecase/repository, Ent schema change, permission, frontend page/table/form/hook, or full-stack work in this repo — even if the user doesn't say "feature development".
 ---
 
 # Shadmin Feature Development
 
-Guide full-stack feature development through Shadmin's clean architecture, producing code that compiles, passes lint/tests, and follows established patterns. Most features require both backend and frontend changes — this skill covers the end-to-end workflow.
+Request flow: `Route → [JWT MW → Casbin MW] → Controller → Usecase → Repository → Ent/DB`. Frontend: `Route file → Page → TanStack Query hook → API service → apiClient`.
 
-## Architecture Overview
+Dependencies point one way: each layer imports only the layer beneath it, via interfaces declared in `domain/`.
 
+| Layer | Path | Does | Must not |
+|---|---|---|---|
+| Domain | `domain/` | Entities, DTOs, Repository/UseCase interfaces, sentinel errors, `Resp*` helpers | import anything outward |
+| Schema | `ent/schema/` | DB schema (`go generate ./ent`) | — |
+| Repository | `repository/` | Ent access, ent↔domain conversion | HTTP / permission logic |
+| Usecase | `usecase/` | Business rules, validation, timeout | touch `*ent.Client`, `gin`, or `internal/` concrete types |
+| Controller | `api/controller/` | Parse HTTP, call usecase, map errors→status, Swagger | business logic |
+| Middleware / Route | `api/middleware/`, `api/route/` | JWT, Casbin, route registration | — |
+| Factory | `api/route/factory.go` | Build controllers from `f.uc` / `f.app` | import `ent` or `repository` |
+| Bootstrap | `bootstrap/` | Init, DB, Casbin, seeds, repository→usecase wiring (`usecases.go`) | — |
+
+Frontend: `types/` (DTO types) → `services/` (Axios wrappers, re-exported in `services/index.ts`) → `features/<module>/<resource>/` → `routes/_authenticated/`. Also `stores/auth-store.ts` (Zustand), `constants/permissions.ts`, `hooks/`, `lib/`.
+
+## Workflow
+
+### 1. Clarify (before coding)
+Entities/fields; endpoints (path, method, shapes); permission strings (`system:<resource>:<action>`); pages/tables/forms/dialogs.
+
+### 2. Touched files
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Frontend (React 19 + TypeScript + Vite)                            │
-│  Route File → Page Component → TanStack Query Hook → API Service   │
-│       ↕ Zustand (auth-store) ↕ Permission checks                   │
-├─────────────────────────────────────────────────────────────────────┤
-│  HTTP (Axios apiClient ← Bearer Token injection)                   │
-├─────────────────────────────────────────────────────────────────────┤
-│  Backend (Go + Gin + Ent ORM)                                      │
-│  Route → [JWT MW → Casbin MW] → Controller → Usecase → Repository  │
-│       ↕ Domain (contracts, DTOs, errors) ↕ Ent (DB, migrations)    │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Backend layers** — each has exactly one responsibility:
-
-| Layer | Directory | Responsibility |
-|-------|-----------|---------------|
-| Domain | `domain/` | Entity structs, DTOs, Repository/UseCase interfaces, errors, response helpers |
-| Schema | `ent/schema/` | DB schema → run `go generate ./ent` after changes |
-| Repository | `repository/` | Data access via Ent, domain↔ent conversion, pagination |
-| Usecase | `usecase/` | Business logic, validation, `context.WithTimeout` |
-| Controller | `api/controller/` | HTTP parsing only, Swagger annotations, status code mapping |
-| Route | `api/route/` | Route registration, middleware wiring |
-| Factory | `api/route/factory.go` | DI: usecase → controller construction (no repository) |
-| Bootstrap | `bootstrap/` | App init, DB, Casbin, seeds, repository → usecase wiring (`usecases.go`) |
-
-**Frontend layers:**
-
-| Layer | Directory | Responsibility |
-|-------|-----------|---------------|
-| Types | `frontend/src/types/` | TypeScript interfaces matching backend DTOs |
-| Services | `frontend/src/services/` | Axios API wrappers, date parsing |
-| Features | `frontend/src/features/` | Page components, tables, dialogs, forms, hooks |
-| Routes | `frontend/src/routes/` | TanStack Router file-based routing |
-| Stores | `frontend/src/stores/` | Zustand state (auth, permissions) |
-| Constants | `frontend/src/constants/` | Permission strings, enums |
-
-## Full-Stack Development Workflow
-
-### Step 1: Clarify Scope (before writing code)
-
-State explicitly:
-- What entities/fields are involved
-- API endpoints: path, method, request/response shapes
-- Whether Casbin permission checks are needed
-- Frontend: pages, tables, forms, dialogs
-- Permission strings (e.g., `system:project:add`)
-
-### Step 2: List All Touched Files
-
-Group by layer — this catches missing pieces early:
-
-```
-# Backend (implement in this order)
+# Backend, in order
 domain/<resource>.go
-ent/schema/<resource>.go
+ent/schema/<resource>.go          → go generate ./ent
 repository/<resource>_repository.go
 usecase/<resource>_usecase.go
 api/controller/<resource>_controller.go
-api/route/<resource>_routes.go (or modify system_routes.go)
-api/route/factory.go
+api/route/system_routes.go        (setup<Resource>Management) + call it in protected.go setupSystemRoutes
+bootstrap/usecases.go             (field + construction)
+api/route/factory.go              (Create<Resource>Controller)
+bootstrap/user_init.go            (seed menu/button + API resources, if shipped by default)
 
-# Frontend (implement in this order)
-frontend/src/types/<resource>.ts
-frontend/src/services/<resource>Api.ts
-frontend/src/features/<module>/<resource>/components/*-provider.tsx
-frontend/src/features/<module>/<resource>/hooks/use-<resource>.ts
-frontend/src/features/<module>/<resource>/components/*-columns.tsx
-frontend/src/features/<module>/<resource>/components/*-table.tsx
-frontend/src/features/<module>/<resource>/components/*-form-dialog.tsx
-frontend/src/features/<module>/<resource>/components/*-dialogs.tsx
-frontend/src/features/<module>/<resource>/components/*-primary-buttons.tsx
-frontend/src/features/<module>/<resource>/data/schema.ts
-frontend/src/features/<module>/<resource>/index.tsx
-frontend/src/routes/_authenticated/<module>/<resource>.tsx
-frontend/src/constants/permissions.ts (add new permission keys)
+# Frontend, in order
+types/<resource>.ts
+services/<resource>Api.ts          (+ export in services/index.ts)
+constants/permissions.ts
+features/system/<resources>/{index.tsx, components/, hooks/, data/schema.ts}
+routes/_authenticated/system/<resource>.tsx
 ```
 
-### Step 3: Implement Backend
+### 3. Backend — read `references/backend.md`
+- IDs `xid.New().String()`; update DTOs use pointer fields; list filters embed `domain.QueryParams` and call `Paginate()`.
+- Responses: `domain.RespSuccess(data)` (code 0) / `domain.RespError(err)` (code 1); lists use `domain.NewPagedResult`.
+- Every usecase method: `context.WithTimeout` + `defer cancel()`; errors wrapped `%w`; sentinel errors mapped to status in the controller.
+- Protected system routes: `group.Use(casbinMiddleware.CheckAPIPermission())`.
 
-Follow the layer order strictly — each layer depends on the one above.
+### 4. Frontend — read `references/frontend.md`
+- Read `response.data.data` (Axios `.data` → `domain.Response.Data`); services convert date strings to `Date`.
+- Mutations via `useCrudMutation`; table URL state via `useTableUrlState`; dialogs via a provider; gate UI with `usePermission()`.
 
-**Read `references/backend.md` for complete code templates and patterns.**
+### 5. Permissions
+Two layers, linked by Role → Menu → API resources:
+- **API:** Casbin checks `(userID, path, method)`. On startup `bootstrap.InitApiResources` scans Gin routes into `api_resources` with IDs `METHOD:/api/v1/path` (e.g. `GET:/api/v1/system/department/:id`).
+- **UI:** permission strings on `button` menus, delivered to the frontend by `/api/v1/resources` into `auth-store`. Admins bypass.
 
-Quick reference for key conventions:
-- **IDs**: `xid.New().String()` in Ent schema `DefaultFunc`
-- **Partial updates**: pointer fields in `Update*Request` (`*string`)
-- **Pagination**: embed `domain.QueryParams`, call `qp.Paginate()` (returns `offset, limit`)
-- **Response**: `domain.RespSuccess(data)` (code=0) / `domain.RespError(msg)` (code=1)
-- **Usecase**: every method starts with `context.WithTimeout` + `defer cancel()`
-- **Errors**: sentinel errors in domain, `%w` wrapping, map to HTTP status in controller
-- **Wiring**: repo → usecase in `bootstrap/usecases.go`; factory builds controllers from `f.uc` and `f.app`
-- **Routes**: protected system routes use `casbinMiddleware.CheckAPIPermission()`
+To protect a new feature: register routes (auto-scanned) → add keys to `constants/permissions.ts` → create menu/button entries bound to the API resources (admin UI, or seed in `bootstrap/user_init.go`) and assign to roles. A menu's `path` must equal the route file's URL.
 
-### Step 4: Implement Frontend
+**Authorization writes.** Ent user/role/menu/API-resource relations are the source of truth; each process builds an in-memory Casbin snapshot from them. Any write that changes those edges must commit together with the `authz_states.generation` bump — use `repository.WithAuthorizationTx` (nested calls bump once). Never mutate the live Enforcer or use Casbin AutoSave. A stale snapshot fails closed (HTTP 503). Recovery polling: `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` (default 3600). Keep existing `g/p` semantics (active users/roles, public resources excluded, `admin` wildcard) unless a reviewed change says otherwise.
 
-Follow the order: types → service → feature module → route file.
-
-**Read `references/frontend.md` for complete code templates and patterns.**
-
-Quick reference for key conventions:
-- **API response**: `response.data.data` (outer `.data` = Axios, inner `.data` = `domain.Response.Data`)
-- **Date parsing**: API service converts string dates to `Date` objects
-- **Query params**: `URLSearchParams` construction, snake_case to match backend
-- **Table state**: `useTableUrlState` hook syncs pagination/filters with URL
-- **Dialog state**: string-based via context provider (`open === 'add' | 'edit' | 'delete'`)
-- **Permissions**: `usePermission()` hook, `PERMISSIONS.SYSTEM.RESOURCE.ACTION` constants
-- **Toast**: `sonner` for success/error notifications
-- **Forms**: React Hook Form + Zod, single hook handles create/edit
-- **Route file**: Zod schema validates URL search params with `.catch()` defaults
-
-### Step 5: Wire Permissions
-
-Shadmin uses a **dual-layer permission model**:
-
-```
-Backend (API access):    Casbin checks (userID, path, method)
-Frontend (UI visibility): Permission strings like "system:project:add"
-```
-
-These are linked through the **Role → Menu → API Resources** binding:
-1. Backend auto-scans routes into API resources on startup (`bootstrap.InitApiResources`)
-2. API resource IDs are deterministic: `METHOD:/api/v1/path` (e.g., `GET:/api/v1/system/project`)
-3. Admin assigns menus to roles, each menu binds to API resources
-4. Frontend fetches permissions from `/api/v1/resources` and stores in Zustand
-
-**To add permissions for a new feature:**
-1. Backend: routes are scanned into API resources by `bootstrap.InitApiResources`; route inventory changes advance the authorization generation.
-2. Frontend: add permission constants in `frontend/src/constants/permissions.ts`.
-3. Admin panel: create menu entries, bind API resources, assign to roles.
-4. For any new write path that changes users, roles, menus, API resources, or their authorization edges, use the repository authorization transaction helper so the DB change and `authz_state.generation` update commit together. Do not mutate the live Casbin Enforcer directly.
-
-**Casbin snapshot lifecycle:** Ent authorization relations are the source of truth. Each process builds a complete in-memory Enforcer snapshot and publishes it atomically; a committed `authz_states.generation` update triggers local synchronization, while `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` provides low-frequency recovery polling (default one hour) for missed triggers, restarts, and cross-instance changes. Snapshots are not persisted through Casbin AutoSave. If a generation change is detected or cannot be checked, protected Casbin requests fail closed until a fresh snapshot is published. Keep the existing `g/p` semantics (active users/roles, public resources excluded, `admin` wildcard) unless a separately reviewed change intentionally changes them.
-
-### Step 6: Generate & Verify
-
+### 6. Verify
 ```bash
-# Backend
-go generate ./ent           # If schema changed
-go fmt ./... && go vet ./... # Format + static analysis
-go test ./...                # Run tests
-swag init -g main.go --output ./docs  # If Swagger annotations changed
-
-# Frontend (from frontend/)
-pnpm lint                   # ESLint
-pnpm format:check           # Prettier
-pnpm build                  # Recommended if routes/build config changed
+go generate ./ent            # schema changed
+go generate ./...            # Swagger annotations changed (needs swag CLI)
+go fmt ./... && go vet ./... && go test ./...
+cd frontend && pnpm lint && pnpm format:check && pnpm build   # build if routes/config changed
 ```
-
-## Key Response Format
-
-```go
-// Success (HTTP 200/201)
-type Response struct {
-    Code int         `json:"code"`    // 0 = success
-    Msg  string      `json:"msg"`     // "OK"
-    Data interface{} `json:"data"`    // payload
-}
-
-// Error (HTTP 400/404/500)
-// Code = 1, Msg = error description, Data = nil
-
-// Paginated response (in Data field)
-type PagedResult[T any] struct {
-    List       []T `json:"list"`
-    Total      int `json:"total"`
-    Page       int `json:"page"`
-    PageSize   int `json:"page_size"`
-    TotalPages int `json:"total_pages"`
-}
-```
+Full command list: `.agent/CONTRIBUTING.md`.
 
 ## Boundaries
+- No business logic in controllers; no HTTP/permission logic in repositories.
+- No bypassing Casbin on protected APIs; no new globals (use `f.uc` / `f.app`).
+- No inline API calls in React — go through `services/`. No direct localStorage for auth — use `useAuthStore`.
+- Don't edit `components/ui/` (shadcn). Don't hardcode menus — they come from `/api/v1/resources`.
+- No unnecessary dependencies; touch only files relevant to the feature.
 
-Things to never do:
-- **No business logic in controllers** — controllers parse HTTP, call usecase, return response
-- **No HTTP/permission logic in repositories** — repositories do data access only
-- **No bypassing Casbin** on protected APIs
-- **No new globals** — use `bootstrap.Usecases` (`f.uc`) and `f.app`
-- **No inline API calls in React** — all API access goes through `services/` wrappers
-- **No direct localStorage for auth** — use `useAuthStore`
-- **No editing `components/ui/`** — shadcn-generated primitives
-- **No hardcoded menus** — menus come from backend `/api/v1/resources`
-- **No unnecessary dependencies** — frontend or backend
-- **Minimal changes** — only touch files relevant to the feature
-
-## Reference Files
-
-For detailed code templates and implementation patterns, read these as needed:
-
-- **`references/backend.md`** — Complete Go/Gin/Ent code templates for domain, schema, repository, usecase, controller, routes, and factory. Read when implementing backend features.
-- **`references/frontend.md`** — Complete React/TypeScript code templates for types, API services, feature modules, hooks, tables, forms, dialogs, routes, and permissions. Read when implementing frontend features.
-
-## Further Documentation
-
-The `docs/getting-started/` directory contains comprehensive guides:
-- `quickstart.zh.md` / `quickstart.en.md` — Quick start guide
-- `architecture.zh.md` / `architecture.en.md` — Architecture deep-dive
-- `development.zh.md` / `development.en.md` — Full CRUD walkthrough with example
-- `deployment.zh.md` / `deployment.en.md` — Production deployment guide
+## References
+- `references/backend.md`, `references/frontend.md` — patterns and conventions (read the one you need).
+- `docs/getting-started/{architecture,development}.{en,zh}.md` — walkthrough and a full CRUD example.
