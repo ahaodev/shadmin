@@ -41,9 +41,9 @@ type DownloadRequest struct {
 }
 
 type FileRepository interface {
-	Upload(c context.Context, req *UploadRequest) (*UploadResult, error)
-	Download(c context.Context, req *DownloadRequest) (io.ReadCloser, error)
-	Delete(c context.Context, bucket, objectName string) error
-	List(c context.Context, bucket, prefix string) ([]FileInfo, error)
-	GetObjectStat(c context.Context, bucket, objectName string) (*FileInfo, error)
+	Upload(ctx context.Context, req *UploadRequest) (*UploadResult, error)
+	Download(ctx context.Context, req *DownloadRequest) (io.ReadCloser, error)
+	Delete(ctx context.Context, bucket, objectName string) error
+	List(ctx context.Context, bucket, prefix string) ([]FileInfo, error)
+	GetObjectStat(ctx context.Context, bucket, objectName string) (*FileInfo, error)
 }

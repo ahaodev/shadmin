@@ -79,7 +79,7 @@ func (dr *entDictRepository) convertEntDictItemToDomain(entItem *ent.DictItem) *
 
 func (dr *entDictRepository) CreateType(ctx context.Context, dictType *domain.DictType) error {
 	// 前置查询提供明确错误，唯一索引负责并发场景下的最终兜底。
-	exists, err := dr.client.DictType.Query().
+	exists, err := clientFromContext(ctx, dr.client).DictType.Query().
 		Where(dicttype.Code(dictType.Code)).
 		Exist(ctx)
 	if err != nil {
@@ -93,7 +93,7 @@ func (dr *entDictRepository) CreateType(ctx context.Context, dictType *domain.Di
 	dictType.CreatedAt = now
 	dictType.UpdatedAt = now
 
-	created, err := dr.client.DictType.
+	created, err := clientFromContext(ctx, dr.client).DictType.
 		Create().
 		SetCode(dictType.Code).
 		SetName(dictType.Name).
@@ -114,7 +114,7 @@ func (dr *entDictRepository) CreateType(ctx context.Context, dictType *domain.Di
 }
 
 func (dr *entDictRepository) GetTypeByID(ctx context.Context, id string) (*domain.DictType, error) {
-	entType, err := dr.client.DictType.
+	entType, err := clientFromContext(ctx, dr.client).DictType.
 		Query().
 		Where(dicttype.ID(id)).
 		First(ctx)
@@ -130,7 +130,7 @@ func (dr *entDictRepository) GetTypeByID(ctx context.Context, id string) (*domai
 }
 
 func (dr *entDictRepository) GetTypeByCode(ctx context.Context, code string) (*domain.DictType, error) {
-	entType, err := dr.client.DictType.
+	entType, err := clientFromContext(ctx, dr.client).DictType.
 		Query().
 		Where(dicttype.Code(code)).
 		First(ctx)
@@ -146,7 +146,7 @@ func (dr *entDictRepository) GetTypeByCode(ctx context.Context, code string) (*d
 }
 
 func (dr *entDictRepository) FetchTypes(ctx context.Context, params domain.DictTypeQueryParams) (*domain.PagedResult[*domain.DictType], error) {
-	query := dr.client.DictType.Query()
+	query := clientFromContext(ctx, dr.client).DictType.Query()
 
 	// 应用过滤条件
 	if params.Code != "" {
@@ -195,7 +195,7 @@ func (dr *entDictRepository) FetchTypes(ctx context.Context, params domain.DictT
 
 func (dr *entDictRepository) UpdateType(ctx context.Context, id string, updates domain.UpdateDictTypeRequest) error {
 	// 检查记录是否存在
-	exists, err := dr.client.DictType.Query().Where(dicttype.ID(id)).Exist(ctx)
+	exists, err := clientFromContext(ctx, dr.client).DictType.Query().Where(dicttype.ID(id)).Exist(ctx)
 	if err != nil {
 		return err
 	}
@@ -203,11 +203,11 @@ func (dr *entDictRepository) UpdateType(ctx context.Context, id string, updates 
 		return domain.ErrDictTypeNotFound
 	}
 
-	updateQuery := dr.client.DictType.UpdateOneID(id)
+	updateQuery := clientFromContext(ctx, dr.client).DictType.UpdateOneID(id)
 
 	if updates.Code != nil {
 		// 前置查询提供明确错误，Save 时的唯一索引处理并发冲突。
-		if exists, err := dr.client.DictType.Query().
+		if exists, err := clientFromContext(ctx, dr.client).DictType.Query().
 			Where(dicttype.And(dicttype.Code(*updates.Code), dicttype.Not(dicttype.ID(id)))).
 			Exist(ctx); err != nil {
 			return err
@@ -319,7 +319,7 @@ func (dr *entDictRepository) CreateItem(ctx context.Context, dictItem *domain.Di
 }
 
 func (dr *entDictRepository) GetItemByID(ctx context.Context, id string) (*domain.DictItem, error) {
-	entItem, err := dr.client.DictItem.
+	entItem, err := clientFromContext(ctx, dr.client).DictItem.
 		Query().
 		Where(dictitem.ID(id)).
 		First(ctx)
@@ -335,14 +335,14 @@ func (dr *entDictRepository) GetItemByID(ctx context.Context, id string) (*domai
 }
 
 func (dr *entDictRepository) FetchItems(ctx context.Context, params domain.DictItemQueryParams) (*domain.PagedResult[*domain.DictItem], error) {
-	query := dr.client.DictItem.Query()
+	query := clientFromContext(ctx, dr.client).DictItem.Query()
 
 	// 应用过滤条件
 	if params.TypeID != "" {
 		query = query.Where(dictitem.TypeID(params.TypeID))
 	} else if params.TypeCode != "" {
 		// 通过TypeCode查询，需要先获取TypeID
-		dictType, err := dr.client.DictType.Query().
+		dictType, err := clientFromContext(ctx, dr.client).DictType.Query().
 			Where(dicttype.Code(params.TypeCode)).
 			First(ctx)
 		if err != nil {
@@ -472,7 +472,7 @@ func (dr *entDictRepository) UpdateItem(ctx context.Context, id string, updates 
 }
 
 func (dr *entDictRepository) DeleteItem(ctx context.Context, id string) error {
-	err := dr.client.DictItem.DeleteOneID(id).Exec(ctx)
+	err := clientFromContext(ctx, dr.client).DictItem.DeleteOneID(id).Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.ErrDictItemNotFound
@@ -486,7 +486,7 @@ func (dr *entDictRepository) DeleteItem(ctx context.Context, id string) error {
 
 func (dr *entDictRepository) GetItemsByTypeCode(ctx context.Context, typeCode string, status string) ([]*domain.DictItem, error) {
 	// 先获取字典类型
-	dictType, err := dr.client.DictType.Query().
+	dictType, err := clientFromContext(ctx, dr.client).DictType.Query().
 		Where(dicttype.Code(typeCode)).
 		First(ctx)
 	if err != nil {
@@ -496,7 +496,7 @@ func (dr *entDictRepository) GetItemsByTypeCode(ctx context.Context, typeCode st
 		return nil, err
 	}
 
-	query := dr.client.DictItem.Query().Where(dictitem.TypeID(dictType.ID))
+	query := clientFromContext(ctx, dr.client).DictItem.Query().Where(dictitem.TypeID(dictType.ID))
 
 	// 应用状态过滤（默认只返回active状态）
 	if status == "" {

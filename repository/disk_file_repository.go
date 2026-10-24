@@ -36,17 +36,17 @@ func (dfr *diskFileRepository) validatePath(targetPath string) error {
 	return nil
 }
 
-func NewDiskFileRepository(basePath string) domain.FileRepository {
+func NewDiskFileRepository(basePath string) (domain.FileRepository, error) {
 	// 确保基础路径存在
 	if err := os.MkdirAll(basePath, 0755); err != nil {
-		panic(fmt.Sprintf("Failed to create base path %s: %v", basePath, err))
+		return nil, fmt.Errorf("create storage base path %s: %w", basePath, err)
 	}
 	return &diskFileRepository{
 		basePath: basePath,
-	}
+	}, nil
 }
 
-func (dfr *diskFileRepository) Upload(c context.Context, req *domain.UploadRequest) (*domain.UploadResult, error) {
+func (dfr *diskFileRepository) Upload(ctx context.Context, req *domain.UploadRequest) (*domain.UploadResult, error) {
 	// 构建文件路径
 	bucketPath := filepath.Join(dfr.basePath, req.Bucket)
 	if err := os.MkdirAll(bucketPath, 0755); err != nil {
@@ -111,7 +111,7 @@ func (dfr *diskFileRepository) Upload(c context.Context, req *domain.UploadReque
 	}, nil
 }
 
-func (dfr *diskFileRepository) Download(c context.Context, req *domain.DownloadRequest) (io.ReadCloser, error) {
+func (dfr *diskFileRepository) Download(ctx context.Context, req *domain.DownloadRequest) (io.ReadCloser, error) {
 	filePath := filepath.Join(dfr.basePath, req.Bucket, req.ObjectName)
 
 	// 验证路径安全性，防止路径遍历攻击
@@ -130,7 +130,7 @@ func (dfr *diskFileRepository) Download(c context.Context, req *domain.DownloadR
 	return file, nil
 }
 
-func (dfr *diskFileRepository) Delete(c context.Context, bucket, objectName string) error {
+func (dfr *diskFileRepository) Delete(ctx context.Context, bucket, objectName string) error {
 	filePath := filepath.Join(dfr.basePath, bucket, objectName)
 
 	// 验证路径安全性，防止路径遍历攻击
@@ -151,7 +151,7 @@ func (dfr *diskFileRepository) Delete(c context.Context, bucket, objectName stri
 	return nil
 }
 
-func (dfr *diskFileRepository) List(c context.Context, bucket, prefix string) ([]domain.FileInfo, error) {
+func (dfr *diskFileRepository) List(ctx context.Context, bucket, prefix string) ([]domain.FileInfo, error) {
 	bucketPath := filepath.Join(dfr.basePath, bucket)
 
 	// 验证路径安全性，防止路径遍历攻击
@@ -233,7 +233,7 @@ func (dfr *diskFileRepository) List(c context.Context, bucket, prefix string) ([
 	return files, nil
 }
 
-func (dfr *diskFileRepository) GetObjectStat(c context.Context, bucket, objectName string) (*domain.FileInfo, error) {
+func (dfr *diskFileRepository) GetObjectStat(ctx context.Context, bucket, objectName string) (*domain.FileInfo, error) {
 	filePath := filepath.Join(dfr.basePath, bucket, objectName)
 
 	// 验证路径安全性，防止路径遍历攻击

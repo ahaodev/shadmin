@@ -12,6 +12,7 @@ import (
 	"shadmin/internal/auth"
 	"shadmin/internal/cacher"
 	"shadmin/internal/constants"
+	"shadmin/internal/tokenservice"
 	"shadmin/internal/tokenutil"
 
 	"github.com/gin-gonic/gin"
@@ -28,7 +29,8 @@ func newBlacklist(t *testing.T) domain.TokenBlacklist {
 func newProbeRouter(secret string, blacklist domain.TokenBlacklist) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.GET("/probe", JwtAuthMiddleware(secret, blacklist), func(c *gin.Context) {
+	tokens := tokenservice.NewTokenService(tokenservice.Config{AccessSecret: secret, RefreshSecret: secret, AccessExpiry: 60, RefreshExpiry: 60})
+	r.GET("/probe", JwtAuthMiddleware(tokens, blacklist), func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"user_id": c.GetString(constants.UserID)})
 	})
 	return r

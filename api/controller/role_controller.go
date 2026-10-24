@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"net/http"
 	"shadmin/domain"
 
@@ -22,20 +21,6 @@ func (rc *RoleController) getRoleIDOrBadRequest(c *gin.Context) (string, bool) {
 	return roleID, true
 }
 
-// writeRoleMutationError 把 role 领域错误映射为 HTTP 状态码。
-func (rc *RoleController) writeRoleMutationError(c *gin.Context, err error, forbiddenErr error) {
-	switch {
-	case forbiddenErr != nil && errors.Is(err, forbiddenErr):
-		c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
-	case errors.Is(err, domain.ErrRoleNotFound):
-		c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-	case errors.Is(err, domain.ErrRoleNameExists), errors.Is(err, domain.ErrRoleInUse):
-		c.JSON(http.StatusConflict, domain.RespError(err.Error()))
-	default:
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
-	}
-}
-
 // GetRoles 获取所有角色
 //
 //	@Summary		Get all roles
@@ -51,7 +36,7 @@ func (rc *RoleController) GetRoles(c *gin.Context) {
 	// 获取所有角色
 	roles, err := rc.RoleUseCase.Fetch(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -86,7 +71,7 @@ func (rc *RoleController) CreateRole(c *gin.Context) {
 	// Create the role
 	err := rc.RoleUseCase.Create(c.Request.Context(), &request)
 	if err != nil {
-		rc.writeRoleMutationError(c, err, nil)
+		RespondError(c, err)
 		return
 	}
 
@@ -103,11 +88,7 @@ func (rc *RoleController) getRoleByID(c *gin.Context) *domain.Role {
 
 	role, err := rc.RoleUseCase.GetByID(c.Request.Context(), roleID)
 	if err != nil {
-		if errors.Is(err, domain.ErrRoleNotFound) {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return nil
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return nil
 	}
 
@@ -165,7 +146,7 @@ func (rc *RoleController) UpdateRole(c *gin.Context) {
 
 	role, err := rc.RoleUseCase.Update(c.Request.Context(), roleID, &request)
 	if err != nil {
-		rc.writeRoleMutationError(c, err, domain.ErrCannotRenameAdminRole)
+		RespondError(c, err)
 		return
 	}
 
@@ -193,7 +174,7 @@ func (rc *RoleController) DeleteRole(c *gin.Context) {
 
 	err := rc.RoleUseCase.Delete(c.Request.Context(), roleID)
 	if err != nil {
-		rc.writeRoleMutationError(c, err, domain.ErrCannotDeleteAdminRole)
+		RespondError(c, err)
 		return
 	}
 

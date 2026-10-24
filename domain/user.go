@@ -7,6 +7,8 @@ import (
 )
 
 var (
+	ErrUserNotFound      = errors.New("用户不存在")
+	ErrUserExists        = errors.New("用户名、邮箱或手机号已被使用")
 	ErrInvalidPassword   = errors.New("invalid password")
 	ErrCannotDeleteSelf  = errors.New("不能删除自己")
 	ErrCannotDeleteAdmin = errors.New("不能删除管理员账户")
@@ -83,27 +85,27 @@ type UserQueryFilter struct {
 }
 
 type UserRepository interface {
-	Create(c context.Context, user *User) error
-	CreateWithRoles(c context.Context, user *User, roleIDs []string) error
-	GetByID(c context.Context, id string) (*User, error)
-	GetByIdentifier(c context.Context, identifier string) (*User, error)
-	Query(c context.Context, filter UserQueryFilter) (*PagedResult[*User], error)
-	Update(c context.Context, user *User) error
-	UpdateWithAuthorization(c context.Context, user *User) error
-	UpdateWithRoles(c context.Context, user *User, roleIDs []string) error
-	UpdateIdentityProfile(c context.Context, userID, nickname, avatar string) error
-	Delete(c context.Context, id string) error
-	GetStatusByID(c context.Context, id string) (string, error)
-	GetRoleIDs(c context.Context, id string) ([]string, error)
+	Create(ctx context.Context, user *User) error
+	CreateWithRoles(ctx context.Context, user *User, roleIDs []string) error
+	GetByID(ctx context.Context, id string) (*User, error)
+	GetByIdentifier(ctx context.Context, identifier string) (*User, error)
+	Query(ctx context.Context, filter UserQueryFilter) (*PagedResult[*User], error)
+	Update(ctx context.Context, user *User) error
+	UpdateWithAuthorization(ctx context.Context, user *User) error
+	UpdateWithRoles(ctx context.Context, user *User, roleIDs []string) error
+	UpdateIdentityProfile(ctx context.Context, userID, nickname, avatar string) error
+	Delete(ctx context.Context, id string) error
+	GetStatusByID(ctx context.Context, id string) (string, error)
+	GetRoleIDs(ctx context.Context, id string) ([]string, error)
 }
 
 type UserUseCase interface {
-	CreateUser(c context.Context, request *CreateUserRequest) (*User, error)
-	GetUserByID(c context.Context, id string) (*User, error)
-	ListUsers(c context.Context, filter UserQueryFilter) (*PagedResult[*User], error)
-	UpdateUserProfile(c context.Context, userID string, updates ProfileUpdate) error
-	UpdateUserPassword(c context.Context, userID string, passwordUpdate PasswordUpdate) error
-	UpdateUserPartial(c context.Context, userID string, updates UserUpdateRequest) error
-	DeleteUser(c context.Context, id string, currentUserID string) error
-	GetUserRoles(c context.Context, userID string) ([]string, error)
+	CreateUser(ctx context.Context, request *CreateUserRequest) (*User, error)
+	GetUserByID(ctx context.Context, id string) (*User, error)
+	ListUsers(ctx context.Context, filter UserQueryFilter) (*PagedResult[*User], error)
+	UpdateUserProfile(ctx context.Context, userID string, updates ProfileUpdate) error
+	UpdateUserPassword(ctx context.Context, userID string, passwordUpdate PasswordUpdate) error
+	UpdateUserPartial(ctx context.Context, userID string, updates UserUpdateRequest) error
+	DeleteUser(ctx context.Context, id string, currentUserID string) error
+	GetUserRoles(ctx context.Context, userID string) ([]string, error)
 }

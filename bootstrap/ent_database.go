@@ -16,7 +16,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func NewEntDatabase(env *conf.Env) *ent.Client {
+func NewEntDatabase(env *conf.Env) (*ent.Client, error) {
 	var client *ent.Client
 	var err error
 
@@ -37,11 +37,10 @@ func NewEntDatabase(env *conf.Env) *ent.Client {
 	case "sqlite", "sqlite3":
 		client, err = connectSQLite()
 	default:
-		log.Fatalf("❌ Unsupported database type: %s. Supported types: sqlite, postgres, mysql", dbType)
+		return nil, fmt.Errorf("unsupported database type %q (supported: sqlite, postgres, mysql)", dbType)
 	}
-
 	if err != nil {
-		log.Fatalf("❌ Failed to connect to database: %v", err)
+		return nil, fmt.Errorf("connect to database: %w", err)
 	}
 
 	// Auto migrate schema
@@ -51,15 +50,17 @@ func NewEntDatabase(env *conf.Env) *ent.Client {
 		migrate.WithDropIndex(true),
 		migrate.WithDropColumn(true),
 	); err != nil {
-		log.Fatalf("❌ Failed to create schema resources: %v", err)
+		_ = client.Close()
+		return nil, fmt.Errorf("create schema resources: %w", err)
 	}
 	if err := repository.EnsureAuthorizationState(ctx, client); err != nil {
-		log.Fatalf("❌ Failed to initialize authorization state: %v", err)
+		_ = client.Close()
+		return nil, fmt.Errorf("initialize authorization state: %w", err)
 	}
 
 	log.Infof("✅ Database schema migration completed")
 	log.Infof("✅ Connected to %s database successfully with Ent", strings.ToUpper(dbType))
-	return client
+	return client, nil
 }
 
 func connectSQLite() (*ent.Client, error) {
@@ -155,9 +156,9 @@ func CloseEntConnection(client *ent.Client) {
 		return
 	}
 
-	err := client.Close()
-	if err != nil {
-		log.Fatalf("Failed to close database connection: %v", err)
+	if err := client.Close(); err != nil {
+		log.Errorf("Failed to close database connection: %v", err)
+		return
 	}
 
 	log.Info("Database connection closed.")

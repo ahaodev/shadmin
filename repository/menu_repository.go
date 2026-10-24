@@ -50,7 +50,7 @@ func entMenuToDomain(m *ent.Menu) *domain.Menu {
 // GetMenuTree retrieves menu tree structure
 func (mr *entMenuRepository) GetMenuTree(ctx context.Context) ([]domain.MenuTreeNode, error) {
 	// Query all active menus, ordered by sequence, include API resources
-	menus, err := mr.client.Menu.
+	menus, err := clientFromContext(ctx, mr.client).Menu.
 		Query().
 		Where(menu.Status(domain.MenuStatusActive)).
 		WithAPIResources().
@@ -92,9 +92,9 @@ func (mr *entMenuRepository) GetMenuTree(ctx context.Context) ([]domain.MenuTree
 	), nil
 }
 
-// GetMenus retrieves paginated menus with filtering
+// GetMenus 返回匹配的全部菜单（菜单是有限集合，不分页），响应仍使用 PagedResult 以保持契约。
 func (mr *entMenuRepository) GetMenus(ctx context.Context, params domain.MenuQueryParams) (*domain.PagedResult[domain.Menu], error) {
-	query := mr.client.Menu.Query()
+	query := clientFromContext(ctx, mr.client).Menu.Query()
 
 	// keyword：模糊匹配 name / path
 	kw := strings.TrimSpace(params.Keyword)
@@ -105,19 +105,10 @@ func (mr *entMenuRepository) GetMenus(ctx context.Context, params domain.MenuQue
 		))
 	}
 
-	// Get total count
-	total, err := query.Clone().Count(ctx)
-	if err != nil {
-		return nil, err
-	}
-	// 注意:这里不需要limit限制,获取有限的完整菜单
-	offset, _ := params.Paginate()
 	menus, err := query.
 		WithAPIResources().
 		Order(menu.BySequence(), menu.ByCreatedAt()).
-		Offset(offset).
 		All(ctx)
-
 	if err != nil {
 		return nil, err
 	}
@@ -128,18 +119,20 @@ func (mr *entMenuRepository) GetMenus(ctx context.Context, params domain.MenuQue
 		result = append(result, *entMenuToDomain(m))
 	}
 
-	return domain.NewPagedResult(result, total, params.Page, params.PageSize), nil
+	return domain.NewPagedResult(result, len(result), 1, max(len(result), 1)), nil
 }
 
 // GetMenuByID retrieves a menu by its ID
 func (mr *entMenuRepository) GetMenuByID(ctx context.Context, id string) (*domain.Menu, error) {
-	m, err := mr.client.Menu.
+	m, err := clientFromContext(ctx, mr.client).Menu.
 		Query().
 		Where(menu.ID(id)).
 		WithAPIResources().
 		First(ctx)
-
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrMenuNotFound
+		}
 		return nil, err
 	}
 
@@ -152,7 +145,7 @@ func (mr *entMenuRepository) GetMenuPermissionsByIDs(ctx context.Context, ids []
 		return nil, nil
 	}
 
-	menus, err := mr.client.Menu.
+	menus, err := clientFromContext(ctx, mr.client).Menu.
 		Query().
 		Where(menu.IDIn(ids...)).
 		Select(menu.FieldID, menu.FieldType, menu.FieldPermissions).
@@ -174,104 +167,85 @@ func (mr *entMenuRepository) GetMenuPermissionsByIDs(ctx context.Context, ids []
 
 // CreateMenu creates a new menu
 func (mr *entMenuRepository) CreateMenu(ctx context.Context, req *domain.CreateMenuRequest) (*domain.Menu, error) {
-	tx, err := mr.client.Tx(ctx)
+	var createdID string
+	err := WithAuthorizationTx(ctx, mr.client, func(txCtx context.Context, tx *ent.Tx) error {
+		createQuery := tx.Menu.
+			Create().
+			SetName(req.Name).
+			SetSequence(req.Sequence).
+			SetType(req.Type).
+			SetNillablePath(req.Path).
+			SetIcon(req.Icon).
+			SetNillableComponent(req.Component).
+			SetNillableRouteName(req.RouteName).
+			SetNillableQuery(req.Query).
+			SetIsFrame(req.IsFrame).
+			SetVisible(req.Visible).
+			SetNillablePermissions(req.Permissions).
+			SetStatus(req.Status).
+			SetNillableParentID(req.ParentID)
+
+		// Handle API resource associations
+		if len(req.ApiResources) > 0 {
+			createQuery = createQuery.AddAPIResourceIDs(req.ApiResources...)
+		}
+
+		created, err := createQuery.Save(txCtx)
+		if err != nil {
+			return err
+		}
+		createdID = created.ID
+		return nil
+	})
 	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-	if err := BumpAuthorizationGeneration(ctx, tx); err != nil {
-		return nil, err
-	}
-
-	createQuery := tx.Menu.
-		Create().
-		SetName(req.Name).
-		SetSequence(req.Sequence).
-		SetType(req.Type).
-		SetNillablePath(req.Path).
-		SetIcon(req.Icon).
-		SetNillableComponent(req.Component).
-		SetNillableRouteName(req.RouteName).
-		SetNillableQuery(req.Query).
-		SetIsFrame(req.IsFrame).
-		SetVisible(req.Visible).
-		SetNillablePermissions(req.Permissions).
-		SetStatus(req.Status).
-		SetNillableParentID(req.ParentID)
-
-	// Handle API resource associations
-	if len(req.ApiResources) > 0 {
-		createQuery = createQuery.AddAPIResourceIDs(req.ApiResources...)
-	}
-
-	created, err := createQuery.Save(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
 	// Fetch created menu with API resources
-	return mr.GetMenuByID(ctx, created.ID)
+	return mr.GetMenuByID(ctx, createdID)
 }
 
 // UpdateMenu updates an existing menu
 func (mr *entMenuRepository) UpdateMenu(ctx context.Context, id string, req *domain.UpdateMenuRequest) (*domain.Menu, error) {
-	tx, err := mr.client.Tx(ctx)
+	err := WithAuthorizationTx(ctx, mr.client, func(txCtx context.Context, tx *ent.Tx) error {
+		updateQuery := tx.Menu.
+			UpdateOneID(id).
+			SetName(req.Name).
+			SetSequence(req.Sequence).
+			SetType(req.Type).
+			SetNillablePath(req.Path).
+			SetIcon(req.Icon).
+			SetNillableComponent(req.Component).
+			SetNillableRouteName(req.RouteName).
+			SetNillableQuery(req.Query).
+			SetIsFrame(req.IsFrame).
+			SetVisible(req.Visible).
+			SetNillablePermissions(req.Permissions).
+			SetStatus(req.Status).
+			SetNillableParentID(req.ParentID).
+			// 先清空再按请求重建 API 资源关联；请求为空即清除全部关联。
+			ClearAPIResources()
+		if len(req.ApiResources) > 0 {
+			updateQuery = updateQuery.AddAPIResourceIDs(req.ApiResources...)
+		}
+
+		_, err := updateQuery.Save(txCtx)
+		return err
+	})
 	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-	if err := BumpAuthorizationGeneration(ctx, tx); err != nil {
-		return nil, err
-	}
-
-	updateQuery := tx.Menu.
-		UpdateOneID(id).
-		SetName(req.Name).
-		SetSequence(req.Sequence).
-		SetType(req.Type).
-		SetNillablePath(req.Path).
-		SetIcon(req.Icon).
-		SetNillableComponent(req.Component).
-		SetNillableRouteName(req.RouteName).
-		SetNillableQuery(req.Query).
-		SetIsFrame(req.IsFrame).
-		SetVisible(req.Visible).
-		SetNillablePermissions(req.Permissions).
-		SetStatus(req.Status).
-		SetNillableParentID(req.ParentID)
-
-	// Handle API resource associations
-	if len(req.ApiResources) > 0 {
-		// Clear existing API resource associations
-		updateQuery = updateQuery.ClearAPIResources()
-
-		// Add new API resource associations
-		updateQuery = updateQuery.AddAPIResourceIDs(req.ApiResources...)
-	} else {
-		// If no API resources provided, clear all associations
-		updateQuery = updateQuery.ClearAPIResources()
-	}
-
-	updated, err := updateQuery.Save(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrMenuNotFound
+		}
 		return nil, err
 	}
 
 	// Fetch updated menu with API resources
-	return mr.GetMenuByID(ctx, updated.ID)
+	return mr.GetMenuByID(ctx, id)
 }
 
 // GetChildrenMenus retrieves all direct children of a menu
 func (mr *entMenuRepository) GetChildrenMenus(ctx context.Context, parentID string) ([]*domain.Menu, error) {
-	menus, err := mr.client.Menu.
+	menus, err := clientFromContext(ctx, mr.client).Menu.
 		Query().
 		Where(menu.ParentID(parentID)).
 		Order(menu.BySequence()).
@@ -297,22 +271,9 @@ func (mr *entMenuRepository) DeleteMenu(ctx context.Context, id string) error {
 }
 
 func (mr *entMenuRepository) DeleteMenuTree(ctx context.Context, id string) error {
-	tx, err := mr.client.Tx(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin menu deletion transaction: %w", err)
-	}
-	defer tx.Rollback()
-	if err := BumpAuthorizationGeneration(ctx, tx); err != nil {
-		return err
-	}
-
-	if err := deleteMenuTree(ctx, tx.Client(), id); err != nil {
-		return err
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit menu deletion transaction: %w", err)
-	}
-	return nil
+	return WithAuthorizationTx(ctx, mr.client, func(txCtx context.Context, tx *ent.Tx) error {
+		return deleteMenuTree(txCtx, tx.Client(), id)
+	})
 }
 
 func deleteMenuTree(ctx context.Context, client *ent.Client, id string) error {

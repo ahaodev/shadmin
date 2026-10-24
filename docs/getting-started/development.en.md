@@ -514,16 +514,16 @@ type ProjectController struct {
 func (pc *ProjectController) List(c *gin.Context) {
 	var params domain.ProjectQueryParams
 
-	filter.QueryParams = BindQueryParams(c)
-	
+	params.QueryParams = BindQueryParams(c)
+
 	params.Name = c.Query("name")
 	params.Code = c.Query("code")
 	params.Status = c.Query("status")
 	params.Search = c.Query("search")
 
-	result, err := pc.ProjectUseCase.List(c, params)
+	result, err := pc.ProjectUseCase.List(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -543,13 +543,9 @@ func (pc *ProjectController) List(c *gin.Context) {
 func (pc *ProjectController) GetByID(c *gin.Context) {
 	id := c.Param("id")
 
-	result, err := pc.ProjectUseCase.GetByID(c, id)
+	result, err := pc.ProjectUseCase.GetByID(c.Request.Context(), id)
 	if err != nil {
-		if err == domain.ErrProjectNotFound {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -569,18 +565,13 @@ func (pc *ProjectController) GetByID(c *gin.Context) {
 // @Router      /system/projects [post]
 func (pc *ProjectController) Create(c *gin.Context) {
 	var req domain.CreateProjectRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c.Request.Context(), &req) {
 		return
 	}
 
-	result, err := pc.ProjectUseCase.Create(c, &req)
+	result, err := pc.ProjectUseCase.Create(c.Request.Context(), &req)
 	if err != nil {
-		if err == domain.ErrProjectCodeExists {
-			c.JSON(http.StatusConflict, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -604,22 +595,13 @@ func (pc *ProjectController) Update(c *gin.Context) {
 	id := c.Param("id")
 
 	var req domain.UpdateProjectRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c.Request.Context(), &req) {
 		return
 	}
 
-	err := pc.ProjectUseCase.Update(c, id, &req)
+	err := pc.ProjectUseCase.Update(c.Request.Context(), id, &req)
 	if err != nil {
-		if err == domain.ErrProjectNotFound {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		if err == domain.ErrProjectCodeExists {
-			c.JSON(http.StatusConflict, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -639,13 +621,9 @@ func (pc *ProjectController) Update(c *gin.Context) {
 func (pc *ProjectController) Delete(c *gin.Context) {
 	id := c.Param("id")
 
-	err := pc.ProjectUseCase.Delete(c, id)
+	err := pc.ProjectUseCase.Delete(c.Request.Context(), id)
 	if err != nil {
-		if err == domain.ErrProjectNotFound {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -655,10 +633,10 @@ func (pc *ProjectController) Delete(c *gin.Context) {
 
 **Key Points:**
 - Query parameters are manually parsed (`c.Query` + `strconv.Atoi`), parse failures are silently ignored
-- Body parameters use `c.ShouldBindJSON`, Gin auto-validates `binding:"required"` tags
+- Body parameters use `MustBindJSON` (writes the 400 for you; Gin validates `binding:"required"` tags)
 - Path parameters use `c.Param("id")`
-- Responses use `domain.RespSuccess(data)` / `domain.RespError(msg)` for a unified format
-- Domain errors are mapped to corresponding HTTP status codes (404, 409, etc.)
+- Responses use `domain.RespSuccess(data)` for success and `RespondError(c, err)` for every usecase error
+- Register each new sentinel error (`ErrProjectNotFound` → 404, `ErrProjectCodeExists` → 409) as one row in `errorRules` in `api/controller/errors.go`; unregistered errors become a generic 500 and are only logged, so internal details never reach the client
 - Swagger annotations are placed above each method, `@Security BearerAuth` indicates authentication required
 
 ### Step 6: Register Routes

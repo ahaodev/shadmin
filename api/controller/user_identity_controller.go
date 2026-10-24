@@ -7,7 +7,6 @@ import (
 	"net/url"
 
 	"shadmin/domain"
-	"shadmin/internal/contextutil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/markbates/goth"
@@ -59,7 +58,7 @@ func (sc *UserIdentityController) Callback(c *gin.Context) {
 
 	provider := c.Param("provider")
 	meta := domain.LoginMeta{
-		ClientIP:  contextutil.GetClientIP(c),
+		ClientIP:  c.ClientIP(),
 		UserAgent: c.Request.Header.Get("User-Agent"),
 	}
 
@@ -118,18 +117,13 @@ func toIdentityProfile(u goth.User) domain.UserIdentityProfile {
 //	@Router			/auth/identity/exchange [post]
 func (sc *UserIdentityController) Exchange(c *gin.Context) {
 	var req domain.UserIdentityExchangeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError("invalid request"))
+	if !MustBindJSON(c, &req) {
 		return
 	}
 
 	result, err := sc.UserIdentityUsecase.Exchange(c.Request.Context(), req.Code)
 	if err != nil {
-		if errors.Is(err, domain.ErrUserIdentityCodeInvalid) {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError("failed to exchange identity login code"))
+		RespondError(c, err)
 		return
 	}
 

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"net/http"
 	"shadmin/domain"
 	"shadmin/internal/constants"
@@ -36,38 +35,17 @@ func (lc *AuthController) Login(c *gin.Context) {
 	}
 
 	meta := domain.LoginMeta{
-		ClientIP:  contextutil.GetClientIP(c),
+		ClientIP:  c.ClientIP(),
 		UserAgent: c.Request.Header.Get("User-Agent"),
 	}
 
 	result, err := lc.LoginUsecase.Login(c.Request.Context(), &request, meta)
 	if err != nil {
-		lc.writeLoginError(c, err)
+		RespondError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, domain.RespSuccess(result))
-}
-
-// writeLoginError 将 usecase 返回的登录错误映射为 HTTP 状态码。
-func (lc *AuthController) writeLoginError(c *gin.Context, err error) {
-	var lockedErr *domain.AccountLockedError
-	switch {
-	case errors.As(err, &lockedErr):
-		c.JSON(http.StatusLocked, domain.RespError(lockedErr.Error()))
-	case errors.Is(err, domain.ErrCaptchaRequired):
-		c.JSON(http.StatusBadRequest, domain.RespError("请先完成验证码"))
-	case errors.Is(err, domain.ErrCaptchaExpired):
-		c.JSON(http.StatusBadRequest, domain.RespError("验证码已过期，请刷新"))
-	case errors.Is(err, domain.ErrCaptchaInvalid):
-		c.JSON(http.StatusBadRequest, domain.RespError("验证码校验失败，请重试"))
-	case errors.Is(err, domain.ErrAccountInactive):
-		c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
-	case errors.Is(err, domain.ErrInvalidCredentials):
-		c.JSON(http.StatusUnauthorized, domain.RespError(err.Error()))
-	default:
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
-	}
 }
 
 // RefreshToken godoc
@@ -92,16 +70,7 @@ func (lc *AuthController) RefreshToken(c *gin.Context) {
 
 	result, err := lc.LoginUsecase.Refresh(c.Request.Context(), request.RefreshToken)
 	if err != nil {
-		switch {
-		case errors.Is(err, domain.ErrRefreshTokenRevoked):
-			c.JSON(http.StatusUnauthorized, domain.RespError(err.Error()))
-		case errors.Is(err, domain.ErrInvalidRefreshToken):
-			c.JSON(http.StatusUnauthorized, domain.RespError("Invalid refresh token"))
-		case errors.Is(err, domain.ErrAccountInactive):
-			c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
-		default:
-			c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
-		}
+		RespondError(c, err)
 		return
 	}
 
@@ -131,7 +100,7 @@ func (lc *AuthController) Logout(c *gin.Context) {
 	accessToken, _ := contextutil.BearerToken(c.Request.Header.Get(constants.Authorization))
 
 	if err := lc.LoginUsecase.Logout(c.Request.Context(), accessToken, request.RefreshToken); err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError("注销失败"))
+		RespondError(c, err)
 		return
 	}
 

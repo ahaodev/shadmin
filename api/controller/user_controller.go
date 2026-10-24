@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"net/http"
 	"shadmin/internal/contextutil"
 
@@ -48,7 +47,7 @@ func (uc *UserController) GetUsers(c *gin.Context) {
 	// 使用统一查询接口
 	result, err := uc.UserUsecase.ListUsers(c.Request.Context(), filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -76,7 +75,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 
 	user, err := uc.UserUsecase.CreateUser(c.Request.Context(), &request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -99,7 +98,7 @@ func (uc *UserController) GetUser(c *gin.Context) {
 	id := c.Param("id")
 	user, err := uc.UserUsecase.GetUserByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, domain.RespError("User not found"))
+		RespondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(user))
@@ -128,18 +127,14 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 
 	// 执行用户更新
 	if err := uc.UserUsecase.UpdateUserPartial(c.Request.Context(), id, updateReq); err != nil {
-		if errors.Is(err, domain.ErrCannotEditAdmin) {
-			c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
 	// 获取更新后的用户信息
 	user, err := uc.UserUsecase.GetUserByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -176,18 +171,7 @@ func (uc *UserController) InviteUser(c *gin.Context) {
 
 	user, err := uc.UserInvitationUsecase.Invite(c.Request.Context(), &request, invitedBy)
 	if err != nil {
-		switch {
-		case errors.Is(err, domain.ErrUserAlreadyExists):
-			c.JSON(http.StatusConflict, domain.RespError("该邮箱已关联现有用户"))
-		case errors.Is(err, domain.ErrInvitationRoleInvalid):
-			c.JSON(http.StatusBadRequest, domain.RespError("所选角色不可用"))
-		case errors.Is(err, domain.ErrInvitationEmailNotConfigured):
-			c.JSON(http.StatusServiceUnavailable, domain.RespError("邀请邮件服务未配置"))
-		case errors.Is(err, domain.ErrInvitationDeliveryFailed):
-			c.JSON(http.StatusBadGateway, domain.RespError("邀请已保存，但邮件发送失败；可重新提交以重试"))
-		default:
-			c.JSON(http.StatusInternalServerError, domain.RespError("邀请失败"))
-		}
+		RespondError(c, err)
 		return
 	}
 
@@ -213,7 +197,7 @@ func (uc *UserController) GetUserRoles(c *gin.Context) {
 
 	roles, err := uc.UserUsecase.GetUserRoles(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -245,11 +229,7 @@ func (uc *UserController) DeleteUser(c *gin.Context) {
 
 	// 执行删除用户逻辑（含权限校验）
 	if err := uc.UserUsecase.DeleteUser(c.Request.Context(), userID, currentUserID); err != nil {
-		if errors.Is(err, domain.ErrCannotDeleteSelf) || errors.Is(err, domain.ErrCannotDeleteAdmin) {
-			c.JSON(http.StatusForbidden, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 

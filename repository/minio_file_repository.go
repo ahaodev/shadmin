@@ -22,25 +22,25 @@ func NewFileRepository(client *minio.Client) domain.FileRepository {
 	}
 }
 
-func (fr *minioFileRepository) Upload(c context.Context, req *domain.UploadRequest) (*domain.UploadResult, error) {
+func (fr *minioFileRepository) Upload(ctx context.Context, req *domain.UploadRequest) (*domain.UploadResult, error) {
 	// 构建对象名称
 	objectName := req.ObjectName
 	if req.Prefix != "" {
 		objectName = req.Prefix + "/" + req.ObjectName
 	}
 	// 检查存储桶是否存在,如果不存在创建桶
-	bucketExists, err := fr.client.BucketExists(c, req.Bucket)
+	bucketExists, err := fr.client.BucketExists(ctx, req.Bucket)
 	if err != nil {
 		return nil, err
 	}
 	if !bucketExists {
-		err = fr.client.MakeBucket(c, req.Bucket, minio.MakeBucketOptions{})
+		err = fr.client.MakeBucket(ctx, req.Bucket, minio.MakeBucketOptions{})
 		if err != nil {
 			return nil, err
 		}
 	}
 	// 上传对象到 MinIO
-	info, err := fr.client.PutObject(c, req.Bucket, objectName, req.Reader, req.Size, minio.PutObjectOptions{
+	info, err := fr.client.PutObject(ctx, req.Bucket, objectName, req.Reader, req.Size, minio.PutObjectOptions{
 		ContentType: req.ContentType,
 	})
 	if err != nil {
@@ -56,22 +56,22 @@ func (fr *minioFileRepository) Upload(c context.Context, req *domain.UploadReque
 	}, nil
 }
 
-func (fr *minioFileRepository) Download(c context.Context, req *domain.DownloadRequest) (io.ReadCloser, error) {
+func (fr *minioFileRepository) Download(ctx context.Context, req *domain.DownloadRequest) (io.ReadCloser, error) {
 	options := minio.GetObjectOptions{}
-	object, err := fr.client.GetObject(c, req.Bucket, req.ObjectName, options)
+	object, err := fr.client.GetObject(ctx, req.Bucket, req.ObjectName, options)
 	if err != nil {
 		return nil, err
 	}
 	return object, nil
 }
 
-func (fr *minioFileRepository) Delete(c context.Context, bucket, objectName string) error {
-	return fr.client.RemoveObject(c, bucket, objectName, minio.RemoveObjectOptions{})
+func (fr *minioFileRepository) Delete(ctx context.Context, bucket, objectName string) error {
+	return fr.client.RemoveObject(ctx, bucket, objectName, minio.RemoveObjectOptions{})
 }
 
-func (fr *minioFileRepository) List(c context.Context, bucket, prefix string) ([]domain.FileInfo, error) {
+func (fr *minioFileRepository) List(ctx context.Context, bucket, prefix string) ([]domain.FileInfo, error) {
 	options := minio.ListObjectsOptions{Prefix: prefix}
-	objectsCh := fr.client.ListObjects(c, bucket, options)
+	objectsCh := fr.client.ListObjects(ctx, bucket, options)
 
 	var files []domain.FileInfo
 	for object := range objectsCh {
@@ -110,8 +110,8 @@ func (fr *minioFileRepository) List(c context.Context, bucket, prefix string) ([
 	return files, nil
 }
 
-func (fr *minioFileRepository) GetObjectStat(c context.Context, bucket, objectName string) (*domain.FileInfo, error) {
-	stat, err := fr.client.StatObject(c, bucket, objectName, minio.StatObjectOptions{})
+func (fr *minioFileRepository) GetObjectStat(ctx context.Context, bucket, objectName string) (*domain.FileInfo, error) {
+	stat, err := fr.client.StatObject(ctx, bucket, objectName, minio.StatObjectOptions{})
 	if err != nil {
 		return nil, err
 	}

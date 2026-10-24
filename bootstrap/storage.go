@@ -1,10 +1,12 @@
 package bootstrap
 
 import (
+	"fmt"
+	"strings"
+
 	"shadmin/domain"
 	"shadmin/internal/conf"
 	"shadmin/repository"
-	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -15,42 +17,33 @@ type StorageConfig struct {
 	FileStorage domain.FileRepository
 }
 
-func InitStorage(env *conf.Env) *StorageConfig {
-	config := &StorageConfig{}
-
-	storageType := strings.ToLower(env.StorageType)
-	switch storageType {
+func InitStorage(env *conf.Env) (*StorageConfig, error) {
+	switch strings.ToLower(env.StorageType) {
 	case "minio":
-		config.initMinioStorage(env)
-	case "disk":
-		config.initDiskStorage(env)
-	default:
-		config.initDefaultStorage(env)
+		return initMinioStorage(env)
+	default: // "disk" 以及未指定
+		return initDiskStorage(env)
 	}
-
-	return config
 }
 
-func (sc *StorageConfig) initMinioStorage(env *conf.Env) {
+func initMinioStorage(env *conf.Env) (*StorageConfig, error) {
 	minioClient, err := minio.New(env.S3Address, &minio.Options{
 		Creds:  credentials.NewStaticV4(env.S3AccessKey, env.S3SecretKey, env.S3Token),
 		Secure: false,
 	})
 	if err != nil {
-		panic("Failed to connect to MinIO: " + err.Error())
+		return nil, fmt.Errorf("connect to MinIO: %w", err)
 	}
 
-	sc.MinioClient = minioClient
-	sc.FileStorage = repository.NewFileRepository(minioClient)
 	log.Info("文件存储: 使用 MinIO 对象存储")
+	return &StorageConfig{MinioClient: minioClient, FileStorage: repository.NewFileRepository(minioClient)}, nil
 }
 
-func (sc *StorageConfig) initDiskStorage(env *conf.Env) {
-	sc.FileStorage = repository.NewDiskFileRepository(env.StorageBasePath)
+func initDiskStorage(env *conf.Env) (*StorageConfig, error) {
+	fs, err := repository.NewDiskFileRepository(env.StorageBasePath)
+	if err != nil {
+		return nil, err
+	}
 	log.Infof("文件存储: 使用本地磁盘存储 (%s)", env.StorageBasePath)
-}
-
-func (sc *StorageConfig) initDefaultStorage(env *conf.Env) {
-	sc.FileStorage = repository.NewDiskFileRepository(env.StorageBasePath)
-	log.Infof("文件存储: 使用默认本地磁盘存储 (%s)", env.StorageBasePath)
+	return &StorageConfig{FileStorage: fs}, nil
 }

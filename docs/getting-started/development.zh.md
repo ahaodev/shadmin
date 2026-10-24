@@ -521,9 +521,9 @@ func (pc *ProjectController) List(c *gin.Context) {
 	params.Status = c.Query("status")
 	params.Search = c.Query("search")
 
-	result, err := pc.ProjectUseCase.List(c, params)
+	result, err := pc.ProjectUseCase.List(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -543,13 +543,9 @@ func (pc *ProjectController) List(c *gin.Context) {
 func (pc *ProjectController) GetByID(c *gin.Context) {
 	id := c.Param("id")
 
-	result, err := pc.ProjectUseCase.GetByID(c, id)
+	result, err := pc.ProjectUseCase.GetByID(c.Request.Context(), id)
 	if err != nil {
-		if err == domain.ErrProjectNotFound {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -569,18 +565,13 @@ func (pc *ProjectController) GetByID(c *gin.Context) {
 // @Router      /system/projects [post]
 func (pc *ProjectController) Create(c *gin.Context) {
 	var req domain.CreateProjectRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c.Request.Context(), &req) {
 		return
 	}
 
-	result, err := pc.ProjectUseCase.Create(c, &req)
+	result, err := pc.ProjectUseCase.Create(c.Request.Context(), &req)
 	if err != nil {
-		if err == domain.ErrProjectCodeExists {
-			c.JSON(http.StatusConflict, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -604,22 +595,13 @@ func (pc *ProjectController) Update(c *gin.Context) {
 	id := c.Param("id")
 
 	var req domain.UpdateProjectRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c.Request.Context(), &req) {
 		return
 	}
 
-	err := pc.ProjectUseCase.Update(c, id, &req)
+	err := pc.ProjectUseCase.Update(c.Request.Context(), id, &req)
 	if err != nil {
-		if err == domain.ErrProjectNotFound {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		if err == domain.ErrProjectCodeExists {
-			c.JSON(http.StatusConflict, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -639,13 +621,9 @@ func (pc *ProjectController) Update(c *gin.Context) {
 func (pc *ProjectController) Delete(c *gin.Context) {
 	id := c.Param("id")
 
-	err := pc.ProjectUseCase.Delete(c, id)
+	err := pc.ProjectUseCase.Delete(c.Request.Context(), id)
 	if err != nil {
-		if err == domain.ErrProjectNotFound {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -655,10 +633,10 @@ func (pc *ProjectController) Delete(c *gin.Context) {
 
 **要点：**
 - Query 参数手动解析（`c.Query` + `strconv.Atoi`），解析失败静默忽略
-- Body 参数使用 `c.ShouldBindJSON`，Gin 自动校验 `binding:"required"`
+- Body 参数使用 `MustBindJSON`（失败时自动写入 400；Gin 校验 `binding:"required"`）
 - 路径参数使用 `c.Param("id")`
-- 响应使用 `domain.RespSuccess(data)` / `domain.RespError(msg)` 统一格式
-- Domain 错误映射为对应 HTTP 状态码（404、409 等）
+- 成功用 `domain.RespSuccess(data)`，所有 usecase 错误统一走 `RespondError(c, err)`
+- 每个新的哨兵错误（`ErrProjectNotFound` → 404、`ErrProjectCodeExists` → 409）在 `api/controller/errors.go` 的 `errorRules` 里登记一行；未登记的错误一律返回通用 500 并只写日志，内部细节不会泄露给客户端
 - Swagger 注解写在方法上方，`@Security BearerAuth` 表示需要认证
 
 ### 第 6 步：注册路由

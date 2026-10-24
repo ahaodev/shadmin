@@ -197,7 +197,7 @@ func init() {
 			return simpleGet(cmd, "/api/v1/system/menu", true)
 		}),
 	}
-	addListFlags(menusList)
+	menusList.Flags().StringVarP(&listKeyword, "keyword", "k", "", "keyword filter")
 	menusGet := &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get menu by id",

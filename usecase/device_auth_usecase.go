@@ -23,35 +23,23 @@ const (
 )
 
 type deviceAuthUsecase struct {
-	repo               domain.DeviceAuthRepository
-	userRepository     domain.UserRepository
-	tokenService       domain.TokenIssuer
-	accessTokenSecret  string
-	refreshTokenSecret string
-	accessTokenExpiry  int
-	refreshTokenExpiry int
-	contextTimeout     time.Duration
+	repo           domain.DeviceAuthRepository
+	userRepository domain.UserRepository
+	tokenService   domain.TokenIssuer
+	contextTimeout time.Duration
 }
 
 func NewDeviceAuthUsecase(
 	repo domain.DeviceAuthRepository,
 	userRepository domain.UserRepository,
 	tokenService domain.TokenIssuer,
-	accessTokenSecret string,
-	refreshTokenSecret string,
-	accessTokenExpiry int,
-	refreshTokenExpiry int,
 	timeout time.Duration,
 ) domain.DeviceAuthUsecase {
 	return &deviceAuthUsecase{
-		repo:               repo,
-		userRepository:     userRepository,
-		tokenService:       tokenService,
-		accessTokenSecret:  accessTokenSecret,
-		refreshTokenSecret: refreshTokenSecret,
-		accessTokenExpiry:  accessTokenExpiry,
-		refreshTokenExpiry: refreshTokenExpiry,
-		contextTimeout:     timeout,
+		repo:           repo,
+		userRepository: userRepository,
+		tokenService:   tokenService,
+		contextTimeout: timeout,
 	}
 }
 
@@ -154,18 +142,7 @@ func (u *deviceAuthUsecase) PollToken(ctx context.Context, req domain.DeviceToke
 		if user.Status != constants.UserStatusActive {
 			return nil, domain.ErrUserDisabled
 		}
-		accessToken, err := u.tokenService.CreateAccessToken(user, u.accessTokenSecret, u.accessTokenExpiry)
-		if err != nil {
-			return nil, fmt.Errorf("create access token: %w", err)
-		}
-		refreshToken, err := u.tokenService.CreateRefreshToken(user, u.refreshTokenSecret, u.refreshTokenExpiry)
-		if err != nil {
-			return nil, fmt.Errorf("create refresh token: %w", err)
-		}
-		return &domain.LoginResponse{
-			AccessToken:  accessToken,
-			RefreshToken: refreshToken,
-		}, nil
+		return u.tokenService.IssuePair(user)
 	case domain.DeviceAuthStatusConsumed:
 		return nil, domain.ErrDeviceConsumed
 	case domain.DeviceAuthStatusExpired:

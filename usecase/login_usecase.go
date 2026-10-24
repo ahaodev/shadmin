@@ -10,21 +10,16 @@ import (
 
 	"shadmin/domain"
 	"shadmin/internal/constants"
-	"shadmin/pkg"
 )
 
 type loginUsecase struct {
-	userRepository           domain.UserRepository
-	captchaUsecase           domain.CaptchaUsecase
-	loginLogUsecase          domain.LoginLogUseCase
-	securityManager          domain.LoginSecurity
-	tokenService             domain.TokenIssuer
-	tokenBlacklist           domain.TokenBlacklist
-	accessTokenSecret        string
-	refreshTokenSecret       string
-	accessTokenExpiryMinute  int
-	refreshTokenExpiryMinute int
-	contextTimeout           time.Duration
+	userRepository  domain.UserRepository
+	captchaUsecase  domain.CaptchaUsecase
+	loginLogUsecase domain.LoginLogUseCase
+	securityManager domain.LoginSecurity
+	tokenService    domain.TokenIssuer
+	tokenBlacklist  domain.TokenBlacklist
+	contextTimeout  time.Duration
 }
 
 func NewLoginUsecase(
@@ -34,29 +29,23 @@ func NewLoginUsecase(
 	securityManager domain.LoginSecurity,
 	tokenService domain.TokenIssuer,
 	tokenBlacklist domain.TokenBlacklist,
-	accessTokenSecret, refreshTokenSecret string,
-	accessTokenExpiryMinute, refreshTokenExpiryMinute int,
 	timeout time.Duration,
 ) domain.LoginUsecase {
 	return &loginUsecase{
-		userRepository:           userRepository,
-		captchaUsecase:           captchaUsecase,
-		loginLogUsecase:          loginLogUsecase,
-		securityManager:          securityManager,
-		tokenService:             tokenService,
-		tokenBlacklist:           tokenBlacklist,
-		accessTokenSecret:        accessTokenSecret,
-		refreshTokenSecret:       refreshTokenSecret,
-		accessTokenExpiryMinute:  accessTokenExpiryMinute,
-		refreshTokenExpiryMinute: refreshTokenExpiryMinute,
-		contextTimeout:           timeout,
+		userRepository:  userRepository,
+		captchaUsecase:  captchaUsecase,
+		loginLogUsecase: loginLogUsecase,
+		securityManager: securityManager,
+		tokenService:    tokenService,
+		tokenBlacklist:  tokenBlacklist,
+		contextTimeout:  timeout,
 	}
 }
 
 // Login 执行完整的登录流程：验证码校验 → 锁定检查 → 用户查找 → 状态检查 → 密码校验 → 签发令牌。
 // 返回携带错误类型的哨兵错误，由 controller 映射到 HTTP 状态码。
-func (lu *loginUsecase) Login(c context.Context, req *domain.LoginRequest, meta domain.LoginMeta) (*domain.LoginResponse, error) {
-	ctx, cancel := context.WithTimeout(c, lu.contextTimeout)
+func (lu *loginUsecase) Login(ctx context.Context, req *domain.LoginRequest, meta domain.LoginMeta) (*domain.LoginResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, lu.contextTimeout)
 	defer cancel()
 
 	if lu.captchaUsecase == nil {
@@ -74,27 +63,30 @@ func (lu *loginUsecase) Login(c context.Context, req *domain.LoginRequest, meta 
 	}
 
 	user, err := lu.userRepository.GetByIdentifier(ctx, req.Identifier)
-	if err != nil || user == nil {
+	if errors.Is(err, domain.ErrUserNotFound) {
 		lu.securityManager.RecordFailedAttempt(ctx, req.Identifier)
-		lu.recordLoginLog(c, meta, constants.StatusFailed, "用户不存在", "")
+		lu.recordLoginLog(ctx, meta, constants.StatusFailed, "用户不存在", "")
 		return nil, domain.ErrInvalidCredentials
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get user by identifier: %w", err)
 	}
 
 	// 账户状态检查：未启用 / 邀请中 / 已停用 的用户不能登录。
 	if user.Status != constants.UserStatusActive {
-		lu.recordLoginLog(c, meta, constants.StatusFailed, "账户未启用或已停用", user.Email)
+		lu.recordLoginLog(ctx, meta, constants.StatusFailed, "账户未启用或已停用", user.Email)
 		return nil, domain.ErrAccountInactive
 	}
 
 	// 第三方来源用户没有本地密码：拒绝其走密码登录，避免被撞库。
 	if user.Password == "" {
-		lu.recordLoginLog(c, meta, constants.StatusFailed, "第三方账户不支持密码登录", user.Email)
+		lu.recordLoginLog(ctx, meta, constants.StatusFailed, "第三方账户不支持密码登录", user.Email)
 		return nil, domain.ErrInvalidCredentials
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		attempts := lu.securityManager.RecordFailedAttempt(ctx, req.Identifier)
-		lu.recordLoginLog(c, meta, constants.StatusFailed, "密码错误", user.Email)
+		lu.recordLoginLog(ctx, meta, constants.StatusFailed, "密码错误", user.Email)
 
 		if attempts >= lu.securityManager.MaxFailures() {
 			return nil, lu.accountLockedError()
@@ -104,26 +96,22 @@ func (lu *loginUsecase) Login(c context.Context, req *domain.LoginRequest, meta 
 
 	lu.securityManager.RecordSuccessfulLogin(ctx, req.Identifier)
 
-	accessToken, err := lu.tokenService.CreateAccessToken(user, lu.accessTokenSecret, lu.accessTokenExpiryMinute)
+	tokens, err := lu.tokenService.IssuePair(user)
 	if err != nil {
-		return nil, fmt.Errorf("create access token: %w", err)
-	}
-	refreshToken, err := lu.tokenService.CreateRefreshToken(user, lu.refreshTokenSecret, lu.refreshTokenExpiryMinute)
-	if err != nil {
-		return nil, fmt.Errorf("create refresh token: %w", err)
+		return nil, err
 	}
 
-	lu.recordLoginLog(c, meta, constants.StatusSuccess, "", user.Email)
+	lu.recordLoginLog(ctx, meta, constants.StatusSuccess, "", user.Email)
 
-	return &domain.LoginResponse{AccessToken: accessToken, RefreshToken: refreshToken}, nil
+	return tokens, nil
 }
 
 // Refresh 校验刷新令牌并签发新的访问/刷新令牌。
-func (lu *loginUsecase) Refresh(c context.Context, refreshToken string) (*domain.RefreshTokenResponse, error) {
-	ctx, cancel := context.WithTimeout(c, lu.contextTimeout)
+func (lu *loginUsecase) Refresh(ctx context.Context, refreshToken string) (*domain.RefreshTokenResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, lu.contextTimeout)
 	defer cancel()
 
-	claims, err := lu.tokenService.ParseRefreshClaims(refreshToken, lu.refreshTokenSecret)
+	claims, err := lu.tokenService.ParseRefreshClaims(refreshToken)
 	if err != nil {
 		return nil, domain.ErrInvalidRefreshToken
 	}
@@ -144,8 +132,11 @@ func (lu *loginUsecase) Refresh(c context.Context, refreshToken string) (*domain
 	}
 
 	user, err := lu.userRepository.GetByID(ctx, claims.ID)
-	if err != nil {
+	if errors.Is(err, domain.ErrUserNotFound) {
 		return nil, domain.ErrInvalidRefreshToken
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get user for refresh: %w", err)
 	}
 
 	// 刷新令牌前再检查一次状态：admin 可能在 access token 签发后禁用该用户。
@@ -153,13 +144,9 @@ func (lu *loginUsecase) Refresh(c context.Context, refreshToken string) (*domain
 		return nil, domain.ErrAccountInactive
 	}
 
-	newAccessToken, err := lu.tokenService.CreateAccessToken(user, lu.accessTokenSecret, lu.accessTokenExpiryMinute)
+	tokens, err := lu.tokenService.IssuePair(user)
 	if err != nil {
-		return nil, fmt.Errorf("create access token: %w", err)
-	}
-	newRefreshToken, err := lu.tokenService.CreateRefreshToken(user, lu.refreshTokenSecret, lu.refreshTokenExpiryMinute)
-	if err != nil {
-		return nil, fmt.Errorf("create refresh token: %w", err)
+		return nil, err
 	}
 
 	// 轮换：新令牌全部签发成功后吊销旧 refresh token，阻断旧令牌重放。
@@ -170,39 +157,33 @@ func (lu *loginUsecase) Refresh(c context.Context, refreshToken string) (*domain
 		}
 	}
 
-	return &domain.RefreshTokenResponse{AccessToken: newAccessToken, RefreshToken: newRefreshToken}, nil
+	return tokens, nil
 }
 
 // Logout 将 access/refresh token 的 jti 加入黑名单，TTL 设为 token 剩余有效期。
-func (lu *loginUsecase) Logout(c context.Context, accessToken, refreshToken string) error {
-	ctx, cancel := context.WithTimeout(c, lu.contextTimeout)
+func (lu *loginUsecase) Logout(ctx context.Context, accessToken, refreshToken string) error {
+	ctx, cancel := context.WithTimeout(ctx, lu.contextTimeout)
 	defer cancel()
 
 	if accessToken != "" {
-		// 登出审计日志（不记录令牌内容）
-		if claims, err := lu.tokenService.ParseAccessClaims(accessToken, lu.accessTokenSecret); err == nil {
-			pkg.Log.Infof("User logout - UserID: %s, UserName: %s", claims.ID, claims.Name)
-		}
-
-		if err := lu.revokeTokenJTI(ctx, accessToken, lu.accessTokenSecret); err != nil {
+		jti, exp, ok := lu.tokenService.ExtractAccessJTI(accessToken)
+		if err := lu.revoke(ctx, jti, exp, ok); err != nil {
 			return err
 		}
 	}
 	if refreshToken != "" {
-		if err := lu.revokeTokenJTI(ctx, refreshToken, lu.refreshTokenSecret); err != nil {
+		jti, exp, ok := lu.tokenService.ExtractRefreshJTI(refreshToken)
+		if err := lu.revoke(ctx, jti, exp, ok); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (lu *loginUsecase) revokeTokenJTI(ctx context.Context, token, secret string) error {
-	jti, exp, ok := lu.tokenService.ExtractJTIAndExpiry(token, secret)
-	if !ok || jti == "" {
-		return nil // 无 jti 的旧令牌或不可解析的令牌无需加入黑名单
-	}
-	if time.Now().After(exp) {
-		return nil // 已过期的 token 无需加入黑名单
+// revoke 把 jti 加入黑名单直到令牌过期；无 jti、不可解析或已过期的令牌无需处理。
+func (lu *loginUsecase) revoke(ctx context.Context, jti string, exp time.Time, ok bool) error {
+	if !ok || jti == "" || time.Now().After(exp) {
+		return nil
 	}
 	return lu.tokenBlacklist.Add(ctx, jti, exp)
 }
@@ -214,16 +195,4 @@ func (lu *loginUsecase) accountLockedError() error {
 
 func (lu *loginUsecase) recordLoginLog(parent context.Context, meta domain.LoginMeta, status, failureReason, email string) {
 	writeLoginLog(parent, lu.loginLogUsecase, meta, constants.UserSourceLocal, status, failureReason, email)
-}
-
-func (lu *loginUsecase) GetUserByIdentifier(c context.Context, identifier string) (*domain.User, error) {
-	ctx, cancel := context.WithTimeout(c, lu.contextTimeout)
-	defer cancel()
-	return lu.userRepository.GetByIdentifier(ctx, identifier)
-}
-
-func (lu *loginUsecase) GetUserByID(c context.Context, id string) (*domain.User, error) {
-	ctx, cancel := context.WithTimeout(c, lu.contextTimeout)
-	defer cancel()
-	return lu.userRepository.GetByID(ctx, id)
 }

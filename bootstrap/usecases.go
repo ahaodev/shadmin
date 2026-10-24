@@ -4,7 +4,6 @@ import (
 	"shadmin/domain"
 	"shadmin/internal/auth"
 	"shadmin/internal/mailer"
-	"shadmin/internal/tokenservice"
 	"shadmin/repository"
 	"shadmin/usecase"
 	"time"
@@ -30,7 +29,7 @@ type Usecases struct {
 }
 
 // newUsecases 依赖注入的唯一位置：repository → usecase。调用前 app 的 DB、Cacher、
-// CaptchaManager、TokenBlacklist 与 Env 必须已经初始化。
+// CaptchaManager、TokenBlacklist、Tokens 与 Env 必须已经初始化。
 func newUsecases(app *Application) *Usecases {
 	env := app.Env
 	db := app.DB
@@ -40,7 +39,7 @@ func newUsecases(app *Application) *Usecases {
 	roleRepo := repository.NewRoleRepository(db)
 	menuRepo := repository.NewMenuRepository(db)
 	loginLog := usecase.NewLoginLogUsecase(repository.NewLoginLogRepository(db), timeout)
-	tokens := tokenservice.NewTokenService()
+	tokens := app.Tokens
 	captcha := usecase.NewCaptchaUsecase(app.CaptchaManager, timeout)
 
 	var emailSender domain.InvitationMailer
@@ -56,10 +55,6 @@ func newUsecases(app *Application) *Usecases {
 			auth.NewLoginSecurityManager(app.Cacher),
 			tokens,
 			app.TokenBlacklist,
-			env.AccessTokenSecret,
-			env.RefreshTokenSecret,
-			env.AccessTokenExpiryMinute,
-			env.RefreshTokenExpiryMinute,
 			timeout,
 		),
 		Captcha: captcha,
@@ -71,20 +66,12 @@ func newUsecases(app *Application) *Usecases {
 			tokens,
 			auth.NewUserIdentityCodeStore(app.Cacher, 3*time.Minute),
 			loginLog,
-			env.AccessTokenSecret,
-			env.RefreshTokenSecret,
-			env.AccessTokenExpiryMinute,
-			env.RefreshTokenExpiryMinute,
 			timeout,
 		),
 		DeviceAuth: usecase.NewDeviceAuthUsecase(
 			repository.NewDeviceAuthRepository(db),
 			userRepo,
 			tokens,
-			env.AccessTokenSecret,
-			env.RefreshTokenSecret,
-			env.AccessTokenExpiryMinute,
-			env.RefreshTokenExpiryMinute,
 			timeout,
 		),
 		Profile:  usecase.NewProfileUsecase(repository.NewProfileRepository(db), timeout),

@@ -36,10 +36,10 @@ func NewLoginLogRepository(client *ent.Client) domain.LoginLogRepository {
 	}
 }
 
-func (lr *entLoginLogRepository) Create(c context.Context, log *domain.LoginLog) error {
+func (lr *entLoginLogRepository) Create(ctx context.Context, log *domain.LoginLog) error {
 	status := domainStatusToEntLoginLogStatus(log.Status)
 
-	created, err := lr.client.LoginLog.
+	created, err := clientFromContext(ctx, lr.client).LoginLog.
 		Create().
 		SetNillableEmail(emptyToNil(log.Email)).
 		SetLoginIP(log.LoginIP).
@@ -51,7 +51,7 @@ func (lr *entLoginLogRepository) Create(c context.Context, log *domain.LoginLog)
 		SetNillableSource(emptyToNil(log.Source)).
 		SetNillableFailureReason(&log.FailureReason).
 		SetLoginTime(log.LoginTime).
-		Save(c)
+		Save(ctx)
 
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func (lr *entLoginLogRepository) Create(c context.Context, log *domain.LoginLog)
 	return nil
 }
 
-func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLogQueryFilter) (*domain.LoginLogPagedResult, error) {
+func (lr *entLoginLogRepository) Query(ctx context.Context, filter domain.LoginLogQueryFilter) (*domain.LoginLogPagedResult, error) {
 	// 构建基础查询
 	// 构建查询条件
 	var predicates []predicate.LoginLog
@@ -91,10 +91,10 @@ func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLog
 	if filter.EndTime != nil {
 		predicates = append(predicates, loginlog.LoginTimeLTE(*filter.EndTime))
 	}
-	baseQuery := lr.client.LoginLog.Query().Where(predicates...)
+	baseQuery := clientFromContext(ctx, lr.client).LoginLog.Query().Where(predicates...)
 
 	// 获取总数
-	total, err := baseQuery.Clone().Count(c)
+	total, err := baseQuery.Clone().Count(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLog
 
 	offset, limit := filter.Paginate()
 	baseQuery = baseQuery.Offset(offset).Limit(limit)
-	logs, err := baseQuery.All(c)
+	logs, err := baseQuery.All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -140,9 +140,9 @@ func (lr *entLoginLogRepository) Query(c context.Context, filter domain.LoginLog
 	return domain.NewPagedResult(result, total, filter.Page, filter.PageSize), nil
 }
 
-func (lr *entLoginLogRepository) ClearAll(c context.Context) error {
-	_, err := lr.client.LoginLog.
+func (lr *entLoginLogRepository) ClearAll(ctx context.Context) error {
+	_, err := clientFromContext(ctx, lr.client).LoginLog.
 		Delete().
-		Exec(c)
+		Exec(ctx)
 	return err
 }

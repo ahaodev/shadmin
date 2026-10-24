@@ -19,13 +19,16 @@ func NewProfileRepository(client *ent.Client) domain.ProfileRepository {
 	}
 }
 
-func (pr *entProfileRepository) GetByID(c context.Context, id, _ string) (*domain.Profile, error) {
-	u, err := pr.client.User.
+func (pr *entProfileRepository) GetByID(ctx context.Context, id, _ string) (*domain.Profile, error) {
+	u, err := clientFromContext(ctx, pr.client).User.
 		Query().
 		Where(user.ID(id)).
-		First(c)
+		First(ctx)
 
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrUserNotFound
+		}
 		return nil, fmt.Errorf("get profile by id: %w", err)
 	}
 
@@ -46,8 +49,8 @@ func (pr *entProfileRepository) GetByID(c context.Context, id, _ string) (*domai
 	return profile, nil
 }
 
-func (pr *entProfileRepository) UpdateProfile(c context.Context, userID string, updateData domain.ProfileUpdate) error {
-	updateQuery := pr.client.User.
+func (pr *entProfileRepository) UpdateProfile(ctx context.Context, userID string, updateData domain.ProfileUpdate) error {
+	updateQuery := clientFromContext(ctx, pr.client).User.
 		UpdateOneID(userID)
 
 	if updateData.Name != "" {
@@ -60,25 +63,28 @@ func (pr *entProfileRepository) UpdateProfile(c context.Context, userID string, 
 		updateQuery = updateQuery.SetBio(updateData.Bio)
 	}
 
-	_, err := updateQuery.Save(c)
+	_, err := updateQuery.Save(ctx)
 	return err
 }
 
-func (pr *entProfileRepository) UpdatePassword(c context.Context, userID, hashedPassword string) error {
-	_, err := pr.client.User.
+func (pr *entProfileRepository) UpdatePassword(ctx context.Context, userID, hashedPassword string) error {
+	_, err := clientFromContext(ctx, pr.client).User.
 		UpdateOneID(userID).
 		SetPassword(hashedPassword).
-		Save(c)
+		Save(ctx)
 	return err
 }
 
-func (pr *entProfileRepository) GetPasswordHash(c context.Context, userID string) (string, error) {
-	u, err := pr.client.User.
+func (pr *entProfileRepository) GetPasswordHash(ctx context.Context, userID string) (string, error) {
+	u, err := clientFromContext(ctx, pr.client).User.
 		Query().
 		Where(user.ID(userID)).
 		Select(user.FieldPassword).
-		First(c)
+		First(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return "", domain.ErrUserNotFound
+		}
 		return "", err
 	}
 	return derefString(u.Password), nil

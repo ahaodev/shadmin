@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"net/http"
 
 	"shadmin/domain"
@@ -38,7 +37,7 @@ func (dc *DeviceAuthController) RequestCode(c *gin.Context) {
 
 	resp, err := dc.DeviceAuthUsecase.RequestCode(c.Request.Context(), request, "/auth/device")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(resp))
@@ -64,21 +63,7 @@ func (dc *DeviceAuthController) PollToken(c *gin.Context) {
 
 	resp, err := dc.DeviceAuthUsecase.PollToken(c.Request.Context(), request)
 	if err != nil {
-		status := http.StatusBadRequest
-		switch {
-		case errors.Is(err, domain.ErrDeviceAuthorizationPending),
-			errors.Is(err, domain.ErrDeviceSlowDown),
-			errors.Is(err, domain.ErrDeviceExpired),
-			errors.Is(err, domain.ErrDeviceConsumed),
-			errors.Is(err, domain.ErrDeviceAccessDenied),
-			errors.Is(err, domain.ErrDeviceInvalidCode):
-			status = http.StatusBadRequest
-		case errors.Is(err, domain.ErrUserDisabled):
-			status = http.StatusForbidden
-		default:
-			status = http.StatusInternalServerError
-		}
-		c.JSON(status, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(resp))
@@ -116,13 +101,7 @@ func (dc *DeviceAuthController) Activate(c *gin.Context) {
 
 	resp, err := dc.DeviceAuthUsecase.Activate(c.Request.Context(), userID, request)
 	if err != nil {
-		status := http.StatusBadRequest
-		if !errors.Is(err, domain.ErrDeviceInvalidCode) &&
-			!errors.Is(err, domain.ErrDeviceExpired) &&
-			!errors.Is(err, domain.ErrDeviceAccessDenied) {
-			status = http.StatusInternalServerError
-		}
-		c.JSON(status, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(resp))

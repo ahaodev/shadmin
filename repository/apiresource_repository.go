@@ -37,7 +37,7 @@ func (arr *entApiResourceRepository) convertEntApiResourceToDomain(entApiResourc
 }
 
 func (arr *entApiResourceRepository) FetchPaged(ctx context.Context, params domain.ApiResourceQueryParams) (*domain.ApiResourcePagedResult, error) {
-	query := arr.client.ApiResource.Query()
+	query := clientFromContext(ctx, arr.client).ApiResource.Query()
 
 	// Apply filters
 	apiParams := params

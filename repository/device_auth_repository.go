@@ -49,7 +49,7 @@ func entDeviceAuthSessionToDomain(s *ent.DeviceAuthSession) *domain.DeviceAuthSe
 }
 
 func (r *entDeviceAuthRepository) Create(ctx context.Context, session *domain.DeviceAuthSession) error {
-	create := r.client.DeviceAuthSession.
+	create := clientFromContext(ctx, r.client).DeviceAuthSession.
 		Create().
 		SetDeviceCode(session.DeviceCode).
 		SetUserCode(session.UserCode).
@@ -87,7 +87,7 @@ func (r *entDeviceAuthRepository) Create(ctx context.Context, session *domain.De
 }
 
 func (r *entDeviceAuthRepository) GetByDeviceCode(ctx context.Context, deviceCode string) (*domain.DeviceAuthSession, error) {
-	session, err := r.client.DeviceAuthSession.
+	session, err := clientFromContext(ctx, r.client).DeviceAuthSession.
 		Query().
 		Where(deviceauthsession.DeviceCode(deviceCode)).
 		First(ctx)
@@ -101,7 +101,7 @@ func (r *entDeviceAuthRepository) GetByDeviceCode(ctx context.Context, deviceCod
 }
 
 func (r *entDeviceAuthRepository) GetByUserCode(ctx context.Context, userCode string) (*domain.DeviceAuthSession, error) {
-	session, err := r.client.DeviceAuthSession.
+	session, err := clientFromContext(ctx, r.client).DeviceAuthSession.
 		Query().
 		Where(deviceauthsession.UserCode(userCode)).
 		First(ctx)
@@ -115,7 +115,7 @@ func (r *entDeviceAuthRepository) GetByUserCode(ctx context.Context, userCode st
 }
 
 func (r *entDeviceAuthRepository) MarkAuthorized(ctx context.Context, userCode string, userID string, now time.Time) error {
-	affected, err := r.client.DeviceAuthSession.
+	affected, err := clientFromContext(ctx, r.client).DeviceAuthSession.
 		Update().
 		Where(
 			deviceauthsession.UserCode(userCode),
@@ -136,7 +136,7 @@ func (r *entDeviceAuthRepository) MarkAuthorized(ctx context.Context, userCode s
 }
 
 func (r *entDeviceAuthRepository) ConsumeAuthorized(ctx context.Context, deviceCode string, now time.Time) (*domain.DeviceAuthSession, error) {
-	affected, err := r.client.DeviceAuthSession.
+	affected, err := clientFromContext(ctx, r.client).DeviceAuthSession.
 		Update().
 		Where(
 			deviceauthsession.DeviceCode(deviceCode),
@@ -156,7 +156,7 @@ func (r *entDeviceAuthRepository) ConsumeAuthorized(ctx context.Context, deviceC
 }
 
 func (r *entDeviceAuthRepository) UpdatePollState(ctx context.Context, deviceCode string, lastPolledAt time.Time, interval int) error {
-	return r.client.DeviceAuthSession.
+	return clientFromContext(ctx, r.client).DeviceAuthSession.
 		Update().
 		Where(deviceauthsession.DeviceCode(deviceCode)).
 		SetLastPolledAt(lastPolledAt).
@@ -165,7 +165,7 @@ func (r *entDeviceAuthRepository) UpdatePollState(ctx context.Context, deviceCod
 }
 
 func (r *entDeviceAuthRepository) IncrementInvalidAttempts(ctx context.Context, userCode string) (*domain.DeviceAuthSession, error) {
-	if err := r.client.DeviceAuthSession.
+	if err := clientFromContext(ctx, r.client).DeviceAuthSession.
 		Update().
 		Where(deviceauthsession.UserCode(userCode)).
 		AddInvalidAttempts(1).
@@ -176,7 +176,7 @@ func (r *entDeviceAuthRepository) IncrementInvalidAttempts(ctx context.Context, 
 }
 
 func (r *entDeviceAuthRepository) Deny(ctx context.Context, userCode string) error {
-	return r.client.DeviceAuthSession.
+	return clientFromContext(ctx, r.client).DeviceAuthSession.
 		Update().
 		Where(
 			deviceauthsession.UserCode(userCode),
@@ -187,7 +187,7 @@ func (r *entDeviceAuthRepository) Deny(ctx context.Context, userCode string) err
 }
 
 func (r *entDeviceAuthRepository) Expire(ctx context.Context, deviceCode string, now time.Time) error {
-	return r.client.DeviceAuthSession.
+	return clientFromContext(ctx, r.client).DeviceAuthSession.
 		Update().
 		Where(
 			deviceauthsession.DeviceCode(deviceCode),
@@ -199,7 +199,7 @@ func (r *entDeviceAuthRepository) Expire(ctx context.Context, deviceCode string,
 }
 
 func (r *entDeviceAuthRepository) DeleteExpired(ctx context.Context, now time.Time) error {
-	_, err := r.client.DeviceAuthSession.
+	_, err := clientFromContext(ctx, r.client).DeviceAuthSession.
 		Delete().
 		Where(deviceauthsession.ExpiresAtLT(now.Add(-time.Hour))).
 		Exec(ctx)

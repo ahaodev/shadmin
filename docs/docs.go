@@ -736,7 +736,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieve a list of menus with filtering and pagination",
+                "description": "Retrieve all menus, optionally filtered by keyword (not paginated)",
                 "consumes": [
                     "application/json"
                 ],
@@ -750,38 +750,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Filter by menu type (menu/button/api)",
-                        "name": "type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by status (active/inactive)",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by parent menu ID",
-                        "name": "parent_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
                         "description": "Filter by menu name or path",
                         "name": "keyword",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size (default: 20)",
-                        "name": "page_size",
                         "in": "query"
                     }
                 ],

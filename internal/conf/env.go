@@ -332,30 +332,30 @@ func (e *Env) validate() error {
 	return nil
 }
 
-func NewEnv() *Env {
+// NewEnv 加载并校验配置。配置缺失（首次启动写入默认 .env）可恢复；
+// 读取、解析或校验失败一律返回错误，由调用方决定是否终止启动。
+func NewEnv() (*Env, error) {
 	setDefaults()
 
 	if _, err := os.Stat(".env"); err != nil {
 		pkg.Log.Info("没有找到 .env 文件，使用默认配置并写入.env")
 		if err := generateEnvFile(); err != nil {
-			pkg.Log.Error("写入.env文件失败: " + err.Error())
-			return &Env{}
+			return nil, fmt.Errorf("写入.env文件失败: %w", err)
 		}
 	}
 
 	env, err := loadConfig()
 	if err != nil {
-		pkg.Log.Error(err.Error())
-		return &Env{}
+		return nil, err
 	}
 
 	if err := env.validate(); err != nil {
-		pkg.Log.Error("配置验证失败: " + err.Error())
+		return nil, fmt.Errorf("配置验证失败: %w", err)
 	}
 
 	if env.AppEnv == AppEnvDev {
 		pkg.Log.Info("The App is running in development env")
 	}
 
-	return env
+	return env, nil
 }

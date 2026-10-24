@@ -20,14 +20,14 @@ type Profile struct {
 
 // ProfileUsecase subject 为 JWT 的 sub 声明，格式为 shadmin:<user_id> 或 <provider>:<provider_subject>，
 type ProfileUsecase interface {
-	GetProfile(c context.Context, userID, subject string) (*Profile, error)
-	UpdateProfile(c context.Context, userID string, updateData ProfileUpdate) error
-	UpdatePassword(c context.Context, userID string, passwordUpdate PasswordUpdate) error
+	GetProfile(ctx context.Context, userID, subject string) (*Profile, error)
+	UpdateProfile(ctx context.Context, userID string, updateData ProfileUpdate) error
+	UpdatePassword(ctx context.Context, userID string, passwordUpdate PasswordUpdate) error
 }
 
 type ProfileRepository interface {
-	GetByID(c context.Context, id, subject string) (*Profile, error)
-	UpdateProfile(c context.Context, userID string, updateData ProfileUpdate) error
-	UpdatePassword(c context.Context, userID, hashedPassword string) error
-	GetPasswordHash(c context.Context, userID string) (string, error)
+	GetByID(ctx context.Context, id, subject string) (*Profile, error)
+	UpdateProfile(ctx context.Context, userID string, updateData ProfileUpdate) error
+	UpdatePassword(ctx context.Context, userID, hashedPassword string) error
+	GetPasswordHash(ctx context.Context, userID string) (string, error)
 }

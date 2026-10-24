@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/internal/auth"
@@ -10,6 +11,7 @@ import (
 	"shadmin/internal/casbin"
 	"shadmin/internal/conf"
 	"shadmin/internal/scheduler"
+	"shadmin/internal/tokenservice"
 	"shadmin/repository"
 	"time"
 
@@ -28,17 +30,31 @@ type Application struct {
 	CaptchaManager    *captchapkg.SlideManager       // 滑块验证码管理器（内部使用共享 Cacher）
 	UserStatusCache   *auth.Cache                    // 用户状态TTL缓存，用于登录/刷新/中间件检查
 	TokenBlacklist    domain.TokenBlacklist          // JWT 登出黑名单（内存或 Redis）
+	Tokens            domain.TokenIssuer             // JWT 签发与解析（路由中间件与用例共用）
 	Usecases          *Usecases                      // 装配完成的全部用例
 	Version           string                         // 应用版本
 }
 
-func App() *Application {
-	app := &Application{}
-	app.Env = conf.NewEnv()
-	app.DB = NewEntDatabase(app.Env)
+// App 构造应用运行时。任何阶段失败都会释放已创建的资源并返回错误，
+// 是否终止进程由调用方（cmd）决定。
+func App() (*Application, error) {
+	env, err := conf.NewEnv()
+	if err != nil {
+		return nil, fmt.Errorf("load config: %w", err)
+	}
+	app := &Application{Env: env}
+
+	app.DB, err = NewEntDatabase(app.Env)
+	if err != nil {
+		return nil, fmt.Errorf("init database: %w", err)
+	}
+	// 之后任一步失败都要关闭已打开的资源。
+	fail := func(format string, args ...any) (*Application, error) {
+		app.CloseDBConnection()
+		return nil, fmt.Errorf(format, args...)
+	}
 
 	redisCfg := cacher.RedisConfig{}
-	var err error
 	if app.Env.RedisEnabled() {
 		redisCfg = cacher.RedisConfig{
 			Addr:     app.Env.RedisAddress,
@@ -53,7 +69,7 @@ func App() *Application {
 		Memory:   cacher.MemoryConfig{CleanupInterval: 2 * time.Minute},
 	})
 	if err != nil {
-		panic(err)
+		return fail("init cacher: %w", err)
 	}
 
 	if app.Env.RedisEnabled() {
@@ -78,7 +94,7 @@ func App() *Application {
 	// 滑块验证码：复用共享 Cacher，ns="captcha"。
 	cm, err := captchapkg.NewSlideManager(app.Cacher)
 	if err != nil {
-		panic(err)
+		return fail("init captcha: %w", err)
 	}
 	app.CaptchaManager = cm
 
@@ -95,8 +111,14 @@ func App() *Application {
 	app.registerAuthorizationGenerationHook()
 
 	// 初始化文件存储
-	storageConfig := InitStorage(app.Env)
+	storageConfig, err := InitStorage(app.Env)
+	if err != nil {
+		return fail("init storage: %w", err)
+	}
 	app.FileStorage = storageConfig.FileStorage
+	if app.Env.AppEnv == conf.AppEnvProd {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	app.ApiEngine = gin.Default()
 
 	// 注册第三方登录 provider（Google/GitHub），并初始化 gothic session store
@@ -106,8 +128,14 @@ func App() *Application {
 	// 保证 admin 禁用/启用/邀请/恢复用户后，下一次请求即可看到新状态。
 	app.registerUserStatusCacheHook()
 
+	app.Tokens = tokenservice.NewTokenService(tokenservice.Config{
+		AccessSecret:  app.Env.AccessTokenSecret,
+		RefreshSecret: app.Env.RefreshTokenSecret,
+		AccessExpiry:  app.Env.AccessTokenExpiryMinute,
+		RefreshExpiry: app.Env.RefreshTokenExpiryMinute,
+	})
 	app.Usecases = newUsecases(app)
-	return app
+	return app, nil
 }
 func (app *Application) CloseDBConnection() {
 	// 停止Casbin同步调度器

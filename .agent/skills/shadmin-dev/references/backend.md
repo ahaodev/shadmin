@@ -9,7 +9,7 @@ Contracts first; everything else implements them.
 - `Create*Request`: `binding:"required,max=..."`. `Update*Request`: pointer fields (`*string`) so "absent" ≠ "empty".
 - Filter: struct with `form:"..."` tags embedding `domain.QueryParams` (`Page`, `PageSize`, `SortBy`, `Order`). `Paginate()` defaults page=1, size=10, max 10000 and returns `(offset, limit)`.
 - Repository interface: CRUD + list. List returns `*PagedResult[*T]` (see `UserRepository.Query`); tree/flat listings may return slices (`FetchTree`, `FetchList`).
-- UseCase interface: same shape, takes request DTOs. Naming in the repo is mixed (`UseCase`/`Usecase`) — follow the neighbouring file.
+- UseCase interface: same shape, takes request DTOs. The interface/field suffix is mixed (`UseCase`/`Usecase`) — follow the neighbouring file. The context parameter is always named `ctx`.
 - Sentinel errors: `ErrXNotFound`, `ErrXNameExists`, ... Swagger alias: `type XPagedResult = PagedResult[*X]`.
 - Helpers (`domain/response.go`): `RespSuccess(data)`, `RespError(msg|err)`, `NewPagedResult(list, total, page, pageSize)` (empty list serializes as `[]`).
 
@@ -22,11 +22,12 @@ Contracts first; everything else implements them.
 
 ## Repository
 - Struct holds `*ent.Client`; `NewXRepository(client)` returns the domain interface; conversion via package funcs like `entDepartmentToDomain`.
-- Not found: `ent.IsNotFound(err)` → domain sentinel. Unique violation: `ent.IsConstraintError(err)` → `ErrXExists`.
+- Not found: `ent.IsNotFound(err)` → domain sentinel (`ErrXNotFound`) on **every** single-row read/update, so callers can tell "absent" from "database failure". Unique violation: `ent.IsConstraintError(err)` → `ErrXExists`.
 - List: `filter.Paginate()` for offset/limit; count on a cloned query before applying them; sort with `ApplySorting(sortBy, order, fieldMap, defaultField)` (`repository/helpers.go`); `buildTree`/`mapSlice` for trees/conversion.
 - Update: set only non-nil pointer fields.
 - Wrap other errors `fmt.Errorf("...: %w", err)`.
-- Methods that may run inside a `UnitOfWork` must query via `clientFromContext(ctx, r.client)`, not `r.client`.
+- Every repository method queries via `clientFromContext(ctx, r.client)`, never bare `r.client`, so it joins a `UnitOfWork` transaction when one is in `ctx`. Writes that need a transaction use `withEntTransaction` / `WithAuthorizationTx`, not a hand-rolled `client.Tx`.
+- Lists that are a bounded, complete set (menus, departments) return everything and do not paginate.
 
 ## Usecase
 - `NewXUsecase(repo domain.XRepository, timeout time.Duration) domain.XUseCase`; unexported struct.
@@ -34,7 +35,7 @@ Contracts first; everything else implements them.
 
 | Port | Implementation |
 |---|---|
-| `TokenIssuer` | `internal/tokenservice` |
+| `TokenIssuer` | `internal/tokenservice` (holds the JWT secrets/expiry; usecases call `IssuePair`, never see a secret) |
 | `TokenBlacklist`, `LoginSecurity`, `UserIdentityCodeStore` | `internal/auth` |
 | `SlideCaptchaManager` | `internal/captcha` |
 | `InvitationMailer` | `internal/mailer` |
@@ -48,7 +49,8 @@ Contracts first; everything else implements them.
 - Struct holds the usecase (field names vary: `DepartmentUseCase`, `ResourceUsecase`, ...).
 - Parse: `ShouldBindQuery` (filters), `controller.MustBindJSON(c, &req)` (writes 400 on failure), `c.Param("id")`. `controller.BindQueryParams(c)` extracts bare pagination.
 - Identity from context: `c.GetString(constants.UserID)`, `c.GetBool(constants.IsAdmin)` (`internal/constants/custom_header.go`; set by `JwtAuthMiddleware`: `x-user-id`, `x-user-name`, `x-user-email`, `x-is-admin`, `x-user-roles`, `x-user-subject`).
-- Map errors with `errors.Is`. Statuses: 200 ok · 201 create · 400 validation/bad state · 403 forbidden · 404 not found · 409 conflict · 500 other.
+- Never write `c.JSON(status, RespError(err...))` for a usecase error. Call `controller.RespondError(c, err)` (`api/controller/errors.go`): it maps sentinel errors to a status via one table (`errorRules`) and turns anything unregistered into a generic 500 whose cause is only logged. **Adding a sentinel error = adding one row to `errorRules`.** Statuses: 200 ok · 201 create · 400 validation/bad state · 401 unauthenticated · 403 forbidden · 404 not found · 409 conflict · 423 locked · 500 other.
+- Bind with `controller.MustBindJSON` / `MustBindQuery` (they write the 400 for you). Client IP is `c.ClientIP()` (honours Gin's trusted proxies); do not read `X-Forwarded-For` yourself.
 - Swagger on every handler: `@Summary @Description @Tags @Accept @Produce @Security BearerAuth @Param @Success @Failure @Router` (router path relative to `/api/v1`).
 
 ## Routes (`api/route/`)

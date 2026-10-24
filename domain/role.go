@@ -56,21 +56,21 @@ type RoleFilters struct {
 
 // RoleUseCase defines the interface for role business logic
 type RoleUseCase interface {
-	Create(c context.Context, request *CreateRoleRequest) error
-	Fetch(c context.Context) ([]*Role, error)
-	GetByID(c context.Context, id string) (*Role, error)
-	Update(c context.Context, id string, request *UpdateRoleRequest) (*Role, error)
-	Delete(c context.Context, id string) error
+	Create(ctx context.Context, request *CreateRoleRequest) error
+	Fetch(ctx context.Context) ([]*Role, error)
+	GetByID(ctx context.Context, id string) (*Role, error)
+	Update(ctx context.Context, id string, request *UpdateRoleRequest) (*Role, error)
+	Delete(ctx context.Context, id string) error
 }
 
 // RoleRepository defines the interface for role data operations
 type RoleRepository interface {
-	Create(c context.Context, role *Role) error
-	Fetch(c context.Context) ([]*Role, error)
-	GetByID(c context.Context, id string) (*Role, error)
-	GetByName(c context.Context, name string) (*Role, error)
-	GetByIDs(c context.Context, ids []string) ([]*Role, error)
-	ExistsByName(c context.Context, name string) (bool, error)
-	Update(c context.Context, role *Role) error
-	DeleteIfUnused(c context.Context, id, name string) error
+	Create(ctx context.Context, role *Role) error
+	Fetch(ctx context.Context) ([]*Role, error)
+	GetByID(ctx context.Context, id string) (*Role, error)
+	GetByName(ctx context.Context, name string) (*Role, error)
+	GetByIDs(ctx context.Context, ids []string) ([]*Role, error)
+	ExistsByName(ctx context.Context, name string) (bool, error)
+	Update(ctx context.Context, role *Role) error
+	DeleteIfUnused(ctx context.Context, id, name string) error
 }

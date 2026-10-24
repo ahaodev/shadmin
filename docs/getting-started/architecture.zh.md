@@ -43,7 +43,7 @@ graph TB
 
 ```
 shadmin/
-├── main.go              # 入口，调用 cmd.Run()
+├── main.go              # 入口，os.Exit(cmd.Run())
 ├── cmd/                 # 应用启动与版本管理
 ├── bootstrap/           # 启动装配：DB、Casbin、存储、种子数据、usecase 装配 (usecases.go)
 ├── api/
@@ -298,13 +298,13 @@ Shadmin 使用 **Casbin RBAC** 进行权限控制：
 
 ```
 main.go
-  → cmd.Run()
-    → bootstrap.App()              # 加载 .env、连接 DB、初始化 Casbin/存储/Gin
+  → os.Exit(cmd.Run())             # Run 返回退出码，保证 defer 清理总会执行
+    → bootstrap.App()              # 加载并校验 .env、连接 DB、初始化 Casbin/存储/Gin（失败返回 error）
     → api.SetupRoutes(app)         # 注册静态资源、Swagger、API 路由
     → bootstrap.InitApiResources() # 扫描 Gin 路由写入 DB
     → bootstrap.InitDefaultAdmin() # 初始化 admin 角色/用户和菜单
     → bootstrap.InitCasbin(app)    # 构建初始快照并启动 generation 触发同步与低频轮询
-    → api.Run(app)                 # 监听端口 :55667
+    → api.Run(app)                 # 监听配置的端口；收到 SIGINT/SIGTERM 时优雅停机
 ```
 
 ## 前后端协作

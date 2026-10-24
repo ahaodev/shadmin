@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"net/http"
 	"shadmin/internal/constants"
 
@@ -30,7 +29,7 @@ func (pc *ProfileController) GetProfile(c *gin.Context) {
 	subject := c.GetString(constants.UserSubject)
 	profile, err := pc.ProfileUsecase.GetProfile(c.Request.Context(), userID, subject)
 	if err != nil {
-		c.JSON(http.StatusNotFound, domain.RespError("User not found"))
+		RespondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(profile))
@@ -53,13 +52,12 @@ func (pc *ProfileController) UpdateProfile(c *gin.Context) {
 	userID := c.GetString(constants.UserID)
 	var updateData domain.ProfileUpdate
 
-	if err := c.ShouldBindJSON(&updateData); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &updateData) {
 		return
 	}
 
 	if err := pc.ProfileUsecase.UpdateProfile(c.Request.Context(), userID, updateData); err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -83,17 +81,12 @@ func (pc *ProfileController) UpdatePassword(c *gin.Context) {
 	userID := c.GetString(constants.UserID)
 	var passwordUpdate domain.PasswordUpdate
 
-	if err := c.ShouldBindJSON(&passwordUpdate); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &passwordUpdate) {
 		return
 	}
 
 	if err := pc.ProfileUsecase.UpdatePassword(c.Request.Context(), userID, passwordUpdate); err != nil {
-		if errors.Is(err, domain.ErrInvalidPassword) {
-			c.JSON(http.StatusBadRequest, domain.RespError("Current password is incorrect"))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 

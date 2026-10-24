@@ -47,10 +47,7 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
   } = useQuery({
     queryKey: [MENUS_QUERY_KEY],
     queryFn: () => {
-      return getMenus({
-        status: 'active',
-        page_size: 1000, // Get all items to build hierarchy
-      })
+      return getMenus() // 菜单不分页，一次取全量用于构建层级
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   })

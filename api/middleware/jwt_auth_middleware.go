@@ -6,15 +6,12 @@ import (
 	"shadmin/domain"
 	"shadmin/internal/constants"
 	"shadmin/internal/contextutil"
-	"shadmin/internal/tokenservice"
 
 	"github.com/gin-gonic/gin"
 )
 
 // JwtAuthMiddleware 校验 access token 的合法性、黑名单状态，并把 claims 注入 gin context。
-func JwtAuthMiddleware(secret string, tokenBlacklist domain.TokenBlacklist) gin.HandlerFunc {
-	tokenService := tokenservice.NewTokenService()
-
+func JwtAuthMiddleware(tokens domain.TokenIssuer, tokenBlacklist domain.TokenBlacklist) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authToken, ok := contextutil.BearerToken(c.Request.Header.Get(constants.Authorization))
 		if !ok {
@@ -23,7 +20,7 @@ func JwtAuthMiddleware(secret string, tokenBlacklist domain.TokenBlacklist) gin.
 			return
 		}
 
-		claims, err := tokenService.ParseAccessClaims(authToken, secret)
+		claims, err := tokens.ParseAccessClaims(authToken)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, domain.RespError(err.Error()))
 			c.Abort()

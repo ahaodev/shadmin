@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"net/http"
 	"shadmin/domain"
 
@@ -28,14 +27,13 @@ type DepartmentController struct {
 //	@Router			/system/department [get]
 func (dc *DepartmentController) GetDepartmentList(c *gin.Context) {
 	var filter domain.DepartmentQueryFilter
-	if err := c.ShouldBindQuery(&filter); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindQuery(c, &filter) {
 		return
 	}
 
 	list, err := dc.DepartmentUseCase.FetchList(c.Request.Context(), filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(list))
@@ -55,7 +53,7 @@ func (dc *DepartmentController) GetDepartmentList(c *gin.Context) {
 func (dc *DepartmentController) GetDepartmentTree(c *gin.Context) {
 	tree, err := dc.DepartmentUseCase.FetchTree(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(tree))
@@ -78,11 +76,7 @@ func (dc *DepartmentController) GetDepartment(c *gin.Context) {
 
 	dept, err := dc.DepartmentUseCase.GetByID(c.Request.Context(), id)
 	if err != nil {
-		if errors.Is(err, domain.ErrDepartmentNotFound) {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(dept))
@@ -103,18 +97,13 @@ func (dc *DepartmentController) GetDepartment(c *gin.Context) {
 //	@Router			/system/department [post]
 func (dc *DepartmentController) CreateDepartment(c *gin.Context) {
 	var req domain.CreateDepartmentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &req) {
 		return
 	}
 
 	dept, err := dc.DepartmentUseCase.Create(c.Request.Context(), &req)
 	if err != nil {
-		if errors.Is(err, domain.ErrDepartmentNameExists) {
-			c.JSON(http.StatusConflict, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, domain.RespSuccess(dept))
@@ -138,30 +127,13 @@ func (dc *DepartmentController) CreateDepartment(c *gin.Context) {
 func (dc *DepartmentController) UpdateDepartment(c *gin.Context) {
 	id := c.Param("id")
 	var req domain.UpdateDepartmentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &req) {
 		return
 	}
 
 	dept, err := dc.DepartmentUseCase.Update(c.Request.Context(), id, &req)
 	if err != nil {
-		if errors.Is(err, domain.ErrDepartmentNotFound) {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		if errors.Is(err, domain.ErrDepartmentNameExists) {
-			c.JSON(http.StatusConflict, domain.RespError(err.Error()))
-			return
-		}
-		if errors.Is(err, domain.ErrCircularDepartment) {
-			c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
-			return
-		}
-		if errors.Is(err, domain.ErrDepartmentHasActiveChildren) {
-			c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(dept))
@@ -185,15 +157,7 @@ func (dc *DepartmentController) DeleteDepartment(c *gin.Context) {
 
 	err := dc.DepartmentUseCase.Delete(c.Request.Context(), id)
 	if err != nil {
-		if errors.Is(err, domain.ErrDepartmentNotFound) {
-			c.JSON(http.StatusNotFound, domain.RespError(err.Error()))
-			return
-		}
-		if errors.Is(err, domain.ErrDepartmentHasChildren) || errors.Is(err, domain.ErrDepartmentHasUsers) {
-			c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, domain.RespSuccess(nil))

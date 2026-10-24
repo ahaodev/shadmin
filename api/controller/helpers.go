@@ -36,3 +36,13 @@ func MustBindJSON(c *gin.Context, obj any) bool {
 	}
 	return true
 }
+
+// MustBindQuery binds the query string to the target and writes a 400 error response on failure.
+// Returns true if binding succeeded, false if an error response was already written.
+func MustBindQuery(c *gin.Context, obj any) bool {
+	if err := c.ShouldBindQuery(obj); err != nil {
+		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+		return false
+	}
+	return true
+}

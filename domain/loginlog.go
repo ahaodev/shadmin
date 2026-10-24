@@ -50,13 +50,13 @@ type LoginLogQueryFilter struct {
 }
 
 type LoginLogRepository interface {
-	Create(c context.Context, loginLog *LoginLog) error
-	Query(c context.Context, filter LoginLogQueryFilter) (*PagedResult[*LoginLog], error)
-	ClearAll(c context.Context) error
+	Create(ctx context.Context, loginLog *LoginLog) error
+	Query(ctx context.Context, filter LoginLogQueryFilter) (*PagedResult[*LoginLog], error)
+	ClearAll(ctx context.Context) error
 }
 
 type LoginLogUseCase interface {
-	CreateLoginLog(c context.Context, request *CreateLoginLogRequest) (*LoginLog, error)
-	ListLoginLogs(c context.Context, filter LoginLogQueryFilter) (*PagedResult[*LoginLog], error)
-	ClearAllLoginLogs(c context.Context) error
+	CreateLoginLog(ctx context.Context, request *CreateLoginLogRequest) (*LoginLog, error)
+	ListLoginLogs(ctx context.Context, filter LoginLogQueryFilter) (*PagedResult[*LoginLog], error)
+	ClearAllLoginLogs(ctx context.Context) error
 }

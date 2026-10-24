@@ -104,13 +104,10 @@ type RemoveMenuRoleRequest struct {
 	Roles  []string `json:"roles" binding:"required"`
 }
 
-// MenuQueryParams represents query parameters for menu filtering
+// MenuQueryParams represents query parameters for menu filtering.
+// 菜单是有限的完整集合，不分页：返回全部匹配项。
 type MenuQueryParams struct {
-	QueryParams
-	Type     string `form:"type"`   // menu/button
-	Status   string `form:"status"` // active/inactive
-	ParentID string `form:"parent_id"`
-	Keyword  string `form:"keyword"` // 模糊匹配 name/path
+	Keyword string `form:"keyword"` // 模糊匹配 name/path
 }
 
 // MenuItem 固定菜单定义
@@ -124,19 +121,6 @@ type MenuItem struct {
 	Visible       bool   `json:"visible"`
 	RequiresAuth  bool   `json:"requiresAuth"`
 	RequiresAdmin bool   `json:"requiresAdmin"`
-}
-
-// ValidateMenuQueryParams 归一化分页参数并填充菜单查询的业务默认值。
-func ValidateMenuQueryParams(params *MenuQueryParams) {
-	params.Paginate()
-
-	// 设置业务默认值
-	if params.Type == "" {
-		params.Type = MenuTypeMenu
-	}
-	if params.Status == "" {
-		params.Status = StatusSuccess
-	}
 }
 
 // Menu status constants

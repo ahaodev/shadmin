@@ -67,13 +67,18 @@ type TokenClaims struct {
 }
 
 // TokenIssuer 签发与解析令牌（由 internal/tokenservice 实现）。
+// 签名密钥与有效期在构造时注入，调用方不接触密钥。
 type TokenIssuer interface {
-	CreateAccessToken(user *User, secret string, expiry int) (string, error)
-	CreateAccessTokenWithIdentity(user *User, secret string, expiry int, provider, providerSubject, source string) (string, error)
-	CreateRefreshToken(user *User, secret string, expiry int) (string, error)
-	ParseAccessClaims(token, secret string) (*TokenClaims, error)
-	ParseRefreshClaims(token, secret string) (*TokenClaims, error)
-	ExtractJTIAndExpiry(token, secret string) (string, time.Time, bool)
+	// IssuePair 为本地用户签发 access/refresh 令牌对。
+	IssuePair(user *User) (*LoginResponse, error)
+	// IssuePairWithIdentity 为第三方登录用户签发令牌对（sub = provider:providerSubject）。
+	IssuePairWithIdentity(user *User, provider, providerSubject string) (*LoginResponse, error)
+	ParseAccessClaims(token string) (*TokenClaims, error)
+	ParseRefreshClaims(token string) (*TokenClaims, error)
+	// ExtractAccessJTI / ExtractRefreshJTI 按各自密钥解析令牌的 jti 与过期时间，用于登出黑名单；
+	// ok=false 表示令牌不可用或无 exp。
+	ExtractAccessJTI(token string) (jti string, expiresAt time.Time, ok bool)
+	ExtractRefreshJTI(token string) (jti string, expiresAt time.Time, ok bool)
 }
 
 // TokenBlacklist 记录已登出令牌的 jti，直到其原始过期时间（由 internal/auth 实现）。
@@ -107,9 +112,7 @@ func (e *AccountLockedError) Error() string {
 }
 
 type LoginUsecase interface {
-	Login(c context.Context, req *LoginRequest, meta LoginMeta) (*LoginResponse, error)
-	Refresh(c context.Context, refreshToken string) (*RefreshTokenResponse, error)
-	Logout(c context.Context, accessToken, refreshToken string) error
-	GetUserByIdentifier(c context.Context, identifier string) (*User, error)
-	GetUserByID(c context.Context, id string) (*User, error)
+	Login(ctx context.Context, req *LoginRequest, meta LoginMeta) (*LoginResponse, error)
+	Refresh(ctx context.Context, refreshToken string) (*RefreshTokenResponse, error)
+	Logout(ctx context.Context, accessToken, refreshToken string) error
 }

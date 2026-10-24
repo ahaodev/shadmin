@@ -20,8 +20,8 @@ func NewProfileUsecase(profileRepo domain.ProfileRepository, timeout time.Durati
 	}
 }
 
-func (pu *profileUsecase) GetProfile(c context.Context, userID, subject string) (*domain.Profile, error) {
-	ctx, cancel := context.WithTimeout(c, pu.timeout)
+func (pu *profileUsecase) GetProfile(ctx context.Context, userID, subject string) (*domain.Profile, error) {
+	ctx, cancel := context.WithTimeout(ctx, pu.timeout)
 	defer cancel()
 
 	profile, err := pu.profileRepo.GetByID(ctx, userID, subject)
@@ -32,15 +32,15 @@ func (pu *profileUsecase) GetProfile(c context.Context, userID, subject string) 
 	return profile, nil
 }
 
-func (pu *profileUsecase) UpdateProfile(c context.Context, userID string, updateData domain.ProfileUpdate) error {
-	ctx, cancel := context.WithTimeout(c, pu.timeout)
+func (pu *profileUsecase) UpdateProfile(ctx context.Context, userID string, updateData domain.ProfileUpdate) error {
+	ctx, cancel := context.WithTimeout(ctx, pu.timeout)
 	defer cancel()
 
 	return pu.profileRepo.UpdateProfile(ctx, userID, updateData)
 }
 
-func (pu *profileUsecase) UpdatePassword(c context.Context, userID string, passwordUpdate domain.PasswordUpdate) error {
-	ctx, cancel := context.WithTimeout(c, pu.timeout)
+func (pu *profileUsecase) UpdatePassword(ctx context.Context, userID string, passwordUpdate domain.PasswordUpdate) error {
+	ctx, cancel := context.WithTimeout(ctx, pu.timeout)
 	defer cancel()
 
 	// Get current password hash

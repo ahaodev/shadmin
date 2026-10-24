@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"net/http"
 	"shadmin/domain"
 
@@ -15,31 +14,25 @@ type MenuController struct {
 // GetMenus 获取菜单列表
 //
 //	@Summary		Get menus
-//	@Description	Retrieve a list of menus with filtering and pagination
+//	@Description	Retrieve all menus, optionally filtered by keyword (not paginated)
 //	@Tags			Menus
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			type		query		string													false	"Filter by menu type (menu/button/api)"
-//	@Param			status		query		string													false	"Filter by status (active/inactive)"
-//	@Param			parent_id	query		string													false	"Filter by parent menu ID"
 //	@Param			keyword		query		string													false	"Filter by menu name or path"
-//	@Param			page		query		int														false	"Page number (default: 1)"
-//	@Param			page_size	query		int														false	"Page size (default: 20)"
 //	@Success		200			{object}	domain.Response{data=domain.PagedResult[domain.Menu]}	"Successfully retrieved menus"
 //	@Failure		400			{object}	domain.Response											"Bad request - invalid parameters"
 //	@Failure		500			{object}	domain.Response											"Internal server error"
 //	@Router			/menu [get]
 func (mc *MenuController) GetMenus(c *gin.Context) {
 	var params domain.MenuQueryParams
-	if err := c.ShouldBindQuery(&params); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindQuery(c, &params) {
 		return
 	}
 
 	result, err := mc.MenuUseCase.GetMenus(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError("Failed to retrieve menus: "+err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -63,7 +56,7 @@ func (mc *MenuController) GetMenuTree(c *gin.Context) {
 
 	menuTree, err := mc.MenuUseCase.GetMenuTree(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError("Failed to retrieve menu tree: "+err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -86,22 +79,13 @@ func (mc *MenuController) GetMenuTree(c *gin.Context) {
 //	@Router			/menu [post]
 func (mc *MenuController) CreateMenu(c *gin.Context) {
 	var request domain.CreateMenuRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &request) {
 		return
 	}
 
 	menu, err := mc.MenuUseCase.CreateMenu(c.Request.Context(), &request)
 	if err != nil {
-		if errors.Is(err, domain.ErrInvalidMenuType) {
-			c.JSON(http.StatusBadRequest, domain.RespError("Invalid menu type"))
-			return
-		}
-		if errors.Is(err, domain.ErrInvalidMenuStatus) {
-			c.JSON(http.StatusBadRequest, domain.RespError("Invalid menu status"))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError("Failed to create menu: "+err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -126,7 +110,7 @@ func (mc *MenuController) GetMenu(c *gin.Context) {
 
 	menu, err := mc.MenuUseCase.GetMenuByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, domain.RespError("Menu not found"))
+		RespondError(c, err)
 		return
 	}
 
@@ -151,26 +135,13 @@ func (mc *MenuController) GetMenu(c *gin.Context) {
 func (mc *MenuController) UpdateMenu(c *gin.Context) {
 	id := c.Param("id")
 	var request domain.UpdateMenuRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
+	if !MustBindJSON(c, &request) {
 		return
 	}
 
 	menu, err := mc.MenuUseCase.UpdateMenu(c.Request.Context(), id, &request)
 	if err != nil {
-		if errors.Is(err, domain.ErrInvalidMenuType) {
-			c.JSON(http.StatusBadRequest, domain.RespError("Invalid menu type"))
-			return
-		}
-		if errors.Is(err, domain.ErrInvalidMenuStatus) {
-			c.JSON(http.StatusBadRequest, domain.RespError("Invalid menu status"))
-			return
-		}
-		if errors.Is(err, domain.ErrMenuNotFound) {
-			c.JSON(http.StatusNotFound, domain.RespError("Menu not found"))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError("Failed to update menu: "+err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -195,15 +166,7 @@ func (mc *MenuController) DeleteMenu(c *gin.Context) {
 
 	err := mc.MenuUseCase.DeleteMenu(c.Request.Context(), id)
 	if err != nil {
-		if errors.Is(err, domain.ErrMenuNotFound) {
-			c.JSON(http.StatusNotFound, domain.RespError("Menu not found"))
-			return
-		}
-		if errors.Is(err, domain.ErrMenuHasChildren) {
-			c.JSON(http.StatusBadRequest, domain.RespError("Cannot delete menu with children"))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, domain.RespError("Failed to delete menu: "+err.Error()))
+		RespondError(c, err)
 		return
 	}
 

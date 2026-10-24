@@ -26,8 +26,8 @@ func NewResourceUsecase(menuRepository domain.MenuRepository, userRepository dom
 }
 
 // GetUserResources 获取用户可访问的系统资源（菜单树与按钮权限，基于 RBAC 权限过滤）
-func (ru *resourceUsecase) GetUserResources(c context.Context, userID string, isAdmin bool) (*domain.UserResources, error) {
-	ctx, cancel := context.WithTimeout(c, ru.contextTimeout)
+func (ru *resourceUsecase) GetUserResources(ctx context.Context, userID string, isAdmin bool) (*domain.UserResources, error) {
+	ctx, cancel := context.WithTimeout(ctx, ru.contextTimeout)
 	defer cancel()
 
 	// 获取所有菜单
@@ -107,12 +107,12 @@ func (ru *resourceUsecase) collectAllPermissions(menuTree []domain.MenuTreeNode)
 }
 
 // getUserRoles 批量获取用户角色信息。
-func (ru *resourceUsecase) getUserRoles(c context.Context, roleIDs []string) ([]*domain.Role, error) {
+func (ru *resourceUsecase) getUserRoles(ctx context.Context, roleIDs []string) ([]*domain.Role, error) {
 	if len(roleIDs) == 0 {
 		return nil, nil
 	}
 
-	roles, err := ru.roleRepository.GetByIDs(c, roleIDs)
+	roles, err := ru.roleRepository.GetByIDs(ctx, roleIDs)
 	if err != nil {
 		pkg.Log.With("roleIDs", roleIDs).With("error", err).Warn("Failed to get role information")
 		return nil, err
@@ -127,7 +127,7 @@ func (ru *resourceUsecase) getUserRoles(c context.Context, roleIDs []string) ([]
 }
 
 // collectUserPermissions 收集用户菜单 ID 与按钮权限；菜单按 ID 批量查询。
-func (ru *resourceUsecase) collectUserPermissions(c context.Context, roles []*domain.Role) ([]string, []string, error) {
+func (ru *resourceUsecase) collectUserPermissions(ctx context.Context, roles []*domain.Role) ([]string, []string, error) {
 	var userMenuIDs []string
 	for _, role := range roles {
 		userMenuIDs = append(userMenuIDs, role.MenuIDs...)
@@ -136,7 +136,7 @@ func (ru *resourceUsecase) collectUserPermissions(c context.Context, roles []*do
 		return nil, nil, nil
 	}
 
-	menus, err := ru.menuRepository.GetMenuPermissionsByIDs(c, userMenuIDs)
+	menus, err := ru.menuRepository.GetMenuPermissionsByIDs(ctx, userMenuIDs)
 	if err != nil {
 		pkg.Log.With("menuIDs", userMenuIDs).With("error", err).Error("Failed to load menus for permission collection")
 		return nil, nil, fmt.Errorf("failed to load menu permissions: %w", err)

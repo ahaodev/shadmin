@@ -18,7 +18,7 @@ func NewDepartmentRepository(client *ent.Client) domain.DepartmentRepository {
 }
 
 func (r *entDepartmentRepository) Create(ctx context.Context, dept *domain.Department) error {
-	create := r.client.Department.Create().
+	create := clientFromContext(ctx, r.client).Department.Create().
 		SetName(dept.Name).
 		SetSequence(dept.Sequence).
 		SetLeader(dept.Leader).
@@ -41,7 +41,7 @@ func (r *entDepartmentRepository) Create(ctx context.Context, dept *domain.Depar
 }
 
 func (r *entDepartmentRepository) GetByID(ctx context.Context, id string) (*domain.Department, error) {
-	d, err := r.client.Department.Get(ctx, id)
+	d, err := clientFromContext(ctx, r.client).Department.Get(ctx, id)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, domain.ErrDepartmentNotFound
@@ -52,7 +52,7 @@ func (r *entDepartmentRepository) GetByID(ctx context.Context, id string) (*doma
 }
 
 func (r *entDepartmentRepository) FetchTree(ctx context.Context) ([]domain.Department, error) {
-	depts, err := r.client.Department.Query().
+	depts, err := clientFromContext(ctx, r.client).Department.Query().
 		Order(department.BySequence()).
 		All(ctx)
 	if err != nil {
@@ -71,7 +71,7 @@ func (r *entDepartmentRepository) FetchTree(ctx context.Context) ([]domain.Depar
 }
 
 func (r *entDepartmentRepository) FetchList(ctx context.Context, filter domain.DepartmentQueryFilter) ([]domain.Department, error) {
-	query := r.client.Department.Query()
+	query := clientFromContext(ctx, r.client).Department.Query()
 
 	if filter.Name != "" {
 		query = query.Where(department.NameContains(filter.Name))
@@ -101,7 +101,7 @@ func (r *entDepartmentRepository) FetchList(ctx context.Context, filter domain.D
 }
 
 func (r *entDepartmentRepository) Update(ctx context.Context, dept *domain.Department) error {
-	update := r.client.Department.UpdateOneID(dept.ID)
+	update := clientFromContext(ctx, r.client).Department.UpdateOneID(dept.ID)
 
 	update = update.SetName(dept.Name).
 		SetSequence(dept.Sequence).
@@ -128,22 +128,22 @@ func (r *entDepartmentRepository) Update(ctx context.Context, dept *domain.Depar
 }
 
 func (r *entDepartmentRepository) Delete(ctx context.Context, id string) error {
-	return r.client.Department.DeleteOneID(id).Exec(ctx)
+	return clientFromContext(ctx, r.client).Department.DeleteOneID(id).Exec(ctx)
 }
 
 func (r *entDepartmentRepository) HasChildren(ctx context.Context, id string) (bool, error) {
-	return r.client.Department.Query().
+	return clientFromContext(ctx, r.client).Department.Query().
 		Where(department.ParentID(id)).
 		Exist(ctx)
 }
 
 func (r *entDepartmentRepository) HasUsers(ctx context.Context, id string) (bool, error) {
-	return r.client.User.Query().Where(user.DepartmentID(id)).Exist(ctx)
+	return clientFromContext(ctx, r.client).User.Query().Where(user.DepartmentID(id)).Exist(ctx)
 }
 
 func (r *entDepartmentRepository) GetAllChildrenIDs(ctx context.Context, id string) ([]string, error) {
 	// Fetch all departments and walk tree in memory
-	all, err := r.client.Department.Query().All(ctx)
+	all, err := clientFromContext(ctx, r.client).Department.Query().All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (r *entDepartmentRepository) GetAllChildrenIDs(ctx context.Context, id stri
 }
 
 func (r *entDepartmentRepository) HasActiveChildren(ctx context.Context, id string) (bool, error) {
-	all, err := r.client.Department.Query().All(ctx)
+	all, err := clientFromContext(ctx, r.client).Department.Query().All(ctx)
 	if err != nil {
 		return false, err
 	}

@@ -100,8 +100,8 @@ func (luc *loginLogUsecase) parseUserAgent(userAgent string) (browser, os, devic
 	return browser, os, device
 }
 
-func (luc *loginLogUsecase) CreateLoginLog(c context.Context, request *domain.CreateLoginLogRequest) (*domain.LoginLog, error) {
-	ctx, cancel := context.WithTimeout(c, luc.contextTimeout)
+func (luc *loginLogUsecase) CreateLoginLog(ctx context.Context, request *domain.CreateLoginLogRequest) (*domain.LoginLog, error) {
+	ctx, cancel := context.WithTimeout(ctx, luc.contextTimeout)
 	defer cancel()
 
 	// 解析User-Agent字符串
@@ -143,14 +143,14 @@ func (luc *loginLogUsecase) CreateLoginLog(c context.Context, request *domain.Cr
 	return loginLog, nil
 }
 
-func (luc *loginLogUsecase) ListLoginLogs(c context.Context, filter domain.LoginLogQueryFilter) (*domain.PagedResult[*domain.LoginLog], error) {
-	ctx, cancel := context.WithTimeout(c, luc.contextTimeout)
+func (luc *loginLogUsecase) ListLoginLogs(ctx context.Context, filter domain.LoginLogQueryFilter) (*domain.PagedResult[*domain.LoginLog], error) {
+	ctx, cancel := context.WithTimeout(ctx, luc.contextTimeout)
 	defer cancel()
 	return luc.loginLogRepository.Query(ctx, filter)
 }
 
-func (luc *loginLogUsecase) ClearAllLoginLogs(c context.Context) error {
-	ctx, cancel := context.WithTimeout(c, luc.contextTimeout)
+func (luc *loginLogUsecase) ClearAllLoginLogs(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, luc.contextTimeout)
 	defer cancel()
 	return luc.loginLogRepository.ClearAll(ctx)
 }

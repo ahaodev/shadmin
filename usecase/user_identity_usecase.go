@@ -21,10 +21,6 @@ type userIdentityUsecase struct {
 	tokenService       domain.TokenIssuer
 	codeStore          domain.UserIdentityCodeStore
 	loginLogUsecase    domain.LoginLogUseCase
-	accessTokenSecret  string
-	refreshTokenSecret string
-	accessTokenExpiry  int
-	refreshTokenExpiry int
 	contextTimeout     time.Duration
 }
 
@@ -37,8 +33,6 @@ func NewUserIdentityUsecase(
 	tokenService domain.TokenIssuer,
 	codeStore domain.UserIdentityCodeStore,
 	loginLogUsecase domain.LoginLogUseCase,
-	accessTokenSecret, refreshTokenSecret string,
-	accessTokenExpiry, refreshTokenExpiry int,
 	timeout time.Duration,
 ) domain.UserIdentityUsecase {
 	return &userIdentityUsecase{
@@ -49,10 +43,6 @@ func NewUserIdentityUsecase(
 		tokenService:       tokenService,
 		codeStore:          codeStore,
 		loginLogUsecase:    loginLogUsecase,
-		accessTokenSecret:  accessTokenSecret,
-		refreshTokenSecret: refreshTokenSecret,
-		accessTokenExpiry:  accessTokenExpiry,
-		refreshTokenExpiry: refreshTokenExpiry,
 		contextTimeout:     timeout,
 	}
 }
@@ -122,19 +112,7 @@ func (u *userIdentityUsecase) issueTokens(ctx context.Context, provider string, 
 		return nil, err
 	}
 
-	accessToken, err := u.tokenService.CreateAccessTokenWithIdentity(user, u.accessTokenSecret, u.accessTokenExpiry, provider, profile.UserID, provider)
-	if err != nil {
-		return nil, fmt.Errorf("create access token: %w", err)
-	}
-	refreshToken, err := u.tokenService.CreateRefreshToken(user, u.refreshTokenSecret, u.refreshTokenExpiry)
-	if err != nil {
-		return nil, fmt.Errorf("create refresh token: %w", err)
-	}
-
-	return &domain.UserIdentityResult{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}, nil
+	return u.tokenService.IssuePairWithIdentity(user, provider, profile.UserID)
 }
 
 // resolveOrCreateUser 解析 (provider, provider_subject) 对应的用户：

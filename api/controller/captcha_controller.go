@@ -24,15 +24,10 @@ type CaptchaController struct {
 //	@Failure		500				{object}	domain.Response
 //	@Router			/auth/captcha/slide [get]
 func (cc *CaptchaController) GetSlideCaptcha(c *gin.Context) {
-	if cc.CaptchaUsecase == nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError("captcha service not initialized"))
-		return
-	}
-
 	oldID := c.Query("old_captcha_id")
 	challenge, err := cc.CaptchaUsecase.GenerateSlide(c.Request.Context(), oldID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"net/http"
 
 	"shadmin/domain"
@@ -32,16 +31,7 @@ func (c *UserInvitationController) Accept(ctx *gin.Context) {
 	}
 
 	if err := c.Usecase.Accept(ctx.Request.Context(), &request); err != nil {
-		switch {
-		case errors.Is(err, domain.ErrInvalidInvitation):
-			ctx.JSON(http.StatusBadRequest, domain.RespError("邀请链接无效或已过期"))
-		case errors.Is(err, domain.ErrUsernameExists):
-			ctx.JSON(http.StatusConflict, domain.RespError("用户名已被使用"))
-		case errors.Is(err, domain.ErrInvitationPasswordInvalid):
-			ctx.JSON(http.StatusBadRequest, domain.RespError("密码长度必须为 8 到 72 字节"))
-		default:
-			ctx.JSON(http.StatusInternalServerError, domain.RespError("接受邀请失败"))
-		}
+		RespondError(ctx, err)
 		return
 	}
 

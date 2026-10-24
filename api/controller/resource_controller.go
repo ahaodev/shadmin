@@ -29,7 +29,7 @@ func (rc *ResourceController) GetResources(c *gin.Context) {
 
 	resources, err := rc.ResourceUsecase.GetUserResources(c.Request.Context(), userID, isAdmin)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError(err.Error()))
+		RespondError(c, err)
 		return
 	}
 

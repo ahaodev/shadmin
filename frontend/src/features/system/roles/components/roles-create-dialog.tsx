@@ -68,10 +68,7 @@ export function RolesCreateDialog({
   const { data: menuData, isLoading: menusLoading } = useQuery({
     queryKey: [MENUS_FOR_ROLE_QUERY_KEY],
     queryFn: () => {
-      return getMenus({
-        status: 'active',
-        page_size: 1000,
-      })
+      return getMenus()
     },
     enabled: open,
     staleTime: 5 * 60 * 1000,

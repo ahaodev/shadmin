@@ -1,41 +1,64 @@
 package tokenservice
 
 import (
+	"fmt"
+	"time"
+
 	"shadmin/domain"
 	"shadmin/internal/tokenutil"
-	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// Config 是令牌服务的签名配置。过期时间单位为分钟。
+type Config struct {
+	AccessSecret  string
+	RefreshSecret string
+	AccessExpiry  int
+	RefreshExpiry int
+}
+
 // TokenService 认证令牌服务，实现 domain.TokenIssuer。
-type TokenService struct{}
+type TokenService struct {
+	cfg Config
+}
 
 var _ domain.TokenIssuer = (*TokenService)(nil)
 
-// NewTokenService 创建新的令牌服务实例
-func NewTokenService() *TokenService {
-	return &TokenService{}
+// NewTokenService 创建令牌服务实例。
+func NewTokenService(cfg Config) *TokenService {
+	return &TokenService{cfg: cfg}
 }
 
-// CreateAccessToken 创建访问令牌
-func (ts *TokenService) CreateAccessToken(user *domain.User, secret string, expiry int) (string, error) {
-	return tokenutil.CreateAccessToken(user, secret, expiry)
+// IssuePair 签发 access/refresh 令牌对。
+func (ts *TokenService) IssuePair(user *domain.User) (*domain.LoginResponse, error) {
+	access, err := tokenutil.CreateAccessToken(user, ts.cfg.AccessSecret, ts.cfg.AccessExpiry)
+	if err != nil {
+		return nil, fmt.Errorf("create access token: %w", err)
+	}
+	return ts.withRefresh(user, access)
 }
 
-// CreateAccessTokenWithIdentity 创建携带第三方身份信息的访问令牌。
-func (ts *TokenService) CreateAccessTokenWithIdentity(user *domain.User, secret string, expiry int, provider, providerSubject, source string) (string, error) {
-	return tokenutil.CreateAccessTokenWithIdentity(user, secret, expiry, provider, providerSubject)
+// IssuePairWithIdentity 签发携带第三方身份信息的令牌对。
+func (ts *TokenService) IssuePairWithIdentity(user *domain.User, provider, providerSubject string) (*domain.LoginResponse, error) {
+	access, err := tokenutil.CreateAccessTokenWithIdentity(user, ts.cfg.AccessSecret, ts.cfg.AccessExpiry, provider, providerSubject)
+	if err != nil {
+		return nil, fmt.Errorf("create access token: %w", err)
+	}
+	return ts.withRefresh(user, access)
 }
 
-// CreateRefreshToken 创建刷新令牌
-func (ts *TokenService) CreateRefreshToken(user *domain.User, secret string, expiry int) (string, error) {
-	return tokenutil.CreateRefreshToken(user, secret, expiry)
+func (ts *TokenService) withRefresh(user *domain.User, access string) (*domain.LoginResponse, error) {
+	refresh, err := tokenutil.CreateRefreshToken(user, ts.cfg.RefreshSecret, ts.cfg.RefreshExpiry)
+	if err != nil {
+		return nil, fmt.Errorf("create refresh token: %w", err)
+	}
+	return &domain.LoginResponse{AccessToken: access, RefreshToken: refresh}, nil
 }
 
 // ParseAccessClaims 校验 access token 签名并解析全部 claims。
-func (ts *TokenService) ParseAccessClaims(requestToken string, secret string) (*domain.TokenClaims, error) {
-	c, err := tokenutil.ParseAccessClaims(requestToken, secret)
+func (ts *TokenService) ParseAccessClaims(requestToken string) (*domain.TokenClaims, error) {
+	c, err := tokenutil.ParseAccessClaims(requestToken, ts.cfg.AccessSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +75,8 @@ func (ts *TokenService) ParseAccessClaims(requestToken string, secret string) (*
 }
 
 // ParseRefreshClaims 校验 refresh token 签名并解析全部 claims。
-func (ts *TokenService) ParseRefreshClaims(requestToken string, secret string) (*domain.TokenClaims, error) {
-	c, err := tokenutil.ParseRefreshClaims(requestToken, secret)
+func (ts *TokenService) ParseRefreshClaims(requestToken string) (*domain.TokenClaims, error) {
+	c, err := tokenutil.ParseRefreshClaims(requestToken, ts.cfg.RefreshSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -64,9 +87,14 @@ func (ts *TokenService) ParseRefreshClaims(requestToken string, secret string) (
 	}, nil
 }
 
-// ExtractJTIAndExpiry 提取 jti 与过期时间（用于服务端登出黑名单）
-func (ts *TokenService) ExtractJTIAndExpiry(requestToken string, secret string) (string, time.Time, bool) {
-	return tokenutil.ExtractJTIAndExpiry(requestToken, secret)
+// ExtractAccessJTI 按 access 密钥提取 jti 与过期时间（用于服务端登出黑名单）。
+func (ts *TokenService) ExtractAccessJTI(requestToken string) (string, time.Time, bool) {
+	return tokenutil.ExtractJTIAndExpiry(requestToken, ts.cfg.AccessSecret)
+}
+
+// ExtractRefreshJTI 按 refresh 密钥提取 jti 与过期时间。
+func (ts *TokenService) ExtractRefreshJTI(requestToken string) (string, time.Time, bool) {
+	return tokenutil.ExtractJTIAndExpiry(requestToken, ts.cfg.RefreshSecret)
 }
 
 // expiryTime 把可选的 JWT exp 转为 time.Time；缺省时返回零值。

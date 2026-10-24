@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"shadmin/cmd"
 	_ "shadmin/docs" // Import generated docs
 )
@@ -28,5 +30,5 @@ import (
 //go:generate swag init
 //go:generate go run -mod=mod entgo.io/ent/cmd/ent generate ./ent/schema
 func main() {
-	cmd.Run()
+	os.Exit(cmd.Run())
 }

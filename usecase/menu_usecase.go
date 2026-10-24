@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"shadmin/domain"
-	"shadmin/pkg"
 )
 
 type menuUsecase struct {
@@ -32,8 +31,6 @@ func (mu *menuUsecase) GetMenuTree(ctx context.Context) ([]domain.MenuTreeNode, 
 func (mu *menuUsecase) GetMenus(ctx context.Context, params domain.MenuQueryParams) (*domain.PagedResult[domain.Menu], error) {
 	ctx, cancel := context.WithTimeout(ctx, mu.contextTimeout)
 	defer cancel()
-
-	domain.ValidateMenuQueryParams(&params)
 
 	return mu.menuRepository.GetMenus(ctx, params)
 }
@@ -73,10 +70,6 @@ func (mu *menuUsecase) CreateMenu(ctx context.Context, req *domain.CreateMenuReq
 		return nil, err
 	}
 
-	// If menu has API resources and gets assigned to roles later,
-	// the role assignment process will handle Casbin policy creation
-	// No need to sync policies here as no roles are assigned yet
-
 	return createdMenu, nil
 }
 
@@ -102,9 +95,6 @@ func (mu *menuUsecase) UpdateMenu(ctx context.Context, id string, req *domain.Up
 		return nil, err
 	}
 
-	// 注意: casbin权限同步由定时任务自动处理，无需在此手动操作
-	pkg.Log.Infof("Successfully updated menu %s", updatedMenu.ID)
-
 	return updatedMenu, nil
 }
 
@@ -112,20 +102,12 @@ func (mu *menuUsecase) DeleteMenu(ctx context.Context, id string) error {
 	ctx, cancel := context.WithTimeout(ctx, mu.contextTimeout)
 	defer cancel()
 
-	// 1. 检查菜单是否存在并获取菜单信息
-	menu, err := mu.menuRepository.GetMenuByID(ctx, id)
-	if err != nil {
-		return fmt.Errorf("menu not found: %w", err)
+	// 先确认菜单存在，再递归删除菜单及其所有子菜单；事务由 repository 处理
+	if _, err := mu.menuRepository.GetMenuByID(ctx, id); err != nil {
+		return fmt.Errorf("get menu: %w", err)
 	}
-
-	pkg.Log.Infof("Starting deletion process for menu %s (ID: %s, Type: %s)",
-		menu.Name, id, menu.Type)
-
-	// 2. 递归删除菜单及其所有子菜单；事务由 repository 处理
 	if err := mu.menuRepository.DeleteMenuTree(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete menu recursively: %w", err)
 	}
-
-	pkg.Log.Infof("Successfully deleted menu %s and all its children", menu.Name)
 	return nil
 }

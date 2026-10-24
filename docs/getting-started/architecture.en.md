@@ -298,13 +298,13 @@ A unified `domain.FileRepository` interface allows transparent backend switching
 
 ```
 main.go
-  → cmd.Run()
-    → bootstrap.App()              # Load .env, connect DB, init Casbin/storage/Gin
+  → os.Exit(cmd.Run())             # Run returns an exit code so deferred cleanup always runs
+    → bootstrap.App()              # Load + validate .env, connect DB, init Casbin/storage/Gin (returns error)
     → api.SetupRoutes(app)         # Register static assets, Swagger, API routes
     → bootstrap.InitApiResources() # Scan Gin routes and write to DB
     → bootstrap.InitDefaultAdmin() # Init admin role/user and menus
     → bootstrap.InitCasbin(app)       # Build initial snapshot and start generation triggers with fallback polling
-    → api.Run(app)                 # Listen on port :55667
+    → api.Run(app)                 # Listen on the configured port; SIGINT/SIGTERM trigger graceful shutdown
 ```
 
 ## Frontend-Backend Collaboration

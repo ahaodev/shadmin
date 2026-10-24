@@ -1318,32 +1318,12 @@ paths:
     get:
       consumes:
       - application/json
-      description: Retrieve a list of menus with filtering and pagination
+      description: Retrieve all menus, optionally filtered by keyword (not paginated)
       parameters:
-      - description: Filter by menu type (menu/button/api)
-        in: query
-        name: type
-        type: string
-      - description: Filter by status (active/inactive)
-        in: query
-        name: status
-        type: string
-      - description: Filter by parent menu ID
-        in: query
-        name: parent_id
-        type: string
       - description: Filter by menu name or path
         in: query
         name: keyword
         type: string
-      - description: 'Page number (default: 1)'
-        in: query
-        name: page
-        type: integer
-      - description: 'Page size (default: 20)'
-        in: query
-        name: page_size
-        type: integer
       produces:
       - application/json
       responses:

@@ -18,8 +18,8 @@ func NewApiResourceUsecase(apiResourceRepository domain.ApiResourceRepository, t
 	}
 }
 
-func (aru *apiResourceUsecase) FetchPaged(c context.Context, params domain.ApiResourceQueryParams) (*domain.ApiResourcePagedResult, error) {
-	ctx, cancel := context.WithTimeout(c, aru.contextTimeout)
+func (aru *apiResourceUsecase) FetchPaged(ctx context.Context, params domain.ApiResourceQueryParams) (*domain.ApiResourcePagedResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, aru.contextTimeout)
 	defer cancel()
 
 	return aru.apiResourceRepository.FetchPaged(ctx, params)

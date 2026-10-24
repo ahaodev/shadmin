@@ -98,7 +98,7 @@ func (llc *LoginLogController) GetLoginLogs(c *gin.Context) {
 	// 调用用例获取登录日志
 	result, err := llc.LoginLogUsecase.ListLoginLogs(c.Request.Context(), filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError("Failed to retrieve login logs: "+err.Error()))
+		RespondError(c, err)
 		return
 	}
 
@@ -119,7 +119,7 @@ func (llc *LoginLogController) GetLoginLogs(c *gin.Context) {
 func (llc *LoginLogController) ClearLoginLogs(c *gin.Context) {
 	err := llc.LoginLogUsecase.ClearAllLoginLogs(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, domain.RespError("Failed to clear login logs: "+err.Error()))
+		RespondError(c, err)
 		return
 	}
 

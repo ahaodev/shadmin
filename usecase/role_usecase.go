@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"shadmin/domain"
-	"shadmin/pkg"
 	"time"
 )
 
@@ -13,8 +12,8 @@ type roleUsecase struct {
 	contextTimeout time.Duration
 }
 
-func (ru *roleUsecase) Create(c context.Context, request *domain.CreateRoleRequest) error {
-	ctx, cancel := context.WithTimeout(c, ru.contextTimeout)
+func (ru *roleUsecase) Create(ctx context.Context, request *domain.CreateRoleRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, ru.contextTimeout)
 	defer cancel()
 
 	// Check if role with same name already exists
@@ -45,28 +44,25 @@ func (ru *roleUsecase) Create(c context.Context, request *domain.CreateRoleReque
 		return fmt.Errorf("failed to create role: %w", err)
 	}
 
-	// 注意: casbin权限同步由定时任务自动处理，无需在此手动操作
-	pkg.Log.Infof("Successfully created role %s with %d menus", role.ID, len(role.MenuIDs))
-
 	return nil
 }
 
-func (ru *roleUsecase) Fetch(c context.Context) ([]*domain.Role, error) {
-	ctx, cancel := context.WithTimeout(c, ru.contextTimeout)
+func (ru *roleUsecase) Fetch(ctx context.Context) ([]*domain.Role, error) {
+	ctx, cancel := context.WithTimeout(ctx, ru.contextTimeout)
 	defer cancel()
 
 	return ru.roleRepository.Fetch(ctx)
 }
 
-func (ru *roleUsecase) GetByID(c context.Context, id string) (*domain.Role, error) {
-	ctx, cancel := context.WithTimeout(c, ru.contextTimeout)
+func (ru *roleUsecase) GetByID(ctx context.Context, id string) (*domain.Role, error) {
+	ctx, cancel := context.WithTimeout(ctx, ru.contextTimeout)
 	defer cancel()
 
 	return ru.roleRepository.GetByID(ctx, id)
 }
 
-func (ru *roleUsecase) Update(c context.Context, id string, request *domain.UpdateRoleRequest) (*domain.Role, error) {
-	ctx, cancel := context.WithTimeout(c, ru.contextTimeout)
+func (ru *roleUsecase) Update(ctx context.Context, id string, request *domain.UpdateRoleRequest) (*domain.Role, error) {
+	ctx, cancel := context.WithTimeout(ctx, ru.contextTimeout)
 	defer cancel()
 
 	// Get existing role
@@ -92,12 +88,6 @@ func (ru *roleUsecase) Update(c context.Context, id string, request *domain.Upda
 		existingRole.Status = *request.Status
 	}
 
-	// Handle menu permissions update if provided
-	var oldMenuIDs []string
-	if existingRole.MenuIDs != nil {
-		oldMenuIDs = existingRole.MenuIDs
-	}
-
 	if request.MenuIDs != nil {
 		existingRole.MenuIDs = request.MenuIDs
 	}
@@ -107,9 +97,6 @@ func (ru *roleUsecase) Update(c context.Context, id string, request *domain.Upda
 		return nil, fmt.Errorf("failed to update role: %w", err)
 	}
 
-	if request.MenuIDs != nil && ru.hasMenuAssignmentsChanged(oldMenuIDs, request.MenuIDs) {
-		pkg.Log.Infof("Menu assignments changed for role %s; authorization snapshot will refresh from the new generation", existingRole.ID)
-	}
 	// Fetch and return updated role
 	updatedRole, err := ru.roleRepository.GetByID(ctx, id)
 	if err != nil {
@@ -119,8 +106,8 @@ func (ru *roleUsecase) Update(c context.Context, id string, request *domain.Upda
 	return updatedRole, nil
 }
 
-func (ru *roleUsecase) Delete(c context.Context, id string) error {
-	ctx, cancel := context.WithTimeout(c, ru.contextTimeout)
+func (ru *roleUsecase) Delete(ctx context.Context, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, ru.contextTimeout)
 	defer cancel()
 
 	// 1. 检查角色是否存在
@@ -134,36 +121,12 @@ func (ru *roleUsecase) Delete(c context.Context, id string) error {
 		return domain.ErrCannotDeleteAdminRole
 	}
 
-	pkg.Log.Infof("Starting deletion process for role %s (ID: %s)", role.Name, id)
-
 	// 2. 删除角色记录；使用情况检查和删除在 repository 事务内完成
 	if err := ru.roleRepository.DeleteIfUnused(ctx, id, role.Name); err != nil {
 		return fmt.Errorf("failed to delete role from database: %w", err)
 	}
 
-	pkg.Log.Infof("Successfully deleted role %s", role.Name)
 	return nil
-}
-
-// hasMenuAssignmentsChanged 检查菜单分配是否发生变更
-func (ru *roleUsecase) hasMenuAssignmentsChanged(oldMenuIDs, newMenuIDs []string) bool {
-	if len(oldMenuIDs) != len(newMenuIDs) {
-		return true
-	}
-
-	// 创建map便于比较
-	oldSet := make(map[string]bool)
-	for _, menuID := range oldMenuIDs {
-		oldSet[menuID] = true
-	}
-
-	for _, menuID := range newMenuIDs {
-		if !oldSet[menuID] {
-			return true
-		}
-	}
-
-	return false
 }
 
 func NewRoleUsecase(roleRepository domain.RoleRepository, timeout time.Duration) domain.RoleUseCase {

@@ -25,7 +25,7 @@ func NewProtectedRoutes(factory *ControllerFactory) *ProtectedRoutes {
 func (pr *ProtectedRoutes) Setup(router *gin.RouterGroup, app *bootstrap.Application) {
 	// Apply authentication middleware first, then enforce token state checks.
 	protectedRouter := router.Group("")
-	protectedRouter.Use(middleware.JwtAuthMiddleware(app.Env.AccessTokenSecret, app.TokenBlacklist))
+	protectedRouter.Use(middleware.JwtAuthMiddleware(app.Tokens, app.TokenBlacklist))
 	protectedRouter.Use(middleware.UserStateMiddleware(app.UserStatusCache))
 
 	// Setup different route groups
