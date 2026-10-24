@@ -33,14 +33,14 @@ func (ru *resourceUsecase) GetUserResources(c context.Context, userID string, is
 	// 获取所有菜单
 	menuTree, err := ru.menuRepository.GetMenuTree(ctx)
 	if err != nil {
-		pkg.Log.WithField("userID", userID).WithError(err).Error("Failed to retrieve menu tree")
+		pkg.Log.With("userID", userID).With("error", err).Error("Failed to retrieve menu tree")
 		return nil, fmt.Errorf("failed to retrieve menu tree: %w", err)
 	}
 
 	// 获取用户信息（用于解析角色名称）
 	user, err := ru.userRepository.GetByID(ctx, userID)
 	if err != nil {
-		pkg.Log.WithField("userID", userID).WithError(err).Error("Failed to get user information")
+		pkg.Log.With("userID", userID).With("error", err).Error("Failed to get user information")
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
@@ -114,12 +114,12 @@ func (ru *resourceUsecase) getUserRoles(c context.Context, roleIDs []string) ([]
 
 	roles, err := ru.roleRepository.GetByIDs(c, roleIDs)
 	if err != nil {
-		pkg.Log.WithField("roleIDs", roleIDs).WithError(err).Warn("Failed to get role information")
+		pkg.Log.With("roleIDs", roleIDs).With("error", err).Warn("Failed to get role information")
 		return nil, err
 	}
 
 	if len(roles) < len(roleIDs) {
-		pkg.Log.WithField("requested", len(roleIDs)).WithField("found", len(roles)).
+		pkg.Log.With("requested", len(roleIDs)).With("found", len(roles)).
 			Warn("Some roles could not be retrieved")
 	}
 
@@ -138,7 +138,7 @@ func (ru *resourceUsecase) collectUserPermissions(c context.Context, roles []*do
 
 	menus, err := ru.menuRepository.GetMenuPermissionsByIDs(c, userMenuIDs)
 	if err != nil {
-		pkg.Log.WithField("menuIDs", userMenuIDs).WithError(err).Error("Failed to load menus for permission collection")
+		pkg.Log.With("menuIDs", userMenuIDs).With("error", err).Error("Failed to load menus for permission collection")
 		return nil, nil, fmt.Errorf("failed to load menu permissions: %w", err)
 	}
 

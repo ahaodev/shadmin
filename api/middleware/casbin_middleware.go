@@ -11,7 +11,6 @@ import (
 	"shadmin/pkg"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 // CasbinMiddleware API权限鉴权中间件
@@ -47,11 +46,7 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 			if errors.Is(err, casbin.ErrSnapshotStale) {
 				status = http.StatusServiceUnavailable
 			} else {
-				pkg.Log.WithFields(logrus.Fields{
-					"user_id": userID,
-					"method":  method,
-					"path":    path,
-				}).WithError(err).Error("API 权限检查失败")
+				pkg.Log.With("user_id", userID, "method", method, "path", path, "error", err).Error("API 权限检查失败")
 			}
 			c.JSON(status, domain.RespError("权限检查失败"))
 			c.Abort()
@@ -59,11 +54,7 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 		}
 
 		if !hasPermission {
-			pkg.Log.WithFields(logrus.Fields{
-				"user_id": userID,
-				"method":  method,
-				"path":    path,
-			}).Warn("API 权限不足")
+			pkg.Log.With("user_id", userID, "method", method, "path", path).Warn("API 权限不足")
 			c.JSON(http.StatusForbidden, domain.RespError("权限不足"))
 			c.Abort()
 			return

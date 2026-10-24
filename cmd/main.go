@@ -41,6 +41,6 @@ func Run() {
 
 	err := api.Run(app)
 	if err != nil {
-		pkg.Log.Error(err)
+		pkg.Log.Error(err.Error())
 	}
 }

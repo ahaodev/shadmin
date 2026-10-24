@@ -57,7 +57,7 @@ func (uu *userUsecase) CreateUser(c context.Context, request *domain.CreateUserR
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	pkg.Log.Printf("Successfully created user %s", user.Username)
+	pkg.Log.Infof("Successfully created user %s", user.Username)
 	return user, nil
 }
 func (uu *userUsecase) ListUsers(c context.Context, filter domain.UserQueryFilter) (*domain.PagedResult[*domain.User], error) {
@@ -92,14 +92,14 @@ func (uu *userUsecase) DeleteUser(c context.Context, id string, currentUserID st
 		return domain.ErrCannotDeleteAdmin
 	}
 
-	pkg.Log.Printf("User %s starting deletion of user %s (ID: %s)", currentUserID, user.Username, id)
+	pkg.Log.Infof("User %s starting deletion of user %s (ID: %s)", currentUserID, user.Username, id)
 
 	if err := uu.userRepository.Delete(ctx, id); err != nil {
-		pkg.Log.Printf("ERROR: Failed to delete user %s from database: %v", user.Username, err)
+		pkg.Log.Errorf("Failed to delete user %s from database: %v", user.Username, err)
 		return fmt.Errorf("failed to delete user from database: %w", err)
 	}
 
-	pkg.Log.Printf("Successfully deleted user %s", user.Username)
+	pkg.Log.Infof("Successfully deleted user %s", user.Username)
 	return nil
 }
 

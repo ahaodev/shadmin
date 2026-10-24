@@ -130,7 +130,7 @@ func (u *deviceAuthUsecase) PollToken(ctx context.Context, req domain.DeviceToke
 		if session.LastPolledAt != nil && now.Sub(*session.LastPolledAt) < time.Duration(session.Interval)*time.Second {
 			nextInterval := session.Interval + 5
 			if err := u.repo.UpdatePollState(ctx, session.DeviceCode, now, nextInterval); err != nil {
-				pkg.Log.Printf("WARN: update device poll interval on slow_down: %v", err)
+				pkg.Log.Warnf("update device poll interval on slow_down: %v", err)
 			}
 			return nil, domain.ErrDeviceSlowDown
 		}

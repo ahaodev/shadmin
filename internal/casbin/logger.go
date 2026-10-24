@@ -4,7 +4,6 @@ import (
 	"shadmin/pkg"
 
 	casbinlog "github.com/casbin/casbin/v3/log"
-	"github.com/sirupsen/logrus"
 )
 
 var logger = pkg.Log
@@ -39,9 +38,9 @@ func (l *casbinLogger) OnAfterEvent(entry *casbinlog.LogEntry) error {
 	logger := l.loggerForEntry(entry)
 	switch {
 	case entry.Error != nil:
-		logger.WithError(entry.Error).Error("casbin event failed")
+		logger.With("error", entry.Error).Error("casbin event failed")
 	case entry.EventType == casbinlog.EventEnforce && !entry.Allowed:
-		logger.WithField("allowed", false).Warn("casbin authorization denied")
+		logger.With("allowed", false).Warn("casbin authorization denied")
 	}
 
 	if l.callback != nil {
@@ -55,19 +54,19 @@ func (l *casbinLogger) SetLogCallback(callback func(entry *casbinlog.LogEntry) e
 	return nil
 }
 
-func (l *casbinLogger) loggerForEntry(entry *casbinlog.LogEntry) *logrus.Entry {
-	entryLogger := logger.WithField("component", "casbin").WithField("event_type", string(entry.EventType))
+func (l *casbinLogger) loggerForEntry(entry *casbinlog.LogEntry) pkg.Logger {
+	entryLogger := logger.With("component", "casbin", "event_type", string(entry.EventType))
 	if entry.Subject != "" {
-		entryLogger = entryLogger.WithField("subject", entry.Subject)
+		entryLogger = entryLogger.With("subject", entry.Subject)
 	}
 	if entry.Object != "" {
-		entryLogger = entryLogger.WithField("object", entry.Object)
+		entryLogger = entryLogger.With("object", entry.Object)
 	}
 	if entry.Action != "" {
-		entryLogger = entryLogger.WithField("action", entry.Action)
+		entryLogger = entryLogger.With("action", entry.Action)
 	}
 	if entry.Domain != "" {
-		entryLogger = entryLogger.WithField("domain", entry.Domain)
+		entryLogger = entryLogger.With("domain", entry.Domain)
 	}
 	return entryLogger
 }

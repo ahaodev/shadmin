@@ -36,10 +36,10 @@ func InitIdentityProviders(env *conf.Env) {
 	}
 
 	if len(registered) == 0 {
-		log.Printf("Identity login: no provider configured (skipped)")
+		log.Infof("Identity login: no provider configured (skipped)")
 		return
 	}
-	log.Printf("Identity login: providers enabled = %s", strings.Join(registered, ", "))
+	log.Infof("Identity login: providers enabled = %s", strings.Join(registered, ", "))
 }
 
 func initGothicStore(secret string) *sessions.CookieStore {

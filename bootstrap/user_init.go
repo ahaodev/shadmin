@@ -302,7 +302,7 @@ func initDefaultAdmin(app *Application, ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		log.Println("admin user already exists")
+		log.Info("admin user already exists")
 		if err := initMenu(app.DB, adminRole.ID, ctx); err != nil {
 			return err
 		}
@@ -340,7 +340,7 @@ func initDefaultAdmin(app *Application, ctx context.Context) error {
 	if err := ensureViewerRole(ctx, app.DB); err != nil {
 		return err
 	}
-	log.Printf("admin user created: %s", app.Env.AdminUsername)
+	log.Infof("admin user created: %s", app.Env.AdminUsername)
 	return nil
 }
 
@@ -379,7 +379,7 @@ func initMenu(client *ent.Client, adminRoleID string, ctx context.Context) error
 		if err := seedDefaultMenus(ctx, client); err != nil {
 			return err
 		}
-		log.Println("menu data initialized")
+		log.Info("menu data initialized")
 	}
 	return bindMenusToAdmin(client, adminRoleID, ctx)
 }

@@ -57,9 +57,9 @@ func App() *Application {
 	}
 
 	if app.Env.RedisEnabled() {
-		log.Printf("Cacher: Redis mode")
+		log.Infof("Cacher: Redis mode")
 	} else {
-		log.Printf("Cacher: memory mode")
+		log.Infof("Cacher: memory mode")
 	}
 
 	// 用户状态缓存：直接复用共享 Cacher，Cache 层做 DB 回源与 TTL 协调。
@@ -198,7 +198,7 @@ func userIDsForCacheInvalidation(ctx context.Context, m ent.Mutation) []string {
 
 	ids, err := mutationIDs(ctx, um)
 	if err != nil {
-		log.WithError(err).Warn("Failed to resolve user IDs for status cache invalidation")
+		log.With("error", err).Warn("Failed to resolve user IDs for status cache invalidation")
 		return nil
 	}
 	return ids

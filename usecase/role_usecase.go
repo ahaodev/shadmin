@@ -46,7 +46,7 @@ func (ru *roleUsecase) Create(c context.Context, request *domain.CreateRoleReque
 	}
 
 	// 注意: casbin权限同步由定时任务自动处理，无需在此手动操作
-	pkg.Log.Printf("Successfully created role %s with %d menus", role.ID, len(role.MenuIDs))
+	pkg.Log.Infof("Successfully created role %s with %d menus", role.ID, len(role.MenuIDs))
 
 	return nil
 }
@@ -108,7 +108,7 @@ func (ru *roleUsecase) Update(c context.Context, id string, request *domain.Upda
 	}
 
 	if request.MenuIDs != nil && ru.hasMenuAssignmentsChanged(oldMenuIDs, request.MenuIDs) {
-		pkg.Log.Printf("Menu assignments changed for role %s; authorization snapshot will refresh from the new generation", existingRole.ID)
+		pkg.Log.Infof("Menu assignments changed for role %s; authorization snapshot will refresh from the new generation", existingRole.ID)
 	}
 	// Fetch and return updated role
 	updatedRole, err := ru.roleRepository.GetByID(ctx, id)
@@ -134,14 +134,14 @@ func (ru *roleUsecase) Delete(c context.Context, id string) error {
 		return domain.ErrCannotDeleteAdminRole
 	}
 
-	pkg.Log.Printf("Starting deletion process for role %s (ID: %s)", role.Name, id)
+	pkg.Log.Infof("Starting deletion process for role %s (ID: %s)", role.Name, id)
 
 	// 2. 删除角色记录；使用情况检查和删除在 repository 事务内完成
 	if err := ru.roleRepository.DeleteIfUnused(ctx, id, role.Name); err != nil {
 		return fmt.Errorf("failed to delete role from database: %w", err)
 	}
 
-	pkg.Log.Printf("Successfully deleted role %s", role.Name)
+	pkg.Log.Infof("Successfully deleted role %s", role.Name)
 	return nil
 }
 

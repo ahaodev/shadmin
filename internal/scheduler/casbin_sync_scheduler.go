@@ -51,7 +51,7 @@ func (s *CasbinSyncScheduler) Start(ctx context.Context) {
 	defer s.mutex.Unlock()
 
 	if s.running {
-		log.Printf("WARN: Casbin同步调度器已经在运行")
+		log.Warnf("Casbin同步调度器已经在运行")
 		return
 	}
 
@@ -82,7 +82,7 @@ func (s *CasbinSyncScheduler) Stop() {
 	close(stopChan)
 	<-doneChan // 等待本次运行的 goroutine 真正退出
 
-	log.Printf(" Casbin同步调度器已停止")
+	log.Infof("Casbin同步调度器已停止")
 }
 
 // run 执行定时同步任务的主循环。interval 与通道由 Start 快照传入，不读取可变字段。
@@ -95,21 +95,21 @@ func (s *CasbinSyncScheduler) run(ctx context.Context, interval time.Duration, s
 	for {
 		select {
 		case <-stop:
-			log.Printf(" 收到停止信号，退出Casbin同步定时任务")
+			log.Infof("收到停止信号，退出Casbin同步定时任务")
 			return
 
 		case <-ctx.Done():
-			log.Printf(" 上下文已取消，退出Casbin同步定时任务")
+			log.Infof("上下文已取消，退出Casbin同步定时任务")
 			return
 
 		case <-ticker.C:
 			if err := s.performSync(ctx); err != nil {
-				log.Printf("ERROR: Casbin generation sync failed: %v", err)
+				log.Errorf("Casbin generation sync failed: %v", err)
 			}
 
 		case <-s.triggerChan:
 			if err := s.performSync(ctx); err != nil {
-				log.Printf("ERROR: Casbin generation sync failed after trigger: %v", err)
+				log.Errorf("Casbin generation sync failed after trigger: %v", err)
 			}
 		}
 	}

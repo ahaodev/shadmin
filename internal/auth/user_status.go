@@ -49,7 +49,7 @@ func (c *Cache) Get(ctx context.Context, userID string) (string, error) {
 	}
 
 	if status, ok, err := c.cacher.Get(ctx, userStatusNS, userID); err != nil {
-		log.Printf("cache get failed for user %s: %v", userID, err)
+		log.Infof("cache get failed for user %s: %v", userID, err)
 	} else if ok {
 		return status, nil
 	}
@@ -61,7 +61,7 @@ func (c *Cache) Get(ctx context.Context, userID string) (string, error) {
 	}
 
 	if err := c.cacher.Set(ctx, userStatusNS, userID, status, c.ttl); err != nil {
-		log.Printf("cache set failed for user %s: %v", userID, err)
+		log.Infof("cache set failed for user %s: %v", userID, err)
 	}
 	return status, nil
 }
@@ -72,6 +72,6 @@ func (c *Cache) Invalidate(userID string) {
 		return
 	}
 	if err := c.cacher.Delete(context.Background(), userStatusNS, userID); err != nil {
-		log.Printf("cache delete failed for user %s: %v", userID, err)
+		log.Infof("cache delete failed for user %s: %v", userID, err)
 	}
 }

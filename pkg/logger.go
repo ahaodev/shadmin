@@ -1,143 +1,71 @@
 package pkg
 
 import (
-	"bytes"
+	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
+	"runtime"
 	"time"
 
-	rotatelogs "github.com/lestrrat/go-file-rotatelogs"
-	"github.com/rifflock/lfshook"
-	"github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-const logPath = ".logs/"
+const logFile = ".logs/app.log"
 
-var Log *logrus.Logger
+// Logger wraps slog.Logger with printf-style helpers.
+type Logger struct{ *slog.Logger }
 
-type mineFormatter struct{}
-type consoleFormatter struct{}
+var Log = newLoggerWith(io.MultiWriter(os.Stdout, &lumberjack.Logger{
+	Filename: logFile,
+	MaxSize:  100, // MB
+	MaxAge:   7,   // days
+	Compress: true,
+}))
 
-func init() {
-	Log = create()
+func newLoggerWith(w io.Writer) Logger {
+	handler := slog.NewTextHandler(w, &slog.HandlerOptions{
+		AddSource: true,
+		Level:     slog.LevelDebug,
+		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+			switch a.Key {
+			case slog.TimeKey:
+				a.Value = slog.StringValue(a.Value.Time().Format(TimeFormat))
+			case slog.SourceKey:
+				if src, ok := a.Value.Any().(*slog.Source); ok {
+					a.Value = slog.StringValue(fmt.Sprintf("%s:%d", filepath.Base(src.File), src.Line))
+				}
+			}
+			return a
+		},
+	})
+	return Logger{slog.New(handler)}
 }
 
-func create() *logrus.Logger {
-	if Log != nil {
-		return Log
-	}
-	Log = logrus.New()
-	Log.Formatter = new(logrus.JSONFormatter)
-	Log.Formatter = new(logrus.TextFormatter) //default
-	Log.Level = logrus.TraceLevel
-	Log.Out = os.Stdout
-	//控制台输出的格式
-	Log.SetFormatter(&consoleFormatter{})
-	_ = os.Mkdir(logPath, os.ModePerm) //在运行程序的目录下创建logs目录
-	writer, _ := rotatelogs.New(
-		logPath+todayFileName(),
-		rotatelogs.WithLinkName(logPath),
-		rotatelogs.WithMaxAge(time.Duration(604800)*time.Second),
-		rotatelogs.WithRotationTime(time.Duration(604800)*time.Second),
-	)
-	writerMap := lfshook.WriterMap{
-		logrus.InfoLevel:  writer,
-		logrus.FatalLevel: writer,
-		logrus.DebugLevel: writer,
-		logrus.WarnLevel:  writer,
-		logrus.ErrorLevel: writer,
-		logrus.PanicLevel: writer,
-	}
-	//启用调用者信息
-	Log.SetReportCaller(true)
-	//设定输出文件的格式
-	hook := lfshook.NewHook(writerMap, &mineFormatter{})
-	Log.AddHook(hook)
-	return Log
+// With returns a Logger that includes the given key-value attributes.
+func (l Logger) With(args ...any) Logger { return Logger{l.Logger.With(args...)} }
+
+func (l Logger) Debugf(format string, args ...any) { l.logf(slog.LevelDebug, format, args...) }
+func (l Logger) Infof(format string, args ...any)  { l.logf(slog.LevelInfo, format, args...) }
+func (l Logger) Warnf(format string, args ...any)  { l.logf(slog.LevelWarn, format, args...) }
+func (l Logger) Errorf(format string, args ...any) { l.logf(slog.LevelError, format, args...) }
+
+// Fatalf logs at error level and exits the process.
+func (l Logger) Fatalf(format string, args ...any) {
+	l.logf(slog.LevelError, format, args...)
+	os.Exit(1)
 }
 
-func todayFileName() string {
-	return time.Now().Format(TimeFormatDay) + ".log"
-}
-
-func formatFields(fields logrus.Fields) string {
-	if len(fields) == 0 {
-		return ""
+// logf keeps the caller's source location instead of this wrapper's.
+func (l Logger) logf(level slog.Level, format string, args ...any) {
+	ctx := context.Background()
+	if !l.Enabled(ctx, level) {
+		return
 	}
-	keys := make([]string, 0, len(fields))
-	for key := range fields {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	parts := make([]string, 0, len(keys))
-	for _, key := range keys {
-		parts = append(parts, fmt.Sprintf("%s=%v", key, fields[key]))
-	}
-	return " " + strings.Join(parts, " ")
-}
-
-func (s *consoleFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	var b *bytes.Buffer
-	if entry.Buffer != nil {
-		b = entry.Buffer
-	} else {
-		b = &bytes.Buffer{}
-	}
-	timeStamp := entry.Time.Format(TimeFormat)
-	var newLog string
-	if entry.Caller != nil {
-		fName := filepath.Base(entry.Caller.File)
-		newLog = fmt.Sprintf("[%s] %s %s:%d:%s%s\n",
-			entry.Level,
-			entry.Caller.Function,
-			fName,
-			entry.Caller.Line,
-			entry.Message,
-			formatFields(entry.Data),
-		)
-	} else {
-		newLog = fmt.Sprintf("[%s][%s] %s%s\n",
-			timeStamp,
-			entry.Level,
-			entry.Message,
-			formatFields(entry.Data),
-		)
-	}
-	b.WriteString(newLog)
-	return b.Bytes(), nil
-}
-
-func (s *mineFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	var b *bytes.Buffer
-	if entry.Buffer != nil {
-		b = entry.Buffer
-	} else {
-		b = &bytes.Buffer{}
-	}
-	timeStamp := entry.Time.Format(TimeFormat)
-	var newLog string
-	if entry.Caller != nil {
-		fName := filepath.Base(entry.Caller.File)
-		newLog = fmt.Sprintf("[%s][%s][%s:%d %s] %s%s\n",
-			timeStamp,
-			entry.Level,
-			fName,
-			entry.Caller.Line,
-			entry.Caller.Function,
-			entry.Message,
-			formatFields(entry.Data),
-		)
-	} else {
-		newLog = fmt.Sprintf("[%s][%s] %s%s\n",
-			timeStamp,
-			entry.Level,
-			entry.Message,
-			formatFields(entry.Data),
-		)
-	}
-	b.WriteString(newLog)
-	return b.Bytes(), nil
+	var pcs [1]uintptr
+	runtime.Callers(3, pcs[:]) // skip Callers, logf, and the exported helper
+	r := slog.NewRecord(time.Now(), level, fmt.Sprintf(format, args...), pcs[0])
+	_ = l.Handler().Handle(ctx, r)
 }

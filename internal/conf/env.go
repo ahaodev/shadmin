@@ -336,7 +336,7 @@ func NewEnv() *Env {
 	setDefaults()
 
 	if _, err := os.Stat(".env"); err != nil {
-		pkg.Log.Println("没有找到 .env 文件，使用默认配置并写入.env")
+		pkg.Log.Info("没有找到 .env 文件，使用默认配置并写入.env")
 		if err := generateEnvFile(); err != nil {
 			pkg.Log.Error("写入.env文件失败: " + err.Error())
 			return &Env{}
@@ -354,7 +354,7 @@ func NewEnv() *Env {
 	}
 
 	if env.AppEnv == AppEnvDev {
-		pkg.Log.Println("The App is running in development env")
+		pkg.Log.Info("The App is running in development env")
 	}
 
 	return env

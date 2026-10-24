@@ -26,8 +26,8 @@ func NewEntDatabase(env *conf.Env) *ent.Client {
 		dbType = "sqlite"
 	}
 
-	log.Printf("🔗 Database Initialization:")
-	log.Printf("  - Type: %s", strings.ToUpper(dbType))
+	log.Infof("🔗 Database Initialization:")
+	log.Infof("  - Type: %s", strings.ToUpper(dbType))
 
 	switch dbType {
 	case "postgres", "postgresql":
@@ -41,24 +41,24 @@ func NewEntDatabase(env *conf.Env) *ent.Client {
 	}
 
 	if err != nil {
-		log.Fatal("❌ Failed to connect to database:", err)
+		log.Fatalf("❌ Failed to connect to database: %v", err)
 	}
 
 	// Auto migrate schema
-	log.Printf("📋 Running database schema migration...")
+	log.Infof("📋 Running database schema migration...")
 	ctx := context.Background()
 	if err := client.Schema.Create(ctx,
 		migrate.WithDropIndex(true),
 		migrate.WithDropColumn(true),
 	); err != nil {
-		log.Fatal("❌ Failed to create schema resources:", err)
+		log.Fatalf("❌ Failed to create schema resources: %v", err)
 	}
 	if err := repository.EnsureAuthorizationState(ctx, client); err != nil {
-		log.Fatal("❌ Failed to initialize authorization state:", err)
+		log.Fatalf("❌ Failed to initialize authorization state: %v", err)
 	}
 
-	log.Printf("✅ Database schema migration completed")
-	log.Printf("✅ Connected to %s database successfully with Ent", strings.ToUpper(dbType))
+	log.Infof("✅ Database schema migration completed")
+	log.Infof("✅ Connected to %s database successfully with Ent", strings.ToUpper(dbType))
 	return client
 }
 
@@ -66,8 +66,8 @@ func connectSQLite() (*ent.Client, error) {
 	// 修改这里：确保路径指向 .db 文件
 	dbPath := "./.database/data.db"
 
-	log.Printf("📄 SQLite Config:")
-	log.Printf("  - Database Path: %s", dbPath)
+	log.Infof("📄 SQLite Config:")
+	log.Infof("  - Database Path: %s", dbPath)
 
 	// 确保目录存在
 	dir := filepath.Dir(dbPath)
@@ -75,7 +75,7 @@ func connectSQLite() (*ent.Client, error) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create DB directory %s: %v", dir, err)
 		}
-		log.Printf("✅ Database directory ensured: %s", dir)
+		log.Infof("✅ Database directory ensured: %s", dir)
 	}
 
 	// SQLite 单写者特性下，并发写会触发 "database is locked"。
@@ -86,7 +86,7 @@ func connectSQLite() (*ent.Client, error) {
 	//   _txlock=immediate  事务开始即以 BEGIN IMMEDIATE 抢占写锁，串行化写事务，
 	//                      避免两个事务各自升级写锁导致的死锁式 locked。
 	dsn := fmt.Sprintf("file:%s?_fk=1&_journal_mode=WAL&_busy_timeout=5000&_txlock=immediate", dbPath)
-	log.Printf("📡 Connecting to SQLite database...")
+	log.Infof("📡 Connecting to SQLite database...")
 	return ent.Open("sqlite3", dsn)
 }
 
@@ -96,17 +96,17 @@ func connectPostgreSQL(env *conf.Env) (*ent.Client, error) {
 		return nil, fmt.Errorf("PostgreSQL DSN is required but not provided")
 	}
 
-	log.Printf("📄 PostgreSQL Config:")
-	log.Printf("  - DSN: %s", maskPassword(dsn))
-	log.Printf("📡 Connecting to PostgreSQL database...")
+	log.Infof("📄 PostgreSQL Config:")
+	log.Infof("  - DSN: %s", maskPassword(dsn))
+	log.Infof("📡 Connecting to PostgreSQL database...")
 
 	client, err := ent.Open("postgres", dsn)
 	if err != nil {
-		log.Printf("❌ PostgreSQL connection failed: %v", err)
+		log.Errorf("❌ PostgreSQL connection failed: %v", err)
 		return nil, err
 	}
 
-	log.Printf("✅ PostgreSQL connection successful")
+	log.Infof("✅ PostgreSQL connection successful")
 	return client, nil
 }
 
@@ -116,17 +116,17 @@ func connectMySQL(env *conf.Env) (*ent.Client, error) {
 		return nil, fmt.Errorf("MySQL DSN is required but not provided")
 	}
 
-	log.Printf("📄 MySQL Config:")
-	log.Printf("  - DSN: %s", maskPassword(dsn))
-	log.Printf("📡 Connecting to MySQL database...")
+	log.Infof("📄 MySQL Config:")
+	log.Infof("  - DSN: %s", maskPassword(dsn))
+	log.Infof("📡 Connecting to MySQL database...")
 
 	client, err := ent.Open("mysql", dsn)
 	if err != nil {
-		log.Printf("❌ MySQL connection failed: %v", err)
+		log.Errorf("❌ MySQL connection failed: %v", err)
 		return nil, err
 	}
 
-	log.Printf("✅ MySQL connection successful")
+	log.Infof("✅ MySQL connection successful")
 	return client, nil
 }
 
@@ -157,8 +157,8 @@ func CloseEntConnection(client *ent.Client) {
 
 	err := client.Close()
 	if err != nil {
-		log.Fatal("Failed to close database connection:", err)
+		log.Fatalf("Failed to close database connection: %v", err)
 	}
 
-	log.Println("Database connection closed.")
+	log.Info("Database connection closed.")
 }

@@ -11,7 +11,7 @@
 | 认证 | JWT（access + refresh token）           |
 | 授权 | Casbin RBAC（基于路径 + 方法的策略）             |
 | API 文档 | Swagger / OpenAPI（swaggo 自动生成）        |
-| 日志 | Logrus + 文件轮转                         |
+| 日志 | slog + lumberjack                         |
 | 前端框架 | React 19 + TypeScript                 |
 | 构建工具 | Vite + SWC                            |
 | UI 组件 | Shadcn UI（Radix UI + Tailwind CSS v4） |

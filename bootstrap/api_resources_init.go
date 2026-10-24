@@ -63,7 +63,7 @@ func InitApiResources(app *Application) error {
 		return fmt.Errorf("commit API resource rebuild: %w", err)
 	}
 
-	log.Printf("API resources rebuilt: scanned=%d created=%d deleted=%d restored_associations=%d",
+	log.Infof("API resources rebuilt: scanned=%d created=%d deleted=%d restored_associations=%d",
 		len(discoveredResources), created, deleted, restored)
 	return nil
 }
@@ -136,11 +136,11 @@ func bulkCreateApiResources(ctx context.Context, tx *ent.Tx, apiResources []*dom
 	for _, apiResource := range apiResources {
 		// 验证必要字段
 		if apiResource.Method == "" {
-			log.Printf("WARN: Skipping API resource with empty method, path: %s", apiResource.Path)
+			log.Warnf("Skipping API resource with empty method, path: %s", apiResource.Path)
 			continue
 		}
 		if apiResource.Path == "" {
-			log.Printf("WARN: Skipping API resource with empty path, method: %s", apiResource.Method)
+			log.Warnf("Skipping API resource with empty path, method: %s", apiResource.Method)
 			continue
 		}
 
@@ -274,7 +274,7 @@ func restoreMenuApiResourceAssociations(ctx context.Context, tx *ent.Tx, associa
 	restoredCount := 0
 	for menuID, apiResourceIDs := range menuAssociations {
 		if _, exists := existingMenus[menuID]; !exists {
-			log.Printf("WARN: Menu %s no longer exists, skipping association restore", menuID)
+			log.Warnf("Menu %s no longer exists, skipping association restore", menuID)
 			continue
 		}
 
@@ -283,7 +283,7 @@ func restoreMenuApiResourceAssociations(ctx context.Context, tx *ent.Tx, associa
 			if _, exists := existingApiResources[apiResourceID]; exists {
 				validApiResourceIDs = append(validApiResourceIDs, apiResourceID)
 			} else {
-				log.Printf("WARN: API resource %s no longer exists, skipping", apiResourceID)
+				log.Warnf("API resource %s no longer exists, skipping", apiResourceID)
 			}
 		}
 		if len(validApiResourceIDs) == 0 {

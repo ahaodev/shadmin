@@ -11,7 +11,7 @@ This document helps you understand Shadmin's overall design so you can quickly n
 | Authentication | JWT (access + refresh tokens)                                  |
 | Authorization | Casbin RBAC (path + method based policies)                     |
 | API Documentation | Swagger / OpenAPI (auto-generated via swaggo)                  |
-| Logging | Logrus + file rotation                                         |
+| Logging | log/slog + lumberjack                                       |
 | Frontend Framework | React 19 + TypeScript                                          |
 | Build Tool | Vite + SWC                                                     |
 | UI Components | Shadcn UI (Radix UI + Tailwind CSS v4)                         |

@@ -10,7 +10,7 @@ import (
 func SetupRoutes(app *bootstrap.Application) {
 	// 设置路由
 	if err := route.Setup(app, app.ApiEngine); err != nil {
-		pkg.Log.Printf("Failed to setup routes: %v", err)
+		pkg.Log.Infof("Failed to setup routes: %v", err)
 	}
 }
 

@@ -26,7 +26,7 @@ func writeLoginLog(parent context.Context, logUsecase domain.LoginLogUseCase, me
 	ctx := context.WithoutCancel(parent)
 	go func() {
 		if _, err := logUsecase.CreateLoginLog(ctx, logRequest); err != nil {
-			pkg.Log.WithError(err).Warn("failed to record login log")
+			pkg.Log.With("error", err).Warn("failed to record login log")
 		}
 	}()
 }

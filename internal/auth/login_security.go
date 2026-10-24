@@ -37,7 +37,7 @@ func (lsm *LoginSecurityManager) MaxFailures() int { return lsm.maxFailures }
 func (lsm *LoginSecurityManager) failCount(ctx context.Context, identifier string) int {
 	raw, ok, err := lsm.cacher.Get(ctx, loginFailNS, identifier)
 	if err != nil {
-		log.Printf("login security: read fail count for %q failed: %v", identifier, err)
+		log.Infof("login security: read fail count for %q failed: %v", identifier, err)
 		return 0
 	}
 	if !ok {
@@ -46,7 +46,7 @@ func (lsm *LoginSecurityManager) failCount(ctx context.Context, identifier strin
 
 	n, err := strconv.Atoi(raw)
 	if err != nil {
-		log.Printf("login security: discard corrupt fail count for %q: %v", identifier, err)
+		log.Infof("login security: discard corrupt fail count for %q: %v", identifier, err)
 		return 0
 	}
 	return n
@@ -61,7 +61,7 @@ func (lsm *LoginSecurityManager) IsLocked(ctx context.Context, identifier string
 func (lsm *LoginSecurityManager) RecordFailedAttempt(ctx context.Context, identifier string) int {
 	n, err := lsm.cacher.Incr(ctx, loginFailNS, identifier, lsm.LockDuration)
 	if err != nil {
-		log.Printf("login security: record fail count for %q failed: %v", identifier, err)
+		log.Infof("login security: record fail count for %q failed: %v", identifier, err)
 		return 0
 	}
 	return int(n)
@@ -70,6 +70,6 @@ func (lsm *LoginSecurityManager) RecordFailedAttempt(ctx context.Context, identi
 // RecordSuccessfulLogin 清除失败计数。
 func (lsm *LoginSecurityManager) RecordSuccessfulLogin(ctx context.Context, identifier string) {
 	if err := lsm.cacher.Delete(ctx, loginFailNS, identifier); err != nil {
-		log.Printf("login security: clear fail count for %q failed: %v", identifier, err)
+		log.Infof("login security: clear fail count for %q failed: %v", identifier, err)
 	}
 }
