@@ -24,8 +24,8 @@ func NewUserUsecase(userRepository domain.UserRepository, timeout time.Duration)
 	}
 }
 
-func (uu *userUsecase) CreateUser(c context.Context, request *domain.CreateUserRequest) (*domain.User, error) {
-	ctx, cancel := context.WithTimeout(c, uu.contextTimeout)
+func (uu *userUsecase) CreateUser(ctx context.Context, request *domain.CreateUserRequest) (*domain.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 
 	// 创建用户对象
@@ -57,23 +57,22 @@ func (uu *userUsecase) CreateUser(c context.Context, request *domain.CreateUserR
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	pkg.Log.Infof("Successfully created user %s", user.Username)
 	return user, nil
 }
-func (uu *userUsecase) ListUsers(c context.Context, filter domain.UserQueryFilter) (*domain.PagedResult[*domain.User], error) {
-	ctx, cancel := context.WithTimeout(c, uu.contextTimeout)
+func (uu *userUsecase) ListUsers(ctx context.Context, filter domain.UserQueryFilter) (*domain.PagedResult[*domain.User], error) {
+	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 	return uu.userRepository.Query(ctx, filter)
 }
 
-func (uu *userUsecase) GetUserByID(c context.Context, id string) (*domain.User, error) {
-	ctx, cancel := context.WithTimeout(c, uu.contextTimeout)
+func (uu *userUsecase) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 	return uu.userRepository.GetByID(ctx, id)
 }
 
-func (uu *userUsecase) DeleteUser(c context.Context, id string, currentUserID string) error {
-	ctx, cancel := context.WithTimeout(c, uu.contextTimeout)
+func (uu *userUsecase) DeleteUser(ctx context.Context, id string, currentUserID string) error {
+	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 
 	// 规则1: 不能删除自己
@@ -95,16 +94,13 @@ func (uu *userUsecase) DeleteUser(c context.Context, id string, currentUserID st
 	pkg.Log.Infof("User %s starting deletion of user %s (ID: %s)", currentUserID, user.Username, id)
 
 	if err := uu.userRepository.Delete(ctx, id); err != nil {
-		pkg.Log.Errorf("Failed to delete user %s from database: %v", user.Username, err)
 		return fmt.Errorf("failed to delete user from database: %w", err)
 	}
-
-	pkg.Log.Infof("Successfully deleted user %s", user.Username)
 	return nil
 }
 
-func (uu *userUsecase) UpdateUserProfile(c context.Context, userID string, updates domain.ProfileUpdate) error {
-	ctx, cancel := context.WithTimeout(c, uu.contextTimeout)
+func (uu *userUsecase) UpdateUserProfile(ctx context.Context, userID string, updates domain.ProfileUpdate) error {
+	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 
 	// Get existing user
@@ -127,8 +123,8 @@ func (uu *userUsecase) UpdateUserProfile(c context.Context, userID string, updat
 	return uu.userRepository.Update(ctx, user)
 }
 
-func (uu *userUsecase) UpdateUserPassword(c context.Context, userID string, passwordUpdate domain.PasswordUpdate) error {
-	ctx, cancel := context.WithTimeout(c, uu.contextTimeout)
+func (uu *userUsecase) UpdateUserPassword(ctx context.Context, userID string, passwordUpdate domain.PasswordUpdate) error {
+	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 
 	// Get existing user
@@ -158,8 +154,8 @@ func (uu *userUsecase) UpdateUserPassword(c context.Context, userID string, pass
 	return uu.userRepository.Update(ctx, user)
 }
 
-func (uu *userUsecase) UpdateUserPartial(c context.Context, userID string, updates domain.UserUpdateRequest) error {
-	ctx, cancel := context.WithTimeout(c, uu.contextTimeout)
+func (uu *userUsecase) UpdateUserPartial(ctx context.Context, userID string, updates domain.UserUpdateRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 
 	// Get existing user
@@ -212,8 +208,8 @@ func (uu *userUsecase) UpdateUserPartial(c context.Context, userID string, updat
 }
 
 // GetUserRoles 获取用户角色
-func (uu *userUsecase) GetUserRoles(c context.Context, userID string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(c, uu.contextTimeout)
+func (uu *userUsecase) GetUserRoles(ctx context.Context, userID string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 
 	roleIDs, err := uu.userRepository.GetRoleIDs(ctx, userID)
