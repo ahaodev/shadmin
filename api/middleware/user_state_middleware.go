@@ -23,7 +23,7 @@ func UserStateMiddleware(userStatusCache *auth.Cache) gin.HandlerFunc {
 		if userStatusCache != nil {
 			status, err := userStatusCache.Get(c.Request.Context(), userID)
 			if err != nil {
-				if errors.Is(err, domain.ErrUserDisabled) {
+				if errors.Is(err, domain.ErrUserDisabled) || errors.Is(err, domain.ErrUserNotFound) {
 					c.JSON(http.StatusUnauthorized, domain.RespError("账户未启用或已停用"))
 				} else {
 					c.JSON(http.StatusServiceUnavailable, domain.RespError("用户状态暂时无法验证"))
