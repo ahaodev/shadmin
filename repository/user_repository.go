@@ -92,19 +92,19 @@ func NewUserRepository(client *ent.Client) domain.UserRepository {
 	}
 }
 
-func (ur *entUserRepository) Create(c context.Context, u *domain.User) error {
-	return ur.create(c, u, nil)
+func (ur *entUserRepository) Create(ctx context.Context, u *domain.User) error {
+	return ur.create(ctx, u, nil)
 }
 
-func (ur *entUserRepository) CreateWithRoles(c context.Context, u *domain.User, roleIDs []string) error {
-	return ur.create(c, u, &roleIDs)
+func (ur *entUserRepository) CreateWithRoles(ctx context.Context, u *domain.User, roleIDs []string) error {
+	return ur.create(ctx, u, &roleIDs)
 }
 
-func (ur *entUserRepository) create(c context.Context, u *domain.User, roleIDs *[]string) error {
+func (ur *entUserRepository) create(ctx context.Context, u *domain.User, roleIDs *[]string) error {
 	status := domainStatusToEntStatus(u.Status)
 	var created *ent.User
 
-	err := WithAuthorizationTx(c, ur.client, func(txCtx context.Context, tx *ent.Tx) error {
+	err := WithAuthorizationTx(ctx, ur.client, func(txCtx context.Context, tx *ent.Tx) error {
 		createQuery := tx.User.
 			Create().
 			SetUsername(u.Username).
@@ -128,6 +128,9 @@ func (ur *entUserRepository) create(c context.Context, u *domain.User, roleIDs *
 		return err
 	})
 	if err != nil {
+		if isUniqueConstraintError(err) {
+			return domain.ErrUserExists
+		}
 		return fmt.Errorf("create user: %w", err)
 	}
 
@@ -142,7 +145,7 @@ func (ur *entUserRepository) create(c context.Context, u *domain.User, roleIDs *
 	return nil
 }
 
-func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFilter) (*domain.UserPagedResult, error) {
+func (ur *entUserRepository) Query(ctx context.Context, filter domain.UserQueryFilter) (*domain.UserPagedResult, error) {
 	// 构建查询条件
 	var predicates []predicate.User
 	if filter.Status != "" {
@@ -189,10 +192,10 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	if filter.DepartmentID != "" {
 		predicates = append(predicates, user.DepartmentID(filter.DepartmentID))
 	}
-	baseQuery := clientFromContext(c, ur.client).User.Query().Where(predicates...)
+	baseQuery := clientFromContext(ctx, ur.client).User.Query().Where(predicates...)
 
 	// 获取总数
-	total, err := baseQuery.Clone().Count(c)
+	total, err := baseQuery.Clone().Count(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("count users: %w", err)
 	}
@@ -216,7 +219,7 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	offset, limit := filter.Paginate()
 	query = query.Offset(offset).Limit(limit)
 
-	users, err := query.WithDepartment().All(c)
+	users, err := query.WithDepartment().All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("query users: %w", err)
 	}
@@ -230,8 +233,8 @@ func (ur *entUserRepository) Query(c context.Context, filter domain.UserQueryFil
 	return domain.NewPagedResult(result, total, filter.Page, filter.PageSize), nil
 }
 
-func (ur *entUserRepository) GetByIdentifier(c context.Context, identifier string) (*domain.User, error) {
-	u, err := clientFromContext(c, ur.client).User.
+func (ur *entUserRepository) GetByIdentifier(ctx context.Context, identifier string) (*domain.User, error) {
+	u, err := clientFromContext(ctx, ur.client).User.
 		Query().
 		Where(user.And(
 			user.Or(
@@ -245,24 +248,30 @@ func (ur *entUserRepository) GetByIdentifier(c context.Context, identifier strin
 		)).
 		WithRoles().
 		WithDepartment().
-		First(c)
+		First(ctx)
 
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrUserNotFound
+		}
 		return nil, fmt.Errorf("get user by identifier: %w", err)
 	}
 
 	return entUserToDomainUser(u, true), nil
 }
 
-func (ur *entUserRepository) GetByID(c context.Context, id string) (*domain.User, error) {
-	u, err := clientFromContext(c, ur.client).User.
+func (ur *entUserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
+	u, err := clientFromContext(ctx, ur.client).User.
 		Query().
 		Where(user.ID(id)).
 		WithRoles().
 		WithDepartment().
-		First(c)
+		First(ctx)
 
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrUserNotFound
+		}
 		return nil, fmt.Errorf("get user by ID: %w", err)
 	}
 
@@ -272,21 +281,21 @@ func (ur *entUserRepository) GetByID(c context.Context, id string) (*domain.User
 // Update updates user fields that do not affect authorization.
 // Status and role changes must use UpdateWithAuthorization or UpdateWithRoles.
 // 🔒 IsAdmin is intentionally excluded and can only be set during creation.
-func (ur *entUserRepository) Update(c context.Context, u *domain.User) error {
-	return ur.update(c, u, nil, false)
+func (ur *entUserRepository) Update(ctx context.Context, u *domain.User) error {
+	return ur.update(ctx, u, nil, false)
 }
 
 // UpdateWithAuthorization updates user fields and advances the authorization
 // generation for changes such as an account status transition.
-func (ur *entUserRepository) UpdateWithAuthorization(c context.Context, u *domain.User) error {
-	return ur.update(c, u, nil, true)
+func (ur *entUserRepository) UpdateWithAuthorization(ctx context.Context, u *domain.User) error {
+	return ur.update(ctx, u, nil, true)
 }
 
-func (ur *entUserRepository) UpdateWithRoles(c context.Context, u *domain.User, roleIDs []string) error {
-	return ur.update(c, u, &roleIDs, true)
+func (ur *entUserRepository) UpdateWithRoles(ctx context.Context, u *domain.User, roleIDs []string) error {
+	return ur.update(ctx, u, &roleIDs, true)
 }
 
-func (ur *entUserRepository) update(c context.Context, u *domain.User, roleIDs *[]string, authorizationChanged bool) error {
+func (ur *entUserRepository) update(ctx context.Context, u *domain.User, roleIDs *[]string, authorizationChanged bool) error {
 	var updated *ent.User
 	mutate := func(txCtx context.Context, tx *ent.Tx) error {
 		updateQuery := tx.User.
@@ -340,11 +349,17 @@ func (ur *entUserRepository) update(c context.Context, u *domain.User, roleIDs *
 
 	var err error
 	if authorizationChanged {
-		err = WithAuthorizationTx(c, ur.client, mutate)
+		err = WithAuthorizationTx(ctx, ur.client, mutate)
 	} else {
-		err = withEntTransaction(c, ur.client, mutate)
+		err = withEntTransaction(ctx, ur.client, mutate)
 	}
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrUserNotFound
+		}
+		if isUniqueConstraintError(err) {
+			return domain.ErrUserExists
+		}
 		return fmt.Errorf("update user: %w", err)
 	}
 
@@ -364,8 +379,8 @@ func (ur *entUserRepository) UpdateIdentityProfile(ctx context.Context, userID, 
 	return nil
 }
 
-func (ur *entUserRepository) Delete(c context.Context, id string) error {
-	if err := WithAuthorizationTx(c, ur.client, func(txCtx context.Context, tx *ent.Tx) error {
+func (ur *entUserRepository) Delete(ctx context.Context, id string) error {
+	if err := WithAuthorizationTx(ctx, ur.client, func(txCtx context.Context, tx *ent.Tx) error {
 		return tx.User.DeleteOneID(id).Exec(txCtx)
 	}); err != nil {
 		return fmt.Errorf("delete user: %w", err)
@@ -375,25 +390,31 @@ func (ur *entUserRepository) Delete(c context.Context, id string) error {
 
 // GetStatusByID 只查询用户状态字段，避免加载整条记录。
 // 用在登录/刷新/中间件等高频路径上。
-func (ur *entUserRepository) GetStatusByID(c context.Context, id string) (string, error) {
-	status, err := clientFromContext(c, ur.client).User.
+func (ur *entUserRepository) GetStatusByID(ctx context.Context, id string) (string, error) {
+	status, err := clientFromContext(ctx, ur.client).User.
 		Query().
 		Where(user.ID(id)).
 		Select(user.FieldStatus).
-		String(c)
+		String(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return "", domain.ErrUserNotFound
+		}
 		return "", fmt.Errorf("get user status by id: %w", err)
 	}
 	return status, nil
 }
 
-func (ur *entUserRepository) GetRoleIDs(c context.Context, id string) ([]string, error) {
-	u, err := clientFromContext(c, ur.client).User.
+func (ur *entUserRepository) GetRoleIDs(ctx context.Context, id string) ([]string, error) {
+	u, err := clientFromContext(ctx, ur.client).User.
 		Query().
 		Where(user.ID(id)).
 		WithRoles().
-		First(c)
+		First(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrUserNotFound
+		}
 		return nil, fmt.Errorf("get role IDs for user: %w", err)
 	}
 
