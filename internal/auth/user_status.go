@@ -2,14 +2,12 @@ package auth
 
 import (
 	"context"
+	"log/slog"
 	"shadmin/internal/cacher"
-	"shadmin/pkg"
 	"time"
 
 	"shadmin/domain"
 )
-
-var log = pkg.Log
 
 // DefaultTTL 是默认缓存有效期。短 TTL 保证即使 ent hook 失效通知遗漏，
 // 被禁用用户的 token 也会在 DefaultTTL 内失效。
@@ -49,7 +47,7 @@ func (c *Cache) Get(ctx context.Context, userID string) (string, error) {
 	}
 
 	if status, ok, err := c.cacher.Get(ctx, userStatusNS, userID); err != nil {
-		log.Infof("cache get failed for user %s: %v", userID, err)
+		slog.Info("user status cache get failed", "user_id", userID, "error", err)
 	} else if ok {
 		return status, nil
 	}
@@ -61,7 +59,7 @@ func (c *Cache) Get(ctx context.Context, userID string) (string, error) {
 	}
 
 	if err := c.cacher.Set(ctx, userStatusNS, userID, status, c.ttl); err != nil {
-		log.Infof("cache set failed for user %s: %v", userID, err)
+		slog.Info("user status cache set failed", "user_id", userID, "error", err)
 	}
 	return status, nil
 }
@@ -72,6 +70,6 @@ func (c *Cache) Invalidate(userID string) {
 		return
 	}
 	if err := c.cacher.Delete(context.Background(), userStatusNS, userID); err != nil {
-		log.Infof("cache delete failed for user %s: %v", userID, err)
+		slog.Info("user status cache delete failed", "user_id", userID, "error", err)
 	}
 }

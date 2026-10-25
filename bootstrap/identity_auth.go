@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -36,10 +37,10 @@ func InitIdentityProviders(env *conf.Env) {
 	}
 
 	if len(registered) == 0 {
-		log.Infof("Identity login: no provider configured (skipped)")
+		slog.Info("Identity login: no provider configured (skipped)")
 		return
 	}
-	log.Infof("Identity login: providers enabled = %s", strings.Join(registered, ", "))
+	slog.Info("Identity login: providers enabled", "providers", strings.Join(registered, ", "))
 }
 
 func initGothicStore(secret string) *sessions.CookieStore {

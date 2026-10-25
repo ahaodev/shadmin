@@ -2,13 +2,11 @@ package scheduler
 
 import (
 	"context"
+	"log/slog"
 	"shadmin/internal/casbin"
-	"shadmin/pkg"
 	"sync"
 	"time"
 )
-
-var log = pkg.Log
 
 // CasbinSyncScheduler runs generation-triggered syncs with a periodic fallback.
 type CasbinSyncScheduler struct {
@@ -51,7 +49,7 @@ func (s *CasbinSyncScheduler) Start(ctx context.Context) {
 	defer s.mutex.Unlock()
 
 	if s.running {
-		log.Warnf("Casbin同步调度器已经在运行")
+		slog.Warn("Casbin同步调度器已经在运行")
 		return
 	}
 
@@ -82,7 +80,7 @@ func (s *CasbinSyncScheduler) Stop() {
 	close(stopChan)
 	<-doneChan // 等待本次运行的 goroutine 真正退出
 
-	log.Infof("Casbin同步调度器已停止")
+	slog.Info("Casbin同步调度器已停止")
 }
 
 // run 执行定时同步任务的主循环。interval 与通道由 Start 快照传入，不读取可变字段。
@@ -95,21 +93,21 @@ func (s *CasbinSyncScheduler) run(ctx context.Context, interval time.Duration, s
 	for {
 		select {
 		case <-stop:
-			log.Infof("收到停止信号，退出Casbin同步定时任务")
+			slog.Info("收到停止信号，退出Casbin同步定时任务")
 			return
 
 		case <-ctx.Done():
-			log.Infof("上下文已取消，退出Casbin同步定时任务")
+			slog.Info("上下文已取消，退出Casbin同步定时任务")
 			return
 
 		case <-ticker.C:
 			if err := s.performSync(ctx); err != nil {
-				log.Errorf("Casbin generation sync failed: %v", err)
+				slog.Error("Casbin generation sync failed", "error", err)
 			}
 
 		case <-s.triggerChan:
 			if err := s.performSync(ctx); err != nil {
-				log.Errorf("Casbin generation sync failed after trigger: %v", err)
+				slog.Error("Casbin generation sync failed after trigger", "error", err)
 			}
 		}
 	}

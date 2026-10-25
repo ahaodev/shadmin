@@ -2,13 +2,13 @@ package middleware
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
 	"shadmin/domain"
 	"shadmin/internal/casbin"
 	"shadmin/internal/constants"
-	"shadmin/pkg"
 
 	"github.com/gin-gonic/gin"
 )
@@ -46,7 +46,7 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 			if errors.Is(err, casbin.ErrSnapshotStale) {
 				status = http.StatusServiceUnavailable
 			} else {
-				pkg.Log.With("user_id", userID, "method", method, "path", path, "error", err).Error("API 权限检查失败")
+				slog.Error("API 权限检查失败", "user_id", userID, "method", method, "path", path, "error", err)
 			}
 			c.JSON(status, domain.RespError("权限检查失败"))
 			c.Abort()
@@ -54,7 +54,7 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 		}
 
 		if !hasPermission {
-			pkg.Log.With("user_id", userID, "method", method, "path", path).Warn("API 权限不足")
+			slog.Warn("API 权限不足", "user_id", userID, "method", method, "path", path)
 			c.JSON(http.StatusForbidden, domain.RespError("权限不足"))
 			c.Abort()
 			return

@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/ent/apiresource"
@@ -63,8 +64,8 @@ func InitApiResources(app *Application) error {
 		return fmt.Errorf("commit API resource rebuild: %w", err)
 	}
 
-	log.Infof("API resources rebuilt: scanned=%d created=%d deleted=%d restored_associations=%d",
-		len(discoveredResources), created, deleted, restored)
+	slog.Info("API resources rebuilt", "scanned", len(discoveredResources), "created", created,
+		"deleted", deleted, "restored_associations", restored)
 	return nil
 }
 
@@ -136,11 +137,11 @@ func bulkCreateApiResources(ctx context.Context, tx *ent.Tx, apiResources []*dom
 	for _, apiResource := range apiResources {
 		// 验证必要字段
 		if apiResource.Method == "" {
-			log.Warnf("Skipping API resource with empty method, path: %s", apiResource.Path)
+			slog.Warn("Skipping API resource with empty method", "path", apiResource.Path)
 			continue
 		}
 		if apiResource.Path == "" {
-			log.Warnf("Skipping API resource with empty path, method: %s", apiResource.Method)
+			slog.Warn("Skipping API resource with empty path", "method", apiResource.Method)
 			continue
 		}
 
@@ -274,7 +275,7 @@ func restoreMenuApiResourceAssociations(ctx context.Context, tx *ent.Tx, associa
 	restoredCount := 0
 	for menuID, apiResourceIDs := range menuAssociations {
 		if _, exists := existingMenus[menuID]; !exists {
-			log.Warnf("Menu %s no longer exists, skipping association restore", menuID)
+			slog.Warn("Menu no longer exists, skipping association restore", "menu_id", menuID)
 			continue
 		}
 
@@ -283,7 +284,7 @@ func restoreMenuApiResourceAssociations(ctx context.Context, tx *ent.Tx, associa
 			if _, exists := existingApiResources[apiResourceID]; exists {
 				validApiResourceIDs = append(validApiResourceIDs, apiResourceID)
 			} else {
-				log.Warnf("API resource %s no longer exists, skipping", apiResourceID)
+				slog.Warn("API resource no longer exists, skipping", "api_resource_id", apiResourceID)
 			}
 		}
 		if len(validApiResourceIDs) == 0 {

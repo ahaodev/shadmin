@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -86,8 +87,8 @@ func (s *SyncService) rebuildLocked(ctx context.Context) error {
 		if !s.manager.MarkSnapshotFresh(generation) {
 			return fmt.Errorf("casbin snapshot generation changed before publication completed")
 		}
-		logger.Infof("Casbin snapshot published: generation=%d, users=%d, roles=%d, policies=%d, elapsed=%v",
-			generation, counts.users, counts.roles, counts.policies, time.Since(started))
+		slog.Info("Casbin snapshot published", "generation", generation, "users", counts.users,
+			"roles", counts.roles, "policies", counts.policies, "elapsed", time.Since(started))
 		return nil
 	}
 	return errAuthorizationChanged

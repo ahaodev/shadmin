@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"shadmin/domain"
@@ -35,7 +36,7 @@ func initMinioStorage(env *conf.Env) (*StorageConfig, error) {
 		return nil, fmt.Errorf("connect to MinIO: %w", err)
 	}
 
-	log.Info("文件存储: 使用 MinIO 对象存储")
+	slog.Info("文件存储: 使用 MinIO 对象存储")
 	return &StorageConfig{MinioClient: minioClient, FileStorage: repository.NewFileRepository(minioClient)}, nil
 }
 
@@ -44,6 +45,6 @@ func initDiskStorage(env *conf.Env) (*StorageConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("文件存储: 使用本地磁盘存储 (%s)", env.StorageBasePath)
+	slog.Info("文件存储: 使用本地磁盘存储", "path", env.StorageBasePath)
 	return &StorageConfig{FileStorage: fs}, nil
 }

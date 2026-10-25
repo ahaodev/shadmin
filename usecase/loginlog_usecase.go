@@ -2,9 +2,9 @@ package usecase
 
 import (
 	"context"
+	"log/slog"
 	"shadmin/domain"
 	"shadmin/internal/constants"
-	"shadmin/pkg"
 	"strings"
 	"time"
 )
@@ -26,7 +26,7 @@ func writeLoginLog(parent context.Context, logUsecase domain.LoginLogUseCase, me
 	ctx := context.WithoutCancel(parent)
 	go func() {
 		if _, err := logUsecase.CreateLoginLog(ctx, logRequest); err != nil {
-			pkg.Log.With("error", err).Warn("failed to record login log")
+			slog.Warn("failed to record login log", "error", err)
 		}
 	}()
 }

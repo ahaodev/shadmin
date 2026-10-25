@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"shadmin/domain"
@@ -302,7 +303,7 @@ func initDefaultAdmin(app *Application, ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		log.Info("admin user already exists")
+		slog.Info("admin user already exists")
 		if err := initMenu(app.DB, adminRole.ID, ctx); err != nil {
 			return err
 		}
@@ -340,7 +341,7 @@ func initDefaultAdmin(app *Application, ctx context.Context) error {
 	if err := ensureViewerRole(ctx, app.DB); err != nil {
 		return err
 	}
-	log.Infof("admin user created: %s", app.Env.AdminUsername)
+	slog.Info("admin user created", "username", app.Env.AdminUsername)
 	return nil
 }
 
@@ -379,7 +380,7 @@ func initMenu(client *ent.Client, adminRoleID string, ctx context.Context) error
 		if err := seedDefaultMenus(ctx, client); err != nil {
 			return err
 		}
-		log.Info("menu data initialized")
+		slog.Info("menu data initialized")
 	}
 	return bindMenusToAdmin(client, adminRoleID, ctx)
 }

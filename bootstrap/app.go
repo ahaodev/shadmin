@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/internal/auth"
@@ -12,6 +13,7 @@ import (
 	"shadmin/internal/conf"
 	"shadmin/internal/scheduler"
 	"shadmin/internal/tokenservice"
+	"shadmin/pkg"
 	"shadmin/repository"
 	"time"
 
@@ -41,6 +43,9 @@ func App() (*Application, error) {
 	env, err := conf.NewEnv()
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
+	}
+	if env.AppEnv == conf.AppEnvDev {
+		pkg.SetLogLevel(slog.LevelDebug)
 	}
 	app := &Application{Env: env}
 
@@ -73,9 +78,9 @@ func App() (*Application, error) {
 	}
 
 	if app.Env.RedisEnabled() {
-		log.Infof("Cacher: Redis mode")
+		slog.Info("Cacher: Redis mode")
 	} else {
-		log.Infof("Cacher: memory mode")
+		slog.Info("Cacher: memory mode")
 	}
 
 	// 用户状态缓存：直接复用共享 Cacher，Cache 层做 DB 回源与 TTL 协调。
@@ -119,6 +124,9 @@ func App() (*Application, error) {
 	if app.Env.AppEnv == conf.AppEnvProd {
 		gin.SetMode(gin.ReleaseMode)
 	}
+	// gin 的访问日志与 panic 恢复日志也进入轮换文件。
+	gin.DefaultWriter = pkg.LogWriter
+	gin.DefaultErrorWriter = pkg.LogWriter
 	app.ApiEngine = gin.Default()
 
 	// 注册第三方登录 provider（Google/GitHub），并初始化 gothic session store
@@ -226,7 +234,7 @@ func userIDsForCacheInvalidation(ctx context.Context, m ent.Mutation) []string {
 
 	ids, err := mutationIDs(ctx, um)
 	if err != nil {
-		log.With("error", err).Warn("Failed to resolve user IDs for status cache invalidation")
+		slog.Warn("Failed to resolve user IDs for status cache invalidation", "error", err)
 		return nil
 	}
 	return ids

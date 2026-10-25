@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 
 	"shadmin/domain"
 	"shadmin/internal/constants"
-	"shadmin/pkg"
 )
 
 type userInvitationUsecase struct {
@@ -102,7 +102,7 @@ func (u *userInvitationUsecase) Invite(ctx context.Context, request *domain.Invi
 		safeError := strings.ReplaceAll(err.Error(), email, "[redacted email]")
 		safeError = strings.ReplaceAll(safeError, link, "[redacted invitation URL]")
 		safeError = strings.ReplaceAll(safeError, token, "[redacted invitation token]")
-		pkg.Log.Errorf("Invitation email delivery failed for user %s: %s", createdUser.ID, safeError)
+		slog.Error("Invitation email delivery failed", "user_id", createdUser.ID, "error", safeError)
 		return createdUser, fmt.Errorf("%w: %w", domain.ErrInvitationDeliveryFailed, err)
 	}
 	return createdUser, nil

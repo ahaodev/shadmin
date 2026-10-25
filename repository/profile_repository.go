@@ -64,7 +64,7 @@ func (pr *entProfileRepository) UpdateProfile(ctx context.Context, userID string
 	}
 
 	_, err := updateQuery.Save(ctx)
-	return err
+	return mapUserUpdateError(err)
 }
 
 func (pr *entProfileRepository) UpdatePassword(ctx context.Context, userID, hashedPassword string) error {
@@ -72,6 +72,18 @@ func (pr *entProfileRepository) UpdatePassword(ctx context.Context, userID, hash
 		UpdateOneID(userID).
 		SetPassword(hashedPassword).
 		Save(ctx)
+	return mapUserUpdateError(err)
+}
+
+func mapUserUpdateError(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case ent.IsNotFound(err):
+		return domain.ErrUserNotFound
+	case isUniqueConstraintError(err):
+		return domain.ErrUserExists
+	}
 	return err
 }
 

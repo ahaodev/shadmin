@@ -3,11 +3,11 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"shadmin/internal/constants"
 	"time"
 
 	"shadmin/domain"
-	"shadmin/pkg"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -91,7 +91,7 @@ func (uu *userUsecase) DeleteUser(ctx context.Context, id string, currentUserID 
 		return domain.ErrCannotDeleteAdmin
 	}
 
-	pkg.Log.Infof("User %s starting deletion of user %s (ID: %s)", currentUserID, user.Username, id)
+	slog.Info("user deletion started", "operator_id", currentUserID, "username", user.Username, "user_id", id)
 
 	if err := uu.userRepository.Delete(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete user from database: %w", err)

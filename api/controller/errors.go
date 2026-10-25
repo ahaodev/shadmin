@@ -2,10 +2,10 @@ package controller
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"shadmin/domain"
-	"shadmin/pkg"
 
 	"github.com/gin-gonic/gin"
 )
@@ -99,7 +99,7 @@ func RespondError(c *gin.Context, err error) {
 
 	status, msg := classifyError(err)
 	if status == http.StatusInternalServerError {
-		pkg.Log.With("method", c.Request.Method, "path", c.FullPath(), "error", err).Error("request failed")
+		slog.Error("request failed", "method", c.Request.Method, "path", c.FullPath(), "error", err)
 	}
 	c.JSON(status, domain.RespError(msg))
 }

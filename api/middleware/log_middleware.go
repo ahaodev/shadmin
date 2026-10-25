@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"shadmin/internal/constants"
-	"shadmin/pkg"
 	"strings"
 	"time"
 
@@ -24,7 +24,7 @@ func LogMiddleware() gin.HandlerFunc {
 			body, err := io.ReadAll(c.Request.Body)
 			if err != nil {
 				// 读取失败也要回填已读部分，否则 handler 收到空 body 更难排查
-				pkg.Log.Warnf("LogMiddleware: failed to read request body: %v", err)
+				slog.Warn("LogMiddleware: failed to read request body", "error", err)
 			}
 			requestBody = body
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(requestBody))

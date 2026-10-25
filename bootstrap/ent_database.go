@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"shadmin/ent"
@@ -26,8 +27,7 @@ func NewEntDatabase(env *conf.Env) (*ent.Client, error) {
 		dbType = "sqlite"
 	}
 
-	log.Infof("🔗 Database Initialization:")
-	log.Infof("  - Type: %s", strings.ToUpper(dbType))
+	slog.Info("database initialization", "type", strings.ToUpper(dbType))
 
 	switch dbType {
 	case "postgres", "postgresql":
@@ -44,7 +44,7 @@ func NewEntDatabase(env *conf.Env) (*ent.Client, error) {
 	}
 
 	// Auto migrate schema
-	log.Infof("📋 Running database schema migration...")
+	slog.Info("running database schema migration")
 	ctx := context.Background()
 	if err := client.Schema.Create(ctx,
 		migrate.WithDropIndex(true),
@@ -58,8 +58,7 @@ func NewEntDatabase(env *conf.Env) (*ent.Client, error) {
 		return nil, fmt.Errorf("initialize authorization state: %w", err)
 	}
 
-	log.Infof("✅ Database schema migration completed")
-	log.Infof("✅ Connected to %s database successfully with Ent", strings.ToUpper(dbType))
+	slog.Info("database schema migration completed", "type", strings.ToUpper(dbType))
 	return client, nil
 }
 
@@ -67,8 +66,7 @@ func connectSQLite() (*ent.Client, error) {
 	// 修改这里：确保路径指向 .db 文件
 	dbPath := "./.database/data.db"
 
-	log.Infof("📄 SQLite Config:")
-	log.Infof("  - Database Path: %s", dbPath)
+	slog.Info("sqlite config", "path", dbPath)
 
 	// 确保目录存在
 	dir := filepath.Dir(dbPath)
@@ -76,7 +74,7 @@ func connectSQLite() (*ent.Client, error) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create DB directory %s: %v", dir, err)
 		}
-		log.Infof("✅ Database directory ensured: %s", dir)
+		slog.Info("database directory ensured", "dir", dir)
 	}
 
 	// SQLite 单写者特性下，并发写会触发 "database is locked"。
@@ -87,7 +85,7 @@ func connectSQLite() (*ent.Client, error) {
 	//   _txlock=immediate  事务开始即以 BEGIN IMMEDIATE 抢占写锁，串行化写事务，
 	//                      避免两个事务各自升级写锁导致的死锁式 locked。
 	dsn := fmt.Sprintf("file:%s?_fk=1&_journal_mode=WAL&_busy_timeout=5000&_txlock=immediate", dbPath)
-	log.Infof("📡 Connecting to SQLite database...")
+	slog.Info("connecting to sqlite database")
 	return ent.Open("sqlite3", dsn)
 }
 
@@ -97,17 +95,15 @@ func connectPostgreSQL(env *conf.Env) (*ent.Client, error) {
 		return nil, fmt.Errorf("PostgreSQL DSN is required but not provided")
 	}
 
-	log.Infof("📄 PostgreSQL Config:")
-	log.Infof("  - DSN: %s", maskPassword(dsn))
-	log.Infof("📡 Connecting to PostgreSQL database...")
+	slog.Info("connecting to postgresql database", "dsn", maskPassword(dsn))
 
 	client, err := ent.Open("postgres", dsn)
 	if err != nil {
-		log.Errorf("❌ PostgreSQL connection failed: %v", err)
+		slog.Error("postgresql connection failed", "error", err)
 		return nil, err
 	}
 
-	log.Infof("✅ PostgreSQL connection successful")
+	slog.Info("postgresql connection successful")
 	return client, nil
 }
 
@@ -117,17 +113,15 @@ func connectMySQL(env *conf.Env) (*ent.Client, error) {
 		return nil, fmt.Errorf("MySQL DSN is required but not provided")
 	}
 
-	log.Infof("📄 MySQL Config:")
-	log.Infof("  - DSN: %s", maskPassword(dsn))
-	log.Infof("📡 Connecting to MySQL database...")
+	slog.Info("connecting to mysql database", "dsn", maskPassword(dsn))
 
 	client, err := ent.Open("mysql", dsn)
 	if err != nil {
-		log.Errorf("❌ MySQL connection failed: %v", err)
+		slog.Error("mysql connection failed", "error", err)
 		return nil, err
 	}
 
-	log.Infof("✅ MySQL connection successful")
+	slog.Info("mysql connection successful")
 	return client, nil
 }
 
@@ -157,9 +151,9 @@ func CloseEntConnection(client *ent.Client) {
 	}
 
 	if err := client.Close(); err != nil {
-		log.Errorf("Failed to close database connection: %v", err)
+		slog.Error("failed to close database connection", "error", err)
 		return
 	}
 
-	log.Info("Database connection closed.")
+	slog.Info("database connection closed")
 }

@@ -6,12 +6,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"shadmin/internal/constants"
 	"strings"
 	"time"
 
 	"shadmin/domain"
-	"shadmin/pkg"
 )
 
 const (
@@ -90,7 +90,7 @@ func (u *deviceAuthUsecase) RequestCode(ctx context.Context, req domain.DeviceCo
 		}, nil
 	}
 
-	return nil, fmt.Errorf("generate unique device auth code: %w", domain.ErrDeviceInvalidCode)
+	return nil, fmt.Errorf("generate unique device auth code: %w", domain.ErrDeviceCodeConflict)
 }
 
 func (u *deviceAuthUsecase) PollToken(ctx context.Context, req domain.DeviceTokenRequest) (*domain.LoginResponse, error) {
@@ -118,7 +118,7 @@ func (u *deviceAuthUsecase) PollToken(ctx context.Context, req domain.DeviceToke
 		if session.LastPolledAt != nil && now.Sub(*session.LastPolledAt) < time.Duration(session.Interval)*time.Second {
 			nextInterval := session.Interval + 5
 			if err := u.repo.UpdatePollState(ctx, session.DeviceCode, now, nextInterval); err != nil {
-				pkg.Log.Warnf("update device poll interval on slow_down: %v", err)
+				slog.Warn("update device poll interval on slow_down", "error", err)
 			}
 			return nil, domain.ErrDeviceSlowDown
 		}

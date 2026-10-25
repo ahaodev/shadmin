@@ -3,8 +3,8 @@ package conf
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
-	"shadmin/pkg"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -338,7 +338,7 @@ func NewEnv() (*Env, error) {
 	setDefaults()
 
 	if _, err := os.Stat(".env"); err != nil {
-		pkg.Log.Info("没有找到 .env 文件，使用默认配置并写入.env")
+		slog.Info("没有找到 .env 文件，使用默认配置并写入.env")
 		if err := generateEnvFile(); err != nil {
 			return nil, fmt.Errorf("写入.env文件失败: %w", err)
 		}
@@ -354,7 +354,7 @@ func NewEnv() (*Env, error) {
 	}
 
 	if env.AppEnv == AppEnvDev {
-		pkg.Log.Info("The App is running in development env")
+		slog.Info("The App is running in development env")
 	}
 
 	return env, nil

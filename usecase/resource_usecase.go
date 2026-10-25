@@ -3,10 +3,10 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"shadmin/domain"
-	"shadmin/pkg"
 )
 
 type resourceUsecase struct {
@@ -33,14 +33,14 @@ func (ru *resourceUsecase) GetUserResources(ctx context.Context, userID string, 
 	// 获取所有菜单
 	menuTree, err := ru.menuRepository.GetMenuTree(ctx)
 	if err != nil {
-		pkg.Log.With("userID", userID).With("error", err).Error("Failed to retrieve menu tree")
+		slog.Error("Failed to retrieve menu tree", "user_id", userID, "error", err)
 		return nil, fmt.Errorf("failed to retrieve menu tree: %w", err)
 	}
 
 	// 获取用户信息（用于解析角色名称）
 	user, err := ru.userRepository.GetByID(ctx, userID)
 	if err != nil {
-		pkg.Log.With("userID", userID).With("error", err).Error("Failed to get user information")
+		slog.Error("Failed to get user information", "user_id", userID, "error", err)
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
@@ -114,13 +114,12 @@ func (ru *resourceUsecase) getUserRoles(ctx context.Context, roleIDs []string) (
 
 	roles, err := ru.roleRepository.GetByIDs(ctx, roleIDs)
 	if err != nil {
-		pkg.Log.With("roleIDs", roleIDs).With("error", err).Warn("Failed to get role information")
+		slog.Warn("Failed to get role information", "role_ids", roleIDs, "error", err)
 		return nil, err
 	}
 
 	if len(roles) < len(roleIDs) {
-		pkg.Log.With("requested", len(roleIDs)).With("found", len(roles)).
-			Warn("Some roles could not be retrieved")
+		slog.Warn("Some roles could not be retrieved", "requested", len(roleIDs), "found", len(roles))
 	}
 
 	return roles, nil
@@ -138,7 +137,7 @@ func (ru *resourceUsecase) collectUserPermissions(ctx context.Context, roles []*
 
 	menus, err := ru.menuRepository.GetMenuPermissionsByIDs(ctx, userMenuIDs)
 	if err != nil {
-		pkg.Log.With("menuIDs", userMenuIDs).With("error", err).Error("Failed to load menus for permission collection")
+		slog.Error("Failed to load menus for permission collection", "menu_ids", userMenuIDs, "error", err)
 		return nil, nil, fmt.Errorf("failed to load menu permissions: %w", err)
 	}
 

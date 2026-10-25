@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 
 	"shadmin/api"
 	bootstrap "shadmin/bootstrap"
@@ -18,19 +19,20 @@ var (
 // Run 启动应用并返回进程退出码。所有启动失败都在这里统一处理，
 // 保证 defer 清理逻辑（关闭数据库、缓存、调度器）总能执行。
 func Run() int {
+	pkg.InitLogger()
 	// 记录版本信息
-	pkg.Log.Infof("starting - Version: %s, Commit: %s, Built: %s", version, commit, date)
+	slog.Info("starting", "version", version, "commit", commit, "built", date)
 
 	app, err := bootstrap.App()
 	if err != nil {
-		pkg.Log.Errorf("startup failed: %v", err)
+		slog.Error("startup failed", "error", err)
 		return 1
 	}
 	app.Version = version
 	defer app.CloseDBConnection()
 
 	if err := start(app); err != nil {
-		pkg.Log.Errorf("%v", err)
+		slog.Error("run failed", "error", err)
 		return 1
 	}
 	return 0

@@ -1,12 +1,10 @@
 package casbin
 
 import (
-	"shadmin/pkg"
+	"log/slog"
 
 	casbinlog "github.com/casbin/casbin/v3/log"
 )
-
-var logger = pkg.Log
 
 type casbinLogger struct {
 	eventTypes map[casbinlog.EventType]struct{}
@@ -38,9 +36,9 @@ func (l *casbinLogger) OnAfterEvent(entry *casbinlog.LogEntry) error {
 	logger := l.loggerForEntry(entry)
 	switch {
 	case entry.Error != nil:
-		logger.With("error", entry.Error).Error("casbin event failed")
+		logger.Error("casbin event failed", "error", entry.Error)
 	case entry.EventType == casbinlog.EventEnforce && !entry.Allowed:
-		logger.With("allowed", false).Warn("casbin authorization denied")
+		logger.Warn("casbin authorization denied", "allowed", false)
 	}
 
 	if l.callback != nil {
@@ -54,8 +52,8 @@ func (l *casbinLogger) SetLogCallback(callback func(entry *casbinlog.LogEntry) e
 	return nil
 }
 
-func (l *casbinLogger) loggerForEntry(entry *casbinlog.LogEntry) pkg.Logger {
-	entryLogger := logger.With("component", "casbin", "event_type", string(entry.EventType))
+func (l *casbinLogger) loggerForEntry(entry *casbinlog.LogEntry) *slog.Logger {
+	entryLogger := slog.With("component", "casbin", "event_type", string(entry.EventType))
 	if entry.Subject != "" {
 		entryLogger = entryLogger.With("subject", entry.Subject)
 	}

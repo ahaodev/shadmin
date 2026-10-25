@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -11,7 +12,6 @@ import (
 
 	"shadmin/api/route"
 	"shadmin/bootstrap"
-	"shadmin/pkg"
 )
 
 const (
@@ -52,7 +52,7 @@ func serve(ctx context.Context, addr string, handler http.Handler) error {
 	case <-ctx.Done():
 	}
 
-	pkg.Log.Info("shutting down server...")
+	slog.Info("shutting down server...")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
