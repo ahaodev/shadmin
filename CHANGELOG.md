@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.6] - 2026-10-25
+
+### Changed
+
+- Logging now uses the standard `log/slog` directly: `pkg.InitLogger` installs the default logger at startup (stdout plus a size-rotated `.logs/app.log`, 14 backups, local time), `APP_ENV=dev` enables debug level, and every layer calls `slog.Info/Warn/Error` with key-value fields instead of the `pkg.Log` wrapper.
+- Gin access and panic-recovery logs are written to the same rotated log file.
+
+### Fixed
+
+- Profile update and password change now map a missing user to `ErrUserNotFound` (404) and a unique-constraint conflict to `ErrUserExists` (409) instead of a generic 500.
+- Exhausting device-code generation retries now returns a 500 instead of a 400 `invalid_device_code`.
+
 ## [0.5.5] - 2026-10-24
 
 ### Added
