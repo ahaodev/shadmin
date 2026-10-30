@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// LogMiddleware 请求和响应日志中间件。 用于本地开发调试：请求体与响应体原样整段打印，不做脱敏，也不做长度限制。
+// LogMiddleware 请求和响应日志中间件。 仅用于本地开发调试：请求体与响应体原样整段打印，不脱敏,不限长
 func LogMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 记录请求开始时间

@@ -91,11 +91,6 @@ func (lc *AuthController) RefreshToken(c *gin.Context) {
 //	@Router			/auth/logout [post]
 func (lc *AuthController) Logout(c *gin.Context) {
 	var request domain.LogoutRequest
-	// 解析请求体（可选）
-	if err := c.ShouldBind(&request); err != nil && err.Error() != "EOF" {
-		c.JSON(http.StatusBadRequest, domain.RespError("Invalid request format"))
-		return
-	}
 
 	accessToken, _ := contextutil.BearerToken(c.Request.Header.Get(constants.Authorization))
 

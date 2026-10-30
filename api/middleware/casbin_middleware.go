@@ -14,7 +14,6 @@ import (
 )
 
 // CasbinMiddleware API权限鉴权中间件
-// 职责：仅鉴权用户是否有访问特定API的权限
 type CasbinMiddleware struct {
 	CasManager casbin.Manager
 }
@@ -34,7 +33,6 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 		path := c.Request.URL.Path
 		method := c.Request.Method
 
-		// 跳过不需要权限校验的API
 		if m.shouldSkipPermissionCheck(path) {
 			c.Next()
 			return
@@ -66,7 +64,6 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 
 // shouldSkipPermissionCheck 判断是否跳过权限检查
 func (m *CasbinMiddleware) shouldSkipPermissionCheck(path string) bool {
-	// 使用集中管理的常量来跳过权限检查
 	skipPaths := constants.GetAPIPathsToSkipPermissionCheck()
 
 	for _, skipPath := range skipPaths {
