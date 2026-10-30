@@ -49,8 +49,7 @@ func TestLoginSecurityManager_SuccessfulLoginClearsRecord(t *testing.T) {
 	}
 }
 
-// 计数靠 TTL 归零：窗口内不再失败，锁定自动解除，且新的一轮从 1 重新计数，
-// 不会把上一轮的失败累加进来。
+// 计数靠 TTL 归零：窗口内不再失败，锁定自动解除，且新的一轮从 1 重新计数， 不会把上一轮的失败累加进来。
 func TestLoginSecurityManager_LockExpiresWithTTL(t *testing.T) {
 	ctx := context.Background()
 	m := newTestManager()
