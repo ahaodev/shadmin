@@ -28,7 +28,6 @@ func SetupRoutes(app *bootstrap.Application) error {
 }
 
 // Run 启动 HTTP 服务并阻塞，直到收到 SIGINT/SIGTERM 后优雅停机。
-// 正常停机返回 nil，调用方随后可安全释放数据库、缓存等资源。
 func Run(app *bootstrap.Application) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
