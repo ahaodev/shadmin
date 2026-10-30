@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"net/url"
 	"strconv"
 )
@@ -75,9 +76,7 @@ type ListParams struct {
 func (p ListParams) toValues() url.Values {
 	v := url.Values{}
 	if p.Extra != nil {
-		for k, vs := range p.Extra {
-			v[k] = vs
-		}
+		maps.Copy(v, p.Extra)
 	}
 	if p.Page > 0 {
 		v.Set("page", strconv.Itoa(p.Page))

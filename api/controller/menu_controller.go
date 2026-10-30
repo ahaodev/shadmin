@@ -170,7 +170,7 @@ func (mc *MenuController) DeleteMenu(c *gin.Context) {
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"menu_id": id,
 		"message": "Menu deleted successfully",
 	}

@@ -6,12 +6,12 @@ const (
 )
 
 type Response struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data,omitempty"`
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data any    `json:"data,omitempty"`
 }
 
-func RespError(msg interface{}) Response {
+func RespError(msg any) Response {
 	var errMsg string
 	switch v := msg.(type) {
 	case string:
@@ -24,7 +24,7 @@ func RespError(msg interface{}) Response {
 	return Response{Code: FailCode, Msg: errMsg, Data: nil}
 }
 
-func RespSuccess(data interface{}) Response {
+func RespSuccess(data any) Response {
 	return Response{Code: SuccessCode, Msg: "OK", Data: data}
 }
 

@@ -52,11 +52,9 @@ func TestCasbinSyncSchedulerStopConcurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for range 8 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			s.Stop()
-		}()
+		})
 	}
 	wg.Wait()
 

@@ -88,7 +88,7 @@ func (e *Env) RedisEnabled() bool {
 }
 
 func setDefaults() {
-	defaults := map[string]interface{}{
+	defaults := map[string]any{
 		// 基础配置
 		"APP_ENV":                          AppEnvDev,
 		"CONTEXT_TIMEOUT":                  60,

@@ -2,6 +2,7 @@ package schema
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"entgo.io/ent"
@@ -27,10 +28,8 @@ func (ApiResource) Fields() []ent.Field {
 			NotEmpty().
 			Validate(func(s string) error {
 				validMethods := []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
-				for _, method := range validMethods {
-					if s == method {
-						return nil
-					}
+				if slices.Contains(validMethods, s) {
+					return nil
 				}
 				return fmt.Errorf("invalid HTTP method: %s", s)
 			}).

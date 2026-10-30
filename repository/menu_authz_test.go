@@ -122,7 +122,7 @@ func TestGetMenusReturnsAllMatchesWithoutPaging(t *testing.T) {
 	repo := NewMenuRepository(client)
 
 	const n = domain.DefaultPageSize + 5
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if _, err := repo.CreateMenu(ctx, newMenuRequest(fmt.Sprintf("menu-%02d", i))); err != nil {
 			t.Fatalf("CreateMenu: %v", err)
 		}

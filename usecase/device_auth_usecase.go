@@ -54,7 +54,7 @@ func (u *deviceAuthUsecase) RequestCode(ctx context.Context, req domain.DeviceCo
 		clientName = req.ClientID
 	}
 
-	for i := 0; i < deviceAuthMaxCreateAttempts; i++ {
+	for range deviceAuthMaxCreateAttempts {
 		deviceCode, err := generateDeviceCode()
 		if err != nil {
 			return nil, err

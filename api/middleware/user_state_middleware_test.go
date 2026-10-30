@@ -146,7 +146,7 @@ func TestUserStateMiddleware_CachesStatus(t *testing.T) {
 	loader := &stubStatusLoader{status: domain.UserStatusActive}
 	r := newUserStateRouter(newStatusCache(t, loader))
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if w := userStateProbe(t, r, "u-1"); w.Code != http.StatusNoContent {
 			t.Fatalf("request %d status = %d, want 204", i, w.Code)
 		}
