@@ -1,4 +1,4 @@
-[GIN-debug] GET    /swagger/*any             --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (4 handlers)
+[GIN-debug] GET    /swagger/*any             --> github.com/swaggo/gin-swagger.CustomWrapHandler.func1 (3 handlers)
 [GIN-debug] GET    /api/v1/health            --> shadmin/api/controller.(*HealthController).Health-fm (4 handlers)
 [GIN-debug] POST   /api/v1/auth/login        --> shadmin/api/controller.(*AuthController).Login-fm (4 handlers)
 [GIN-debug] POST   /api/v1/auth/refresh      --> shadmin/api/controller.(*AuthController).RefreshToken-fm (4 handlers)
@@ -6,6 +6,7 @@
 [GIN-debug] GET    /api/v1/auth/captcha/slide --> shadmin/api/controller.(*CaptchaController).GetSlideCaptcha-fm (4 handlers)
 [GIN-debug] POST   /api/v1/auth/device/code  --> shadmin/api/controller.(*DeviceAuthController).RequestCode-fm (5 handlers)
 [GIN-debug] POST   /api/v1/auth/device/token --> shadmin/api/controller.(*DeviceAuthController).PollToken-fm (5 handlers)
+[GIN-debug] POST   /api/v1/auth/invitations/accept --> shadmin/api/controller.(*UserInvitationController).Accept-fm (5 handlers)
 [GIN-debug] GET    /api/v1/auth/identity/providers --> shadmin/api/controller.(*UserIdentityController).ListProviders-fm (4 handlers)
 [GIN-debug] POST   /api/v1/auth/identity/exchange --> shadmin/api/controller.(*UserIdentityController).Exchange-fm (4 handlers)
 [GIN-debug] GET    /api/v1/auth/identity/:provider --> shadmin/api/controller.(*UserIdentityController).BeginLogin-fm (4 handlers)
