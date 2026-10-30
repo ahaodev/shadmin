@@ -45,6 +45,9 @@
 git clone https://github.com/ahaodev/shadmin.git
 cd shadmin
 
+go install github.com/swaggo/swag/cmd/swag@latest
+go install entgo.io/ent/cmd/ent@latest
+
 # Install & build frontend
 cd frontend && pnpm install && pnpm build
 
@@ -52,7 +55,8 @@ cd frontend && pnpm install && pnpm build
 # Generates Ent code, embeds frontend/dist/, listens on :55667
 # .env auto‑generated on first run
 cd ..
-go generate ./ent
+swag init
+go run -mod=mod entgo.io/ent/cmd/ent generate ./ent/schema
 go run .
 ```
 

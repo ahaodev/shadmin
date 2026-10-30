@@ -41,18 +41,22 @@
 ### 运行
 
 ```bash
-# 克隆仓库
+# Clone the repository
 git clone https://github.com/ahaodev/shadmin.git
 cd shadmin
 
-# 安装依赖并构建前端
+go install github.com/swaggo/swag/cmd/swag@latest
+go install entgo.io/ent/cmd/ent@latest
+
+# Install & build frontend
 cd frontend && pnpm install && pnpm build
 
-# 启动后端（从项目根目录执行）
-# 生成 Ent 代码，内嵌 frontend/dist/，监听 :55667
-# 首次运行时自动生成 .env
+# Start backend (from project root)
+# Generates Ent code, embeds frontend/dist/, listens on :55667
+# .env auto‑generated on first run
 cd ..
-go generate ./ent
+swag init
+go run -mod=mod entgo.io/ent/cmd/ent generate ./ent/schema
 go run .
 ```
 
