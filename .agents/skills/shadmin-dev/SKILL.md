@@ -74,7 +74,7 @@ go generate ./...            # Swagger annotations changed (needs swag CLI)
 go fmt ./... && go vet ./... && go test ./...
 cd frontend && pnpm lint && pnpm format:check && pnpm build   # build if routes/config changed
 ```
-Full command list: `.agent/CONTRIBUTING.md`.
+Full command list: `../..`.
 
 ## Boundaries
 - No business logic in controllers; no HTTP/permission logic in repositories.

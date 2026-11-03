@@ -22,12 +22,12 @@
 
 ## Specifics live in the skill
 
-`.agent/skills/shadmin-dev/` is the authoritative, step-by-step source for how things are actually built — read it before writing feature code. Everything under `.agent/` is the single source of truth; each agent's own directory (`.github/`, `.pi/`, `.claude/`) links back to it.
+`.agents` is the authoritative, step-by-step source for how things are actually built — read it before writing feature code. Everything under `.agents` is the single source of truth; each agent's own directory (`.github/`, `.pi/`, `.claude/`) links back to it.
 
 | Need | Read |
 | --- | --- |
-| Workflow, layer responsibilities, boundaries, permissions | `.agent/skills/shadmin-dev/SKILL.md` |
-| Backend patterns — domain, Ent, repository, usecase, controller, routes | `.agent/skills/shadmin-dev/references/backend.md` |
-| Frontend patterns — types, services, features, hooks, forms, routes | `.agent/skills/shadmin-dev/references/frontend.md` |
-| Build/test/lint commands, bootstrap, config, conventions | `.agent/CONTRIBUTING.md` |
+| Workflow, layer responsibilities, boundaries, permissions | `.agents` |
+| Backend patterns — domain, Ent, repository, usecase, controller, routes | `.agents` |
+| Frontend patterns — types, services, features, hooks, forms, routes | `.agents` |
+| Build/test/lint commands, bootstrap, config, conventions | `.agents` |
 | Architecture walkthrough | `docs/getting-started/architecture.en.md` |

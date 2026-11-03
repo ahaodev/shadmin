@@ -196,5 +196,5 @@ Before committing:
 - `docs/getting-started/architecture.en.md` — full architecture walkthrough with diagrams
 - `docs/getting-started/development.en.md` — end-to-end "add a new module" tutorial
 - `docs/getting-started/deployment.en.md` — production deployment (incl. Docker)
-- `.agent/skills/shadmin-dev/SKILL.md` — authoritative step-by-step feature-dev recipe
+- `` — authoritative step-by-step feature-dev recipe
 - `cli/README.md` — CLI tool documentation

@@ -1,1 +1,1 @@
-../.agent/CONTRIBUTING.md
+../.agents/CONTRIBUTING.md

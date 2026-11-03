@@ -25,7 +25,7 @@ Safe cleanup of Shadmin (Go/Gin/Ent backend, React 19 + TypeScript frontend, thi
 | Backend (Go) | `main.go`, `cmd/`, `bootstrap/`, `api/`, `domain/`, `repository/`, `usecase/`, `ent/`, `internal/`, `pkg/` |
 | Frontend (React 19 + TS) | `frontend/src/` |
 | CLI (Go) | `cli/` |
-| Docs | `docs/`, `README.md`, `README.zh.md`, `AGENTS.md`, `.agent/*.md` |
+| Docs | `docs/`, `README.md`, `README.zh.md`, `AGENTS.md`, `../..` |
 
 **Never edit (generated or owned by tooling):**
 - Generated code: `ent/*.go` (except `ent/schema/`), `frontend/src/routeTree.gen.ts`, `docs/docs.go`, `docs/swagger.*`, `frontend/dist/`
