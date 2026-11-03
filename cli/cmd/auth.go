@@ -30,7 +30,7 @@ var loginCmd = &cobra.Command{
 		}
 
 		cli := client.NewUnauth(cfg.ServerURL)
-		ctx, cancel := context.WithTimeout(context.Background(), 30*sec())
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
 		deviceCode, err := cli.RequestDeviceCode(ctx, "shadmin-cli", "Shadmin CLI")
@@ -39,7 +39,7 @@ var loginCmd = &cobra.Command{
 		}
 		cancel()
 
-		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(deviceCode.ExpiresIn)*sec()+15*sec())
+		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(deviceCode.ExpiresIn)*time.Second+15*time.Second)
 		defer cancel()
 
 		verificationURI := resolveVerificationURI(cfg.ServerURL, deviceCode.VerificationURI)
@@ -59,7 +59,7 @@ var loginCmd = &cobra.Command{
 		}
 
 		username := ""
-		profileCtx, profileCancel := context.WithTimeout(context.Background(), 15*sec())
+		profileCtx, profileCancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer profileCancel()
 		if profile, err := fetchLoginProfile(profileCtx, cfg); err == nil {
 			username = profile
@@ -96,10 +96,10 @@ func pollDeviceAuthorization(ctx context.Context, cli *client.Client, deviceCode
 	if interval <= 0 {
 		interval = 5
 	}
-	timer := time.NewTimer(time.Duration(interval) * sec())
+	timer := time.NewTimer(time.Duration(interval) * time.Second)
 	defer timer.Stop()
 
-	deadline := time.NewTimer(time.Duration(deviceCode.ExpiresIn) * sec())
+	deadline := time.NewTimer(time.Duration(deviceCode.ExpiresIn) * time.Second)
 	defer deadline.Stop()
 
 	for {
@@ -116,10 +116,10 @@ func pollDeviceAuthorization(ctx context.Context, cli *client.Client, deviceCode
 			msg := err.Error()
 			switch {
 			case strings.Contains(msg, "authorization_pending"):
-				timer.Reset(time.Duration(interval) * sec())
+				timer.Reset(time.Duration(interval) * time.Second)
 			case strings.Contains(msg, "slow_down"):
 				interval += 5
-				timer.Reset(time.Duration(interval) * sec())
+				timer.Reset(time.Duration(interval) * time.Second)
 			case strings.Contains(msg, "expired_token"):
 				return nil, clierr.New(clierr.ExitGeneric, "device authorization expired; run login again")
 			case strings.Contains(msg, "access_denied"):
@@ -163,7 +163,7 @@ var logoutCmd = &cobra.Command{
 		if cfg.AccessToken != "" && cfg.ServerURL != "" {
 			cli, err := client.New(cfg)
 			if err == nil {
-				ctx, cancel := context.WithTimeout(context.Background(), 15*sec())
+				ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 				defer cancel()
 				_ = cli.Logout(ctx) // 本地清理优先，忽略服务端登出错误
 			}
@@ -191,7 +191,7 @@ var whoamiCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 15*sec())
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		raw, err := cli.Profile(ctx)
 		if err != nil {

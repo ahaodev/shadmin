@@ -51,7 +51,7 @@ Safe cleanup of Shadmin (Go/Gin/Ent backend, React 19 + TypeScript frontend, thi
 - Consolidate repeated TanStack Query keys, `useTableUrlState` wiring, dialog state handling, and Zod schemas
 - Normalize API access: everything goes through `services/` and returns `response.data.data`; no inline API calls
 - Replace duplicated permission checks with the existing `usePermission()` hook and `PERMISSIONS` constants
-- Keep imports on the `@/` alias; component files PascalCase `.tsx`, utilities/hooks kebab-case `.ts`
+- Keep imports on the `@/` alias; component files kebab-case `.tsx` (PascalCase component exports), utilities/hooks kebab-case `.ts`
 
 **CLI:**
 - Remove dead flags/helpers, keep JSON-default + `--pretty` output behavior, config stays under `cli/`

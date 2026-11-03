@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -37,24 +38,7 @@ func newReadonlyGroup(use, short, basePath string, withListFlags bool) *cobra.Co
 		Use:   "list",
 		Short: short + " - list",
 		RunE: runE(func(cmd *cobra.Command, args []string) error {
-			cfg, err := loadConfig()
-			if err != nil {
-				return err
-			}
-			if err := requireAuth(cfg); err != nil {
-				return err
-			}
-			cli, err := client.New(cfg)
-			if err != nil {
-				return err
-			}
-			ctx, cancel := context.WithTimeout(cmd.Context(), 30*sec())
-			defer cancel()
-			raw, err := cli.GetJSON(ctx, basePath, buildList())
-			if err != nil {
-				return err
-			}
-			return writeRaw(raw, renderListPretty)
+			return simpleGet(cmd, basePath, buildList(), true)
 		}),
 	}
 	if withListFlags {
@@ -66,24 +50,7 @@ func newReadonlyGroup(use, short, basePath string, withListFlags bool) *cobra.Co
 		Short: short + " - get by id",
 		Args:  cobra.ExactArgs(1),
 		RunE: runE(func(cmd *cobra.Command, args []string) error {
-			cfg, err := loadConfig()
-			if err != nil {
-				return err
-			}
-			if err := requireAuth(cfg); err != nil {
-				return err
-			}
-			cli, err := client.New(cfg)
-			if err != nil {
-				return err
-			}
-			ctx, cancel := context.WithTimeout(cmd.Context(), 30*sec())
-			defer cancel()
-			raw, err := cli.GetJSON(ctx, basePath+"/"+args[0], client.ListParams{})
-			if err != nil {
-				return err
-			}
-			return writeRaw(raw, renderObjectPretty)
+			return simpleGet(cmd, basePath+"/"+args[0], client.ListParams{}, false)
 		}),
 	}
 
@@ -194,7 +161,7 @@ func init() {
 		Use:   "list",
 		Short: "List menus",
 		RunE: runE(func(cmd *cobra.Command, args []string) error {
-			return simpleGet(cmd, "/api/v1/system/menu", true)
+			return simpleGet(cmd, "/api/v1/system/menu", buildList(), true)
 		}),
 	}
 	menusList.Flags().StringVarP(&listKeyword, "keyword", "k", "", "keyword filter")
@@ -203,14 +170,14 @@ func init() {
 		Short: "Get menu by id",
 		Args:  cobra.ExactArgs(1),
 		RunE: runE(func(cmd *cobra.Command, args []string) error {
-			return simpleGet(cmd, "/api/v1/system/menu/"+args[0], false)
+			return simpleGet(cmd, "/api/v1/system/menu/"+args[0], buildList(), false)
 		}),
 	}
 	menusTree := &cobra.Command{
 		Use:   "tree",
 		Short: "Get menu tree",
 		RunE: runE(func(cmd *cobra.Command, args []string) error {
-			return simpleGet(cmd, "/api/v1/system/menu/tree", false)
+			return simpleGet(cmd, "/api/v1/system/menu/tree", buildList(), false)
 		}),
 	}
 	menus.AddCommand(menusList, menusGet, menusTree)
@@ -222,7 +189,7 @@ func init() {
 		Use:   "list",
 		Short: "List api resources",
 		RunE: runE(func(cmd *cobra.Command, args []string) error {
-			return simpleGet(cmd, "/api/v1/system/api-resources", true)
+			return simpleGet(cmd, "/api/v1/system/api-resources", buildList(), true)
 		}),
 	}
 	addListFlags(apiResList)
@@ -231,7 +198,7 @@ func init() {
 }
 
 // simpleGet 复用 GET 流程；isList 控制 pretty 渲染方式
-func simpleGet(cmd *cobra.Command, path string, isList bool) error {
+func simpleGet(cmd *cobra.Command, path string, params client.ListParams, isList bool) error {
 	cfg, err := loadConfig()
 	if err != nil {
 		return err
@@ -243,9 +210,9 @@ func simpleGet(cmd *cobra.Command, path string, isList bool) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(cmd.Context(), 30*sec())
+	ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 	defer cancel()
-	raw, err := cli.GetJSON(ctx, path, buildList())
+	raw, err := cli.GetJSON(ctx, path, params)
 	if err != nil {
 		return err
 	}
