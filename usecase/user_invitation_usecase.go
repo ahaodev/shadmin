@@ -15,7 +15,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"shadmin/domain"
-	"shadmin/internal/constants"
 )
 
 type userInvitationUsecase struct {
@@ -80,8 +79,8 @@ func (u *userInvitationUsecase) Invite(ctx context.Context, request *domain.Invi
 	user := &domain.User{
 		Username:  "invite_" + xid.New().String(),
 		Email:     email,
-		Source:    constants.UserSourceLocal,
-		Status:    constants.UserStatusInvited,
+		Source:    domain.UserSourceLocal,
+		Status:    domain.UserStatusInvited,
 		InvitedAt: &invitedAt,
 		InvitedBy: invitedBy,
 	}
@@ -161,7 +160,7 @@ func (u *userInvitationUsecase) validateRoleIDs(ctx context.Context, requested [
 		return nil, domain.ErrInvitationRoleInvalid
 	}
 	for _, role := range roles {
-		if role.Status != constants.StatusActive || (role.IsSystem && role.Name != domain.RoleNameViewer) {
+		if role.Status != domain.StatusActive || (role.IsSystem && role.Name != domain.RoleNameViewer) {
 			return nil, domain.ErrInvitationRoleInvalid
 		}
 	}

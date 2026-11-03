@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"shadmin/domain"
 	"shadmin/internal/casbin"
@@ -15,13 +14,13 @@ import (
 
 // CasbinMiddleware API权限鉴权中间件
 type CasbinMiddleware struct {
-	CasManager casbin.Manager
+	Checker domain.PermissionChecker
 }
 
 // NewCasbinMiddleware 创建新的 Casbin 中间件实例
-func NewCasbinMiddleware(CasManager casbin.Manager) *CasbinMiddleware {
+func NewCasbinMiddleware(checker domain.PermissionChecker) *CasbinMiddleware {
 	return &CasbinMiddleware{
-		CasManager: CasManager,
+		Checker: checker,
 	}
 }
 
@@ -33,12 +32,7 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 		path := c.Request.URL.Path
 		method := c.Request.Method
 
-		if m.shouldSkipPermissionCheck(path) {
-			c.Next()
-			return
-		}
-
-		hasPermission, err := m.CasManager.CheckPermission(userID, path, method)
+		hasPermission, err := m.Checker.CheckPermission(c.Request.Context(), userID, path, method)
 		if err != nil {
 			status := http.StatusInternalServerError
 			if errors.Is(err, casbin.ErrSnapshotStale) {
@@ -60,17 +54,4 @@ func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 
 		c.Next()
 	}
-}
-
-// shouldSkipPermissionCheck 判断是否跳过权限检查
-func (m *CasbinMiddleware) shouldSkipPermissionCheck(path string) bool {
-	skipPaths := constants.GetAPIPathsToSkipPermissionCheck()
-
-	for _, skipPath := range skipPaths {
-		if strings.HasPrefix(path, skipPath) {
-			return true
-		}
-	}
-
-	return false
 }

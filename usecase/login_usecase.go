@@ -9,7 +9,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"shadmin/domain"
-	"shadmin/internal/constants"
 )
 
 type loginUsecase struct {
@@ -65,7 +64,7 @@ func (lu *loginUsecase) Login(ctx context.Context, req *domain.LoginRequest, met
 	user, err := lu.userRepository.GetByIdentifier(ctx, req.Identifier)
 	if errors.Is(err, domain.ErrUserNotFound) {
 		lu.securityManager.RecordFailedAttempt(ctx, req.Identifier)
-		lu.recordLoginLog(ctx, meta, constants.StatusFailed, "用户不存在", "")
+		lu.recordLoginLog(ctx, meta, domain.StatusFailed, "用户不存在", "")
 		return nil, domain.ErrInvalidCredentials
 	}
 	if err != nil {
@@ -73,20 +72,20 @@ func (lu *loginUsecase) Login(ctx context.Context, req *domain.LoginRequest, met
 	}
 
 	// 账户状态检查：未启用 / 邀请中 / 已停用 的用户不能登录。
-	if user.Status != constants.UserStatusActive {
-		lu.recordLoginLog(ctx, meta, constants.StatusFailed, "账户未启用或已停用", user.Email)
+	if user.Status != domain.UserStatusActive {
+		lu.recordLoginLog(ctx, meta, domain.StatusFailed, "账户未启用或已停用", user.Email)
 		return nil, domain.ErrAccountInactive
 	}
 
-	// 第三方来源用户没有本地密码：拒绝其走密码登录，避免被撞库。
+	// 未设置本地密码的账户不能使用密码登录。
 	if user.Password == "" {
-		lu.recordLoginLog(ctx, meta, constants.StatusFailed, "第三方账户不支持密码登录", user.Email)
+		lu.recordLoginLog(ctx, meta, domain.StatusFailed, "第三方账户不支持密码登录", user.Email)
 		return nil, domain.ErrInvalidCredentials
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		attempts := lu.securityManager.RecordFailedAttempt(ctx, req.Identifier)
-		lu.recordLoginLog(ctx, meta, constants.StatusFailed, "密码错误", user.Email)
+		lu.recordLoginLog(ctx, meta, domain.StatusFailed, "密码错误", user.Email)
 
 		if attempts >= lu.securityManager.MaxFailures() {
 			return nil, lu.accountLockedError()
@@ -101,7 +100,7 @@ func (lu *loginUsecase) Login(ctx context.Context, req *domain.LoginRequest, met
 		return nil, err
 	}
 
-	lu.recordLoginLog(ctx, meta, constants.StatusSuccess, "", user.Email)
+	lu.recordLoginLog(ctx, meta, domain.StatusSuccess, "", user.Email)
 
 	return tokens, nil
 }
@@ -140,7 +139,7 @@ func (lu *loginUsecase) Refresh(ctx context.Context, refreshToken string) (*doma
 	}
 
 	// 刷新令牌前再检查一次状态：admin 可能在 access token 签发后禁用该用户。
-	if user.Status != constants.UserStatusActive {
+	if user.Status != domain.UserStatusActive {
 		return nil, domain.ErrAccountInactive
 	}
 
@@ -194,5 +193,5 @@ func (lu *loginUsecase) accountLockedError() error {
 }
 
 func (lu *loginUsecase) recordLoginLog(parent context.Context, meta domain.LoginMeta, status, failureReason, email string) {
-	writeLoginLog(parent, lu.loginLogUsecase, meta, constants.UserSourceLocal, status, failureReason, email)
+	writeLoginLog(parent, lu.loginLogUsecase, meta, domain.UserSourceLocal, status, failureReason, email)
 }

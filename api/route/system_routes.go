@@ -1,15 +1,10 @@
 package route
 
-import (
-	"shadmin/api/middleware"
-
-	"github.com/gin-gonic/gin"
-)
+import "github.com/gin-gonic/gin"
 
 // setupUserManagement configures user management routes with unified API permission check
-func (pr *ProtectedRoutes) setupUserManagement(systemGroup *gin.RouterGroup, casbinMiddleware *middleware.CasbinMiddleware) {
+func (pr *ProtectedRoutes) setupUserManagement(systemGroup *gin.RouterGroup) {
 	userGroup := systemGroup.Group("/user")
-	userGroup.Use(casbinMiddleware.CheckAPIPermission())
 	userController := pr.factory.CreateUserController()
 
 	userGroup.GET("", userController.GetUsers)    // GET /api/v1/system/user
@@ -24,9 +19,8 @@ func (pr *ProtectedRoutes) setupUserManagement(systemGroup *gin.RouterGroup, cas
 }
 
 // setupRoleManagement configures role management routes with unified API permission check
-func (pr *ProtectedRoutes) setupRoleManagement(systemGroup *gin.RouterGroup, casbinMiddleware *middleware.CasbinMiddleware) {
+func (pr *ProtectedRoutes) setupRoleManagement(systemGroup *gin.RouterGroup) {
 	roleGroup := systemGroup.Group("/role")
-	roleGroup.Use(casbinMiddleware.CheckAPIPermission())
 	roleController := pr.factory.CreateRoleController()
 
 	// CRUD operations
@@ -40,9 +34,8 @@ func (pr *ProtectedRoutes) setupRoleManagement(systemGroup *gin.RouterGroup, cas
 }
 
 // setupMenuManagement configures menu management routes with unified API permission check
-func (pr *ProtectedRoutes) setupMenuManagement(systemGroup *gin.RouterGroup, casbinMiddleware *middleware.CasbinMiddleware) {
+func (pr *ProtectedRoutes) setupMenuManagement(systemGroup *gin.RouterGroup) {
 	menuGroup := systemGroup.Group("/menu")
-	menuGroup.Use(casbinMiddleware.CheckAPIPermission())
 	menuController := pr.factory.CreateMenuController()
 
 	menuGroup.GET("", menuController.GetMenus)
@@ -55,18 +48,16 @@ func (pr *ProtectedRoutes) setupMenuManagement(systemGroup *gin.RouterGroup, cas
 }
 
 // setupApiResourceManagement configures API resource management routes with unified API permission check
-func (pr *ProtectedRoutes) setupApiResourceManagement(systemGroup *gin.RouterGroup, casbinMiddleware *middleware.CasbinMiddleware) {
+func (pr *ProtectedRoutes) setupApiResourceManagement(systemGroup *gin.RouterGroup) {
 	apiGroup := systemGroup.Group("/api-resources")
-	apiGroup.Use(casbinMiddleware.CheckAPIPermission())
 	apiResourceController := pr.factory.CreateApiResourceController()
 
 	apiGroup.GET("", apiResourceController.GetApiResources)
 }
 
 // setupLoginLogManagement configures login log management routes with unified API permission check
-func (pr *ProtectedRoutes) setupLoginLogManagement(systemGroup *gin.RouterGroup, casbinMiddleware *middleware.CasbinMiddleware) {
+func (pr *ProtectedRoutes) setupLoginLogManagement(systemGroup *gin.RouterGroup) {
 	loginLogGroup := systemGroup.Group("/login-logs")
-	loginLogGroup.Use(casbinMiddleware.CheckAPIPermission())
 	loginLogController := pr.factory.CreateLoginLogController()
 
 	loginLogGroup.GET("", loginLogController.GetLoginLogs)      // GET /api/v1/system/login-logs
@@ -74,9 +65,8 @@ func (pr *ProtectedRoutes) setupLoginLogManagement(systemGroup *gin.RouterGroup,
 }
 
 // setupDictionaryManagement configures dictionary management routes with unified API permission check
-func (pr *ProtectedRoutes) setupDictionaryManagement(systemGroup *gin.RouterGroup, casbinMiddleware *middleware.CasbinMiddleware) {
+func (pr *ProtectedRoutes) setupDictionaryManagement(systemGroup *gin.RouterGroup) {
 	dictGroup := systemGroup.Group("/dict")
-	dictGroup.Use(casbinMiddleware.CheckAPIPermission())
 	dictController := pr.factory.CreateDictController()
 
 	// Dictionary type CRUD operations
@@ -98,9 +88,8 @@ func (pr *ProtectedRoutes) setupDictionaryManagement(systemGroup *gin.RouterGrou
 }
 
 // setupDepartmentManagement configures department management routes with unified API permission check
-func (pr *ProtectedRoutes) setupDepartmentManagement(systemGroup *gin.RouterGroup, casbinMiddleware *middleware.CasbinMiddleware) {
+func (pr *ProtectedRoutes) setupDepartmentManagement(systemGroup *gin.RouterGroup) {
 	deptGroup := systemGroup.Group("/department")
-	deptGroup.Use(casbinMiddleware.CheckAPIPermission())
 	deptController := pr.factory.CreateDepartmentController()
 
 	deptGroup.GET("", deptController.GetDepartmentList)       // GET /api/v1/system/department（扁平列表，支持 keyword 过滤）

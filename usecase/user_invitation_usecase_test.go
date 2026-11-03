@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"shadmin/domain"
-	"shadmin/internal/constants"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -67,7 +66,7 @@ func (m *invitationMailerStub) SendInvitation(_ context.Context, to, invitationU
 func TestUserInvitationUsecaseInviteStoresOnlyTokenHashAndSendsLink(t *testing.T) {
 	repository := &invitationRepositoryStub{}
 	mailer := &invitationMailerStub{}
-	roles := &invitationRoleRepositoryStub{roles: []*domain.Role{{ID: "role-1", Name: "operator", Status: constants.StatusActive}}}
+	roles := &invitationRoleRepositoryStub{roles: []*domain.Role{{ID: "role-1", Name: "operator", Status: domain.StatusActive}}}
 	usecase := NewUserInvitationUsecase(repository, roles, mailer, "https://shadmin.example/accept-invitation", 72*time.Hour, time.Second)
 
 	user, err := usecase.Invite(context.Background(), &domain.InviteUserRequest{
@@ -78,7 +77,7 @@ func TestUserInvitationUsecaseInviteStoresOnlyTokenHashAndSendsLink(t *testing.T
 	if err != nil {
 		t.Fatalf("Invite: %v", err)
 	}
-	if user.ID != "user-1" || repository.user.Status != constants.UserStatusInvited {
+	if user.ID != "user-1" || repository.user.Status != domain.UserStatusInvited {
 		t.Fatalf("invited user = %#v, stored user = %#v", user, repository.user)
 	}
 	if repository.user.Email != "person@example.com" || repository.user.Password != "" {
@@ -132,7 +131,7 @@ func TestUserInvitationUsecaseAcceptHashesPasswordAndToken(t *testing.T) {
 
 func TestUserInvitationUsecaseRejectsUnassignableRoles(t *testing.T) {
 	repository := &invitationRepositoryStub{}
-	roles := &invitationRoleRepositoryStub{roles: []*domain.Role{{ID: "admin", Name: "admin", IsSystem: true, Status: constants.StatusActive}}}
+	roles := &invitationRoleRepositoryStub{roles: []*domain.Role{{ID: "admin", Name: "admin", IsSystem: true, Status: domain.StatusActive}}}
 	mailer := &invitationMailerStub{}
 	usecase := NewUserInvitationUsecase(repository, roles, mailer, "https://shadmin.example/accept-invitation", time.Hour, time.Second)
 

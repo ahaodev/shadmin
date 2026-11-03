@@ -1,6 +1,7 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/auth-store'
 import { menuService } from '@/lib/menu-service'
+import { Button } from '@/components/ui/button'
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout'
 
 // Routes that are always accessible for authenticated users (not menu-managed)
@@ -28,8 +29,12 @@ export const Route = createFileRoute('/_authenticated')({
       }
     }
 
+    if (!useAuthStore.getState().auth.accessToken) {
+      throw redirect({ to: '/sign-in', search: { redirect: location.href } })
+    }
+
     // Load menu data (cached after first load) and check route authorization
-    await menuService.loadMenuData()
+    await auth.loadMenus()
 
     const pathname = location.pathname
 
@@ -41,6 +46,15 @@ export const Route = createFileRoute('/_authenticated')({
     if (!isAlwaysAllowed && !menuService.isPathAllowed(pathname)) {
       throw redirect({ to: '/403' })
     }
+  },
+  errorComponent: function PermissionLoadError() {
+    const router = useRouter()
+    return (
+      <div className='flex min-h-svh flex-col items-center justify-center gap-4'>
+        <p>无法加载账户权限，请重试。</p>
+        <Button onClick={() => void router.invalidate()}>重试</Button>
+      </div>
+    )
   },
   component: AuthenticatedLayout,
 })

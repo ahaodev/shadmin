@@ -1,10 +1,8 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { exchangeUserIdentityCode } from '@/services/authApi'
-import { getProfile } from '@/services/profileApi'
 import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
-import { authUserFromJwt } from '@/lib/jwt'
 
 const pendingIdentityCodeExchanges = new Map<
   string,
@@ -42,9 +40,11 @@ export function OAuthCallback() {
       return
     }
 
+    let active = true
     void (async () => {
       try {
         const response = await exchangeUserIdentityCodeOnce(code)
+        if (!active) return
         if (response.code !== 0 || !response.data) {
           navigate({
             to: '/sign-in',
@@ -56,51 +56,32 @@ export function OAuthCallback() {
 
         const { accessToken, refreshToken } = response.data
 
-        const {
-          setUser,
-          setAccessToken,
-          setRefreshToken,
-          clearSidebarCache,
-          fetchProfile,
-        } = useAuthStore.getState().auth
-
-        const user = authUserFromJwt(accessToken)
-
-        if (user) {
-          setUser({
-            accountNo: user.accountNo,
-            email: user.email,
-            role: user.role,
-            exp: user.exp,
-          })
-        }
-
-        setAccessToken(accessToken)
-        if (refreshToken) {
-          setRefreshToken(refreshToken)
-        }
-        clearSidebarCache()
+        const { startSession, fetchProfile, loadMenus } =
+          useAuthStore.getState().auth
+        startSession(accessToken, refreshToken ?? '')
 
         try {
-          await getProfile()
           await fetchProfile()
         } catch (e) {
           console.warn('Failed to fetch profile after identity login:', e)
         }
 
         try {
-          const { menuService } = await import('@/lib/menu-service')
-          await menuService.reloadMenuData()
+          await loadMenus()
         } catch (e) {
           console.warn('Failed to reload menu data after identity login:', e)
         }
 
-        navigate({ to: '/', replace: true })
+        if (active) navigate({ to: '/', replace: true })
       } catch (caughtError) {
+        if (!active) return
         console.warn('Failed to exchange identity login code:', caughtError)
         navigate({ to: '/sign-in', search: { error: 'oauth' }, replace: true })
       }
     })()
+    return () => {
+      active = false
+    }
   }, [code, error, navigate])
 
   return (

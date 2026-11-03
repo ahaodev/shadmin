@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"shadmin/internal/constants"
 	"time"
 
 	"shadmin/domain"
@@ -40,7 +39,7 @@ func (uu *userUsecase) CreateUser(ctx context.Context, request *domain.CreateUse
 
 	// 设置默认状态
 	if user.Status == "" {
-		user.Status = constants.UserStatusActive
+		user.Status = domain.UserStatusActive
 	}
 
 	// 🔒 加密密码

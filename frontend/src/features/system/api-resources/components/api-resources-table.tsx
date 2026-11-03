@@ -184,7 +184,6 @@ export function ApiResourcesTable({
     }
   }, [table.getPageCount(), ensurePageInRange, totalCount])
 
-  // Get unique modules for filter options (memoized to prevent unnecessary re-renders)
   const moduleOptions = useMemo(
     () =>
       Array.from(new Set(data.map((item) => item.module).filter(Boolean))).map(
@@ -193,7 +192,6 @@ export function ApiResourcesTable({
     [data]
   )
 
-  // Memoize filter configuration to prevent toolbar re-renders
   const filterConfig = useMemo(
     () => [
       {

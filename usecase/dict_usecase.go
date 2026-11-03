@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"shadmin/domain"
-	"shadmin/internal/constants"
 	"time"
 )
 
@@ -34,7 +33,7 @@ func (du *dictUsecase) CreateDictType(ctx context.Context, request *domain.Creat
 
 	// 设置默认状态
 	if request.Status == "" {
-		request.Status = constants.StatusActive
+		request.Status = domain.StatusActive
 	}
 	if err := validateDictStatus(request.Status); err != nil {
 		return nil, err
@@ -112,7 +111,7 @@ func (du *dictUsecase) CreateDictItem(ctx context.Context, request *domain.Creat
 
 	// 设置默认状态
 	if request.Status == "" {
-		request.Status = constants.StatusActive
+		request.Status = domain.StatusActive
 	}
 	if err := validateDictStatus(request.Status); err != nil {
 		return nil, err
@@ -184,5 +183,5 @@ func (du *dictUsecase) GetActiveItemsByTypeCode(ctx context.Context, typeCode st
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
 
-	return du.dictRepository.GetItemsByTypeCode(ctx, typeCode, constants.StatusActive)
+	return du.dictRepository.GetItemsByTypeCode(ctx, typeCode, domain.StatusActive)
 }

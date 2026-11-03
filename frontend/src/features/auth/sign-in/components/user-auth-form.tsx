@@ -103,23 +103,7 @@ export function UserAuthForm({
 
         const user = authUserFromJwt(accessToken)
 
-        if (user) {
-          auth.setUser({
-            accountNo: user.accountNo,
-            email: user.email,
-            role: user.role,
-            exp: user.exp,
-          })
-        }
-
-        auth.setAccessToken(accessToken)
-
-        const refreshTokenValue = payload?.refreshToken
-        if (refreshTokenValue) {
-          auth.setRefreshToken(refreshTokenValue)
-        }
-
-        auth.clearSidebarCache()
+        auth.startSession(accessToken, payload?.refreshToken ?? '')
 
         try {
           await auth.fetchProfile()
@@ -129,8 +113,7 @@ export function UserAuthForm({
         }
 
         try {
-          const { menuService } = await import('@/lib/menu-service')
-          await menuService.reloadMenuData()
+          await auth.loadMenus()
         } catch (error) {
           // eslint-disable-next-line no-console
           console.warn('Failed to reload menu data after login:', error)

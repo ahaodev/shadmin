@@ -12,3 +12,10 @@ const (
 	UserStatusInvited   = "invited"
 	UserStatusSuspended = "suspended"
 )
+
+// User sources identify local and external identity providers.
+const (
+	UserSourceLocal  = "shadmin"
+	UserSourceGitHub = "github"
+	UserSourceGoogle = "google"
+)

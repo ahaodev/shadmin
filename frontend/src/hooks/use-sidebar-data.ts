@@ -105,7 +105,7 @@ export function useSidebarData() {
         setError(null)
 
         const user = resolveUserInfo()
-        const navGroups = await menuService.loadMenuData()
+        const navGroups = await useAuthStore.getState().auth.loadMenus()
 
         if (mounted) {
           setSidebarData({
@@ -146,10 +146,8 @@ export function useSidebarData() {
       setIsLoading(true)
       setError(null)
 
-      menuService.clearCache()
-
       const user = resolveUserInfo()
-      const navGroups = await menuService.loadMenuData()
+      const navGroups = await useAuthStore.getState().auth.loadMenus(true)
 
       setSidebarData({
         user,

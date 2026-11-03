@@ -9,6 +9,7 @@ import {
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { handleServerError } from '@/lib/handle-server-error'
+import { session } from '@/lib/session'
 import { FontProvider } from './context/font-provider'
 import { ThemeProvider } from './context/theme-provider'
 // Generated Routes
@@ -54,6 +55,11 @@ const queryClient = new QueryClient({
       }
     },
   }),
+})
+
+session.onReset(() => {
+  void queryClient.cancelQueries()
+  queryClient.clear()
 })
 
 // Create a new router instance

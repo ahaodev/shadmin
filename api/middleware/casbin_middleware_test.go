@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"shadmin/domain"
 	"testing"
 
 	"shadmin/internal/casbin"
@@ -13,22 +15,22 @@ import (
 )
 
 // fakeManager 只实现 CheckPermission：中间件测试只关心网关行为
-// （状态码、userID 提取、跳过清单），权限判定本身由 internal/casbin 的单测覆盖。
+// （状态码、userID 提取、所有路径均检查），权限判定本身由 internal/casbin 的单测覆盖。
 type fakeManager struct {
-	casbin.Manager // 嵌入真实接口，未触发的方法不调用
-	allow          bool
-	err            error
+	domain.PermissionChecker // Unused methods are never called.
+	allow                    bool
+	err                      error
 }
 
-func (f fakeManager) CheckPermission(string, string, string) (bool, error) {
+func (f fakeManager) CheckPermission(context.Context, string, string, string) (bool, error) {
 	return f.allow, f.err
 }
 
 // newCasbinTestRouter 构造三条约目的路由：
 // /api/v1/probe   带用户 alice；
 // /api/v1/anon    匿名（userID 为空）；
-// /api/v1/profile 属于 BasicProtectedAPIPaths，应跳过权限校验。
-func newCasbinTestRouter(m casbin.Manager) *gin.Engine {
+// /api/v1/profile 也不能绕过显式挂载的权限校验。
+func newCasbinTestRouter(m domain.PermissionChecker) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 
@@ -75,12 +77,12 @@ func TestCheckAPIPermission_DeniesWithoutPermission(t *testing.T) {
 	}
 }
 
-// 跳过路径来自 constants.GetAPIPathsToSkipPermissionCheck，用例锁定这份清单仍生效。
-func TestCheckAPIPermission_SkipsBasicProtectedPaths(t *testing.T) {
+// Path names must not bypass a mounted authorization gate.
+func TestCheckAPIPermission_DoesNotSkipPaths(t *testing.T) {
 	r := newCasbinTestRouter(fakeManager{allow: false})
 
-	if w := casbinProbe(t, r, "/api/v1/profile"); w.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 (skip paths must bypass permission check)", w.Code)
+	if w := casbinProbe(t, r, "/api/v1/profile"); w.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 (no path exemptions)", w.Code)
 	}
 }
 

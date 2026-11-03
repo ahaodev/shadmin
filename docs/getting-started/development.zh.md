@@ -654,10 +654,8 @@ import (
 
 func (pr *ProtectedRoutes) setupProjectManagement(
 	systemGroup *gin.RouterGroup,
-	casbinMiddleware *middleware.CasbinMiddleware,
 ) {
 	projectGroup := systemGroup.Group("/projects")
-	projectGroup.Use(casbinMiddleware.CheckAPIPermission())
 	projectController := pr.factory.CreateProjectController()
 
 	projectGroup.GET("", projectController.List)
@@ -674,18 +672,18 @@ func (pr *ProtectedRoutes) setupProjectManagement(
 func (pr *ProtectedRoutes) SetupSystemRoutes(...) {
     systemGroup := ...
     // 已有的路由
-    pr.setupUserManagement(systemGroup, casbinMiddleware)
-    pr.setupRoleManagement(systemGroup, casbinMiddleware)
+    pr.setupUserManagement(systemGroup)
+    pr.setupRoleManagement(systemGroup)
     // ...
 
     // 添加新模块
-    pr.setupProjectManagement(systemGroup, casbinMiddleware)
+    pr.setupProjectManagement(systemGroup)
 }
 ```
 
 **要点：**
 - 每个模块独立一个路由文件，方法挂在 `ProtectedRoutes` 上
-- `casbinMiddleware.CheckAPIPermission()` 自动检查 API 级别权限
+- `/system` 父组统一挂载 `CheckAPIPermission()`，所有资源子组继承权限检查
 - RESTful 风格：GET 列表、POST 创建、GET/:id 详情、PUT/:id 更新、DELETE/:id 删除
 
 ### 第 7 步：接入用例与工厂
@@ -1605,7 +1603,7 @@ pnpm run knip
 
 1. 确认 API 资源已在后台扫描并分配给角色
 2. 保存角色/菜单/API 资源变更后，generation 提交会触发当前实例立即重建本地 Casbin 快照；低频轮询（默认 1 小时）负责漏触发、重启和跨实例变更兜底
-3. 检查路由是否添加了 `casbinMiddleware.CheckAPIPermission()`
+3. 检查路由是否注册在统一挂载 `CheckAPIPermission()` 的 `/system` 父组下
 
 **调试步骤：**
 

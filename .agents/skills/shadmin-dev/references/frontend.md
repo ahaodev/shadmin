@@ -24,7 +24,7 @@ Match the shape of the closest existing feature; trim files you don't need.
 - `types/<resource>.ts`: `snake_case` fields matching backend JSON; dates are `Date`; Go `*string` → optional field. Define entity, `Create*Request`, `Update*Request`.
 - `services/<resource>Api.ts`: `apiClient` from `./config`, endpoint `/api/v1/{module}/{resource}`, return `response.data.data`, parse date strings in a `parseX()` converter. Re-export from `services/index.ts`.
 - Query strings: `buildSearchParams(params)` from `@/lib/query-params` (skips empty values).
-- `apiClient` already injects the Bearer token, refreshes on 401 and retries; don't reimplement.
+- `apiClient` injects the Bearer token, shares one refresh per session on 401, and retries. Refresh updates storage and the auth store. Requests carry a session revision and are canceled/rejected when obsolete; don't reimplement.
 
 ## Hooks (`hooks/use-<resources>.ts`)
 - Query key constant (`const KEY = 'departments'`); `useQuery({ queryKey: [KEY, params], queryFn, staleTime: 5 * 60 * 1000 })`; `enabled: !!id` for single items.
@@ -79,3 +79,10 @@ Use `const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissio
 | Types | `kebab-case.ts` | `login-log.ts` |
 
 Use the `@/` alias; relative paths only `./` inside a feature. Import order is enforced by Prettier (`pnpm format`).
+
+## Session lifecycle
+- Sign-in (password and OAuth): `auth.startSession(accessToken, refreshToken)`; sign-out: `auth.reset()`. These advance the session revision, abort prior requests and clear identity, menu permissions and TanStack Query caches. Do not assemble sign-in using individual setters.
+- `main.tsx` registers QueryClient cleanup with `session.onReset()`. Keep cancellation and clearing together.
+- Load menus with `auth.loadMenus(reload?)`, invalidate with `auth.clearSidebarCache()`. The menu service only fetches/transforms/caches resources; it never imports the auth store. Cache invalidation rejects old in-flight results.
+- Permission loading failures propagate to the authenticated route's retry UI; unloaded/failed resources never authorize a path. Profile and refresh completions must verify the session revision before writing.
+- Run `pnpm test` for session isolation, cache invalidation, refresh concurrency and stale-response regression coverage.

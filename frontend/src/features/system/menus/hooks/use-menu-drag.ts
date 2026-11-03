@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
-import { menuService } from '@/lib/menu-service'
+import { useAuthStore } from '@/stores/auth-store'
 import type { TableMenuItem } from '@/lib/menu-utils'
 import { MENUS_QUERY_KEY } from '../constants/query-keys'
 
@@ -46,7 +46,7 @@ export function useMenuDrag(
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [MENUS_QUERY_KEY] })
-      menuService.clearCache()
+      useAuthStore.getState().auth.clearSidebarCache()
     },
   })
 

@@ -30,8 +30,3 @@ func GetAPIPathsToSkip() []string {
 	allSkipPaths = append(allSkipPaths, SwaggerAPIPaths...)
 	return allSkipPaths
 }
-
-// GetAPIPathsToSkipPermissionCheck returns API paths that should skip Casbin permission check
-func GetAPIPathsToSkipPermissionCheck() []string {
-	return BasicProtectedAPIPaths
-}

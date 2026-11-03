@@ -28,6 +28,17 @@ func NewSyncService(source domain.AuthorizationSource, manager Manager) *SyncSer
 	return &SyncService{source: source, manager: manager}
 }
 
+// CheckPermission checks the shared generation on every protected request. A remote
+// commit is therefore observed without waiting for the background recovery poll.
+func (s *SyncService) CheckPermission(ctx context.Context, userID, object, action string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	if err := s.SyncIfChanged(ctx); err != nil {
+		return false, fmt.Errorf("%w: %w", ErrSnapshotStale, err)
+	}
+	return s.manager.CheckPermission(userID, object, action)
+}
+
 // SyncFromDatabase rebuilds the complete snapshot from the authoritative data source.
 func (s *SyncService) SyncFromDatabase(ctx context.Context) error {
 	s.mu.Lock()

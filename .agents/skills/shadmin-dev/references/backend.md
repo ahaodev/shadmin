@@ -42,7 +42,7 @@ Contracts first; everything else implements them.
 | `AuthorizationSource`, `UnitOfWork` | `repository` |
 
 - Each method starts with `ctx, cancel := context.WithTimeout(ctx, u.contextTimeout); defer cancel()`.
-- Validation, defaults (`constants.StatusActive`), uniqueness and cross-entity rules live here.
+- Validation, defaults (`domain.StatusActive`), uniqueness and cross-entity rules live here.
 - Atomic multi-repo work: `uow.Do(ctx, func(txCtx) error {...})`; every repository call inside must use `txCtx`. `repository.WithAuthorizationTx` joins a transaction already in `ctx`.
 
 ## Controller
@@ -54,15 +54,14 @@ Contracts first; everything else implements them.
 - Swagger on every handler: `@Summary @Description @Tags @Accept @Produce @Security BearerAuth @Param @Success @Failure @Router` (router path relative to `/api/v1`).
 
 ## Routes (`api/route/`)
-Add `setup<Resource>Management(systemGroup, casbinMiddleware)` in `system_routes.go`, call it from `setupSystemRoutes` in `protected.go`:
+Add `setup<Resource>Management(systemGroup)` in `system_routes.go`, call it from `setupSystemRoutes` in `protected.go`:
 ```go
 g := systemGroup.Group("/resource")
-g.Use(casbinMiddleware.CheckAPIPermission())
 c := pr.factory.CreateResourceController()
 g.GET("", c.List); g.POST("", c.Create)
 g.GET("/:id", c.Get); g.PUT("/:id", c.Update); g.DELETE("/:id", c.Delete)
 ```
-`public.go` holds unauthenticated routes. Non-system protected routes (`/profile`, `/resources`) skip Casbin via `constants.BasicProtectedAPIPaths`.
+`public.go` holds unauthenticated routes. The `/system` parent group mounts Casbin once; all resource groups inherit it. Basic authenticated routes (`/profile`, `/resources`, `/auth/device/activate`) are registered outside that group. The permission middleware has no path-based bypass list.
 
 ## Wiring
 1. `bootstrap/usecases.go` — the only place repositories become usecases: add a field to `Usecases` and construct it in `newUsecases`.
@@ -74,4 +73,4 @@ func (f *ControllerFactory) CreateResourceController() *controller.ResourceContr
 ```
 Config values come from `f.app.Env`.
 
-Casbin middleware returns 403 on deny and 503 when the snapshot is stale. Authorization-affecting writes: see SKILL.md §5.
+Casbin middleware calls `domain.PermissionChecker` with the request context. The sync service reads the shared generation before each check, rebuilding only when changed; it returns 403 on deny and 503 if generation reads or rebuilds fail. Authorization-affecting writes: see SKILL.md §5.

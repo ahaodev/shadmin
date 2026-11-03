@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createMenu, updateMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
 import { toast } from 'sonner'
-import { menuService } from '@/lib/menu-service'
+import { useAuthStore } from '@/stores/auth-store'
 import {
   MENUS_QUERY_KEY,
   PARENT_MENUS_QUERY_KEY,
@@ -112,7 +112,7 @@ export function useMenuForm({
       toast.success(isEditMode ? '菜单更新成功' : '菜单创建成功')
       queryClient.invalidateQueries({ queryKey: [MENUS_QUERY_KEY] })
       queryClient.invalidateQueries({ queryKey: [PARENT_MENUS_QUERY_KEY] })
-      menuService.clearCache()
+      useAuthStore.getState().auth.clearSidebarCache()
       onSuccess?.()
       if (!isEditMode) {
         form.reset()

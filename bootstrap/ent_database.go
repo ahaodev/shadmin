@@ -63,7 +63,6 @@ func NewEntDatabase(env *conf.Env) (*ent.Client, error) {
 }
 
 func connectSQLite() (*ent.Client, error) {
-	// 修改这里：确保路径指向 .db 文件
 	dbPath := "./.database/data.db"
 
 	slog.Info("sqlite config", "path", dbPath)
@@ -95,12 +94,11 @@ func connectPostgreSQL(env *conf.Env) (*ent.Client, error) {
 		return nil, fmt.Errorf("PostgreSQL DSN is required but not provided")
 	}
 
-	slog.Info("connecting to postgresql database", "dsn", maskPassword(dsn))
+	slog.Info("connecting to postgresql database")
 
 	client, err := ent.Open("postgres", dsn)
 	if err != nil {
-		slog.Error("postgresql connection failed", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("open PostgreSQL connection: invalid database configuration")
 	}
 
 	slog.Info("postgresql connection successful")
@@ -113,35 +111,15 @@ func connectMySQL(env *conf.Env) (*ent.Client, error) {
 		return nil, fmt.Errorf("MySQL DSN is required but not provided")
 	}
 
-	slog.Info("connecting to mysql database", "dsn", maskPassword(dsn))
+	slog.Info("connecting to mysql database")
 
 	client, err := ent.Open("mysql", dsn)
 	if err != nil {
-		slog.Error("mysql connection failed", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("open MySQL connection: invalid database configuration")
 	}
 
 	slog.Info("mysql connection successful")
 	return client, nil
-}
-
-// maskPassword masks the password in DSN for logging
-func maskPassword(dsn string) string {
-	if strings.Contains(dsn, "@") {
-		parts := strings.Split(dsn, "@")
-		if len(parts) >= 2 {
-			userInfo := parts[0]
-			if strings.Contains(userInfo, ":") {
-				userParts := strings.Split(userInfo, ":")
-				if len(userParts) >= 3 {
-					userParts[len(userParts)-1] = "***"
-					parts[0] = strings.Join(userParts, ":")
-				}
-			}
-			return strings.Join(parts, "@")
-		}
-	}
-	return dsn
 }
 
 // CloseEntConnection 关闭Ent数据库连接

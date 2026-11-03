@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"shadmin/domain"
-	"shadmin/internal/constants"
 	"strings"
 	"time"
 )
@@ -120,7 +119,7 @@ func (luc *loginLogUsecase) CreateLoginLog(ctx context.Context, request *domain.
 
 	// 未指定来源时默认本地密码登录
 	if request.Source == "" {
-		request.Source = constants.UserSourceLocal
+		request.Source = domain.UserSourceLocal
 	}
 
 	loginLog := &domain.LoginLog{

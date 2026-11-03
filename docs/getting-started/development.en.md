@@ -654,10 +654,8 @@ import (
 
 func (pr *ProtectedRoutes) setupProjectManagement(
 	systemGroup *gin.RouterGroup,
-	casbinMiddleware *middleware.CasbinMiddleware,
 ) {
 	projectGroup := systemGroup.Group("/projects")
-	projectGroup.Use(casbinMiddleware.CheckAPIPermission())
 	projectController := pr.factory.CreateProjectController()
 
 	projectGroup.GET("", projectController.List)
@@ -674,18 +672,18 @@ Then call it in the `SetupSystemRoutes` method in `api/route/system_routes.go`:
 func (pr *ProtectedRoutes) SetupSystemRoutes(...) {
     systemGroup := ...
     // Existing routes
-    pr.setupUserManagement(systemGroup, casbinMiddleware)
-    pr.setupRoleManagement(systemGroup, casbinMiddleware)
+    pr.setupUserManagement(systemGroup)
+    pr.setupRoleManagement(systemGroup)
     // ...
 
     // Add new module
-    pr.setupProjectManagement(systemGroup, casbinMiddleware)
+    pr.setupProjectManagement(systemGroup)
 }
 ```
 
 **Key Points:**
 - Each module has its own route file, with methods on `ProtectedRoutes`
-- `casbinMiddleware.CheckAPIPermission()` automatically checks API-level permissions
+- The `/system` parent group applies `CheckAPIPermission()` once; all resource groups inherit it
 - RESTful style: GET list, POST create, GET/:id detail, PUT/:id update, DELETE/:id delete
 
 ### Step 7: Wire Up Usecase and Factory
@@ -1605,7 +1603,7 @@ Run `go generate ./ent` to regenerate ORM code. Ensure field types in the Ent Sc
 
 1. Confirm API resources have been scanned and assigned to roles in the admin panel
 2. After saving role/menu/API-resource changes, the committed generation triggers an immediate local Casbin snapshot rebuild; the low-frequency poll (1 hour by default) covers missed triggers, restarts, and cross-instance changes
-3. Check that routes have `casbinMiddleware.CheckAPIPermission()` applied
+3. Check that routes are registered under the `/system` parent group with `CheckAPIPermission()`
 
 **Debugging Steps:**
 

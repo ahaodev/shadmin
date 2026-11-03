@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"shadmin/internal/constants"
 	"strings"
 	"time"
 
@@ -139,7 +138,7 @@ func (u *deviceAuthUsecase) PollToken(ctx context.Context, req domain.DeviceToke
 			return nil, fmt.Errorf("get authorized user: %w", err)
 		}
 		// 被禁用的账户不应通过 CLI 拿到令牌。
-		if user.Status != constants.UserStatusActive {
+		if user.Status != domain.UserStatusActive {
 			return nil, domain.ErrUserDisabled
 		}
 		return u.tokenService.IssuePair(user)

@@ -297,10 +297,10 @@ REDIS_PASSWORD=
 REDIS_DB=0
 ```
 
-- **Casbin**：策略是从 Ent 用户/角色/菜单/API 资源关系生成的进程内快照，不再写入 Casbin adapter。多实例通过共享 DB 中的授权 generation 各自重建本地快照；Redis 本身不刷新其他进程的 Enforcer。
+- **Casbin**：策略是从 Ent 用户/角色/菜单/API 资源关系生成的进程内快照，不再写入 Casbin adapter。每次系统 API 请求先检查共享 DB 的授权 generation，变化时先重建本地快照再鉴权；Redis 本身不刷新其他进程的 Enforcer。
 - **Captcha、用户状态缓存和 JWT 黑名单**：Redis 可让这些缓存状态在多实例间共享。
 
-> 多实例必须连接同一权威数据库；授权 generation 提交后会通过 Ent trigger 唤醒当前实例同步，`AUTHZ_SYNC_POLL_INTERVAL_SECONDS` 作为漏触发、进程重启和跨实例变更的兜底轮询间隔（默认 1 小时）。
+> 多实例必须连接同一权威数据库；授权 generation 提交后会通过 Ent trigger 唤醒当前实例同步，`AUTHZ_SYNC_POLL_INTERVAL_SECONDS` 仅控制后台恢复与预热（默认 1 小时），不决定撤权延迟。每次系统请求读取共享 generation，读取或重建失败返回 503；每个受保护系统请求因此增加一次数据库读取。
 
 ---
 

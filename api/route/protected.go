@@ -73,15 +73,16 @@ func (pr *ProtectedRoutes) setupDeviceAuthRoutes(group *gin.RouterGroup) {
 
 // setupSystemRoutes configures system administration routes
 func (pr *ProtectedRoutes) setupSystemRoutes(router *gin.RouterGroup, app *bootstrap.Application) {
-	casbinMiddleware := middleware.NewCasbinMiddleware(app.CasManager)
+	casbinMiddleware := middleware.NewCasbinMiddleware(app.CasbinInitializer.GetSyncService())
 	systemGroup := router.Group("/system")
+	systemGroup.Use(casbinMiddleware.CheckAPIPermission())
 
 	// Setup system route groups
-	pr.setupUserManagement(systemGroup, casbinMiddleware)
-	pr.setupRoleManagement(systemGroup, casbinMiddleware)
-	pr.setupMenuManagement(systemGroup, casbinMiddleware)
-	pr.setupApiResourceManagement(systemGroup, casbinMiddleware)
-	pr.setupLoginLogManagement(systemGroup, casbinMiddleware)
-	pr.setupDictionaryManagement(systemGroup, casbinMiddleware)
-	pr.setupDepartmentManagement(systemGroup, casbinMiddleware)
+	pr.setupUserManagement(systemGroup)
+	pr.setupRoleManagement(systemGroup)
+	pr.setupMenuManagement(systemGroup)
+	pr.setupApiResourceManagement(systemGroup)
+	pr.setupLoginLogManagement(systemGroup)
+	pr.setupDictionaryManagement(systemGroup)
+	pr.setupDepartmentManagement(systemGroup)
 }

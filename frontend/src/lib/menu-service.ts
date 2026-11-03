@@ -1,9 +1,8 @@
+import { CanceledError } from 'axios'
 import { getResources } from '@/services/resourceApi'
 import type { NavGroup } from '@/types/layout'
-import type { MenuTreeNode } from '@/types/menu'
-import { useAuthStore } from '@/stores/auth-store'
+import type { MenuTreeNode, ResourcesResponse } from '@/types/menu'
 import { BackendMenuAdapter } from '@/lib/backend-menu-adapter'
-import { isAdmin } from '@/lib/permissions'
 
 /**
  * Recursively extract all route paths from a menu tree.
@@ -38,128 +37,64 @@ function isPathMatch(pathname: string, allowedPath: string): boolean {
  */
 class MenuService {
   private cachedMenuData: NavGroup[] | null = null
-  private cachedRawMenus: MenuTreeNode[] | null = null
-  private menuLoadFailed: boolean = false
+  private resources: ResourcesResponse | null = null
   private backendAdapter = new BackendMenuAdapter()
-  private isLoading: boolean = false
+  private version = 0
   private loadPromise: Promise<NavGroup[]> | null = null
 
-  /**
-   * Load menu data from backend API
-   * Fetches menu resources from the backend
-   */
   async loadMenuData(): Promise<NavGroup[]> {
-    // Return cached data if available
-    if (this.cachedMenuData) {
-      return this.cachedMenuData
-    }
+    if (this.cachedMenuData) return this.cachedMenuData
+    if (this.loadPromise) return this.loadPromise
 
-    // If already loading, return the existing promise
-    if (this.isLoading && this.loadPromise) {
-      return this.loadPromise
-    }
-
-    // Start loading
-    this.isLoading = true
-    this.loadPromise = this._doLoadMenuData()
-
+    const version = this.version
+    const pending = this.load(version)
+    this.loadPromise = pending
     try {
-      const result = await this.loadPromise
-      return result
+      return await pending
     } finally {
-      this.isLoading = false
-      this.loadPromise = null
+      // An obsolete loader must not clear a newer request.
+      if (this.loadPromise === pending) this.loadPromise = null
     }
   }
 
-  /**
-   * Internal method to actually load menu data
-   */
-  private async _doLoadMenuData(): Promise<NavGroup[]> {
-    try {
-      // Fetch complete resources data including permissions
-      const resourcesData = await getResources()
+  private async load(version: number): Promise<NavGroup[]> {
+    const resources = await getResources()
+    if (version !== this.version)
+      throw new CanceledError('Menu cache invalidated')
+    const navGroups = this.backendAdapter.transformToNavGroups(resources.menus)
+    this.resources = resources
+    this.cachedMenuData = navGroups
+    return navGroups
+  }
 
-      // Set permissions to auth store
-      if (resourcesData.permissions) {
-        const { setPermissions } = useAuthStore.getState().auth
-        setPermissions({
-          permissions: resourcesData.permissions.map((p) => [p]), // Convert string[] to string[][]
-          roles: resourcesData.roles ?? [],
-          menus: resourcesData.menus.map((m) => m.id), // Extract menu IDs
-          is_admin: resourcesData.is_admin ?? false,
-        })
-      }
-
-      // Cache raw menu tree for route authorization
-      this.cachedRawMenus = resourcesData.menus
-      this.menuLoadFailed = false
-
-      // Transform the backend data using the backend adapter
-      const navGroups = this.backendAdapter.transformToNavGroups(
-        resourcesData.menus
-      )
-
-      // Cache the transformed data
-      this.cachedMenuData = navGroups
-
-      return navGroups
-    } catch (error) {
-      console.error('Failed to load menu data from backend:', error)
-      this.menuLoadFailed = true
-      // Return empty array if backend fails
-      return []
+  getPermissions() {
+    if (!this.resources) return null
+    return {
+      permissions: (this.resources.permissions ?? []).map((p) => [p]),
+      roles: this.resources.roles ?? [],
+      menus: this.resources.menus.map((m) => m.id),
+      is_admin: this.resources.is_admin ?? false,
     }
   }
 
-  /**
-   * Check if a route path is allowed for the current user.
-   * Returns true if admin, path matches a menu, or menu data failed to load.
-   * Must be called after loadMenuData().
-   */
   isPathAllowed(pathname: string): boolean {
-    // If menu load failed, allow navigation (don't block on transient errors)
-    if (this.menuLoadFailed) return true
-
-    // If no raw menus cached yet, allow (data not loaded)
-    if (!this.cachedRawMenus) return true
-
-    // Admin bypasses all checks
-    if (isAdmin(useAuthStore.getState().auth.permissions)) return true
-
-    // Collect all allowed paths from raw menu tree
-    const allowedPaths = collectMenuPaths(this.cachedRawMenus)
-
-    // Check if pathname matches any allowed path
-    return allowedPaths.some((p) => isPathMatch(pathname, p))
+    if (!this.resources) return false
+    if (this.resources.is_admin) return true
+    return collectMenuPaths(this.resources.menus).some((p) =>
+      isPathMatch(pathname, p)
+    )
   }
 
-  /**
-   * Get cached menu data synchronously
-   */
   getCachedMenuData(): NavGroup[] | null {
     return this.cachedMenuData
   }
 
-  /**
-   * Clear cache and reload menu data
-   */
-  async reloadMenuData(): Promise<NavGroup[]> {
-    this.cachedMenuData = null
-    return this.loadMenuData()
-  }
-
-  /**
-   * Clear cached menu data
-   */
   clearCache(): void {
+    this.version++
     this.cachedMenuData = null
-    this.cachedRawMenus = null
-    this.menuLoadFailed = false
-    this.isLoading = false
+    this.resources = null
     this.loadPromise = null
   }
 }
 
-// Export singleton instance
 export const menuService = new MenuService()

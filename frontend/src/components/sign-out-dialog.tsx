@@ -18,7 +18,7 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
     } catch {
       // Continue local cleanup even if the server-side logout request fails.
     } finally {
-      // auth.reset() clears all tokens, cookies, localStorage, menu cache, and zustand state
+      // Reset cancels old requests and clears identity, query data and menu permissions.
       auth.reset()
 
       navigate({

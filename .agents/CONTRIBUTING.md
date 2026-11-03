@@ -28,6 +28,7 @@ cd frontend
 pnpm install                    # Install deps (pnpm only — npm/yarn rejected by preinstall hook)
 pnpm dev                        # Dev server on :5173, proxies /api to :55667
 pnpm build                      # Type-check + Vite build → frontend/dist/
+pnpm test                       # Session isolation / refresh regression tests
 pnpm lint                       # ESLint
 pnpm format:check               # Prettier check
 pnpm format                     # Prettier auto-fix
@@ -109,7 +110,7 @@ frontend/src/
 ### Auth & Permissions
 
 - **Authentication**: JWT access + refresh tokens. Middleware extracts claims into Gin context (`x-user-*` keys).
-- **Authorization**: Casbin checks `(userID, path, method)` on `/api/v1/system/*` routes via `CheckAPIPermission()` middleware. A stale or unavailable snapshot returns 503 for protected requests; initial snapshot failure aborts startup.
+- **Authorization**: Casbin checks `(userID, path, method)` on `/api/v1/system/*` routes via `CheckAPIPermission()` middleware. The `/system` parent group applies the gate once. Every system request reads the shared generation and rebuilds changed snapshots before evaluation; failed reads/builds return 503; initial snapshot failure aborts startup.
 - **Frontend**: `frontend/src/lib/permissions.ts` defines `hasPermission()`, `hasRole()`, `canAccessMenu()`; the `usePermission()` hook exposes them against the auth-store's `permissions`. Gate UI with `usePermission()` (e.g. `departments-table.tsx`).
 - **Login security**: 3 failed attempts within 1 minute → 1-minute lockout (`internal/auth/login_security.go`). The manager stores only a counter in the shared `cacher`; the key's TTL *is* the lock window. With the memory backend the window is per-replica; with Redis it is shared.
 
@@ -130,6 +131,11 @@ frontend/src/
 | `disk` (default) | `STORAGE_BASE_PATH` (default `.uploads`) |
 | `minio` | `S3_ADDRESS`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_TOKEN` (optional) |
 
+## Runtime Boundaries
+
+- Business constants live in `domain/`; usecases may not import outward packages. `architecture_test.go` checks dependency direction; CI also tests the independent CLI module.
+- `auth.startSession()` and `auth.reset()` coordinate session revisions, request cancellation and Query/menu cache clearing. Refresh synchronizes tokens without advancing the session. `auth.loadMenus()` publishes permissions; the menu service never imports the auth store. Failed permission loads block navigation with retry; obsolete asynchronous work cannot write to a new session.
+
 ## Key Conventions
 
 ### Adding a Backend Feature (layer-by-layer order)
@@ -139,7 +145,7 @@ frontend/src/
 3. `repository/<resource>_repository.go` — Ent CRUD, domain↔ent converters, pagination via `domain.QueryParams.Paginate()`
 4. `usecase/<resource>_usecase.go` — `context.WithTimeout`, validation, cross-repo orchestration, `fmt.Errorf("...: %w", err)`
 5. `api/controller/<resource>_controller.go` — Parse request, call usecase, return `domain.RespSuccess()`/`domain.RespError()` with proper HTTP status
-6. `api/route/` — Register routes (REST: GET list, POST create, GET :id, PUT :id, DELETE :id). Protected system routes use `casbinMiddleware.CheckAPIPermission()`
+6. `api/route/` — Register routes (REST: GET list, POST create, GET :id, PUT :id, DELETE :id). System resource routes inherit `CheckAPIPermission()` from the `/system` parent group
 7. `bootstrap/usecases.go` — Wire Repository → Usecase; `api/route/factory.go` — build the Controller from `f.uc`
 
 ### Adding a Frontend Feature
@@ -178,7 +184,7 @@ Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`). Subject ≤ 72 chars.
 Before committing:
 
 - Backend: `go fmt ./...` → `go vet ./...` → `go test ./...`
-- Frontend (if changed): `pnpm lint` → `pnpm format:check`
+- Frontend (if changed): `pnpm lint` → `pnpm format:check` → `pnpm test`
 - CLI (if changed): `cd cli && make test`
 - Schema changes: `go generate ./ent`
 - API changes: regenerate Swagger
@@ -196,5 +202,5 @@ Before committing:
 - `docs/getting-started/architecture.en.md` — full architecture walkthrough with diagrams
 - `docs/getting-started/development.en.md` — end-to-end "add a new module" tutorial
 - `docs/getting-started/deployment.en.md` — production deployment (incl. Docker)
-- `` — authoritative step-by-step feature-dev recipe
+- `.agents/skills/shadmin-dev/SKILL.md` — authoritative step-by-step feature-dev recipe
 - `cli/README.md` — CLI tool documentation

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"shadmin/domain"
-	"shadmin/internal/constants"
 )
 
 type userIdentityUsecase struct {
@@ -59,11 +58,11 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 		if errors.Is(err, domain.ErrUserDisabled) {
 			reason = "账户已停用或未启用"
 		}
-		u.recordLoginLog(ctx, meta, provider, profile.Email, constants.StatusFailed, reason)
+		u.recordLoginLog(ctx, meta, provider, profile.Email, domain.StatusFailed, reason)
 		return "", err
 	}
 
-	u.recordLoginLog(ctx, meta, provider, profile.Email, constants.StatusSuccess, "")
+	u.recordLoginLog(ctx, meta, provider, profile.Email, domain.StatusSuccess, "")
 
 	code, err := u.codeStore.Put(ctx, result)
 	if err != nil {
@@ -74,7 +73,7 @@ func (u *userIdentityUsecase) HandleCallback(ctx context.Context, provider strin
 
 // RecordFailure 记录 provider 认证阶段的失败（此时尚无第三方资料，邮箱留空）。
 func (u *userIdentityUsecase) RecordFailure(ctx context.Context, provider string, meta domain.LoginMeta, reason string) {
-	u.recordLoginLog(ctx, meta, provider, "", constants.StatusFailed, reason)
+	u.recordLoginLog(ctx, meta, provider, "", domain.StatusFailed, reason)
 }
 
 // Exchange 一次性消费 code 换取令牌对；成功即删除，避免重放。
@@ -153,7 +152,7 @@ func (u *userIdentityUsecase) resolveOrCreateUserForIdentity(ctx context.Context
 		}
 
 		// 被禁用的账户不允许通过第三方登录进入系统
-		if user.Status != constants.UserStatusActive {
+		if user.Status != domain.UserStatusActive {
 			return nil, fmt.Errorf("user account is disabled: %w", domain.ErrUserDisabled)
 		}
 
@@ -190,7 +189,7 @@ func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, pr
 	if err != nil {
 		return nil, fmt.Errorf("get default identity role: %w", err)
 	}
-	if viewerRole.Status != constants.StatusActive {
+	if viewerRole.Status != domain.StatusActive {
 		return nil, fmt.Errorf("default identity role %q is inactive", domain.RoleNameViewer)
 	}
 
@@ -205,7 +204,7 @@ func (u *userIdentityUsecase) createUserFromUserIdentity(ctx context.Context, pr
 		Email:    email, // 可能为空 → 仓储层写入 NULL
 		Avatar:   strings.TrimSpace(profile.AvatarURL),
 		Source:   provider,
-		Status:   constants.UserStatusActive,
+		Status:   domain.UserStatusActive,
 	}
 
 	if err := u.userRepository.CreateWithRoles(ctx, user, []string{viewerRole.ID}); err != nil {

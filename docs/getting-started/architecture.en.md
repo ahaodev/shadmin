@@ -268,8 +268,8 @@ User → Role → Permission Policy → API Resource (path + method)
 
 1. On startup, `bootstrap.InitApiResources()` scans all Gin routes and writes them to the database with IDs in `METHOD:/path` format
 2. Admins bind API resources to menu items in Menu Management
-3. Authorization changes increment the generation in the same DB transaction; each instance polls it, builds a complete Casbin snapshot, and atomically swaps it
-4. The frontend fetches the current user's visible menu tree and permission list via `/api/v1/resources` to dynamically render the sidebar
+3. Authorization changes increment the generation in the same DB transaction. Every system API request reads that generation before authorization, rebuilding its local snapshot when needed; read/build failures return 503. Local commit triggers and background polling warm/recover snapshots. The `/system` parent group owns the permission middleware.
+4. The frontend fetches menus and permissions through `auth.loadMenus()`. Failed loads block navigation with a retry action. Sign-in/sign-out advances the session revision, aborts old requests and clears Query/menu caches; late responses cannot restore an earlier account. Token refresh updates storage and the auth store without starting a new session.
 
 ## Database Abstraction
 

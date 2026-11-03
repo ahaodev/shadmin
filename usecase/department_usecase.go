@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"shadmin/domain"
-	"shadmin/internal/constants"
 	"slices"
 	"time"
 )
@@ -27,7 +26,7 @@ func (u *departmentUsecase) Create(ctx context.Context, req *domain.CreateDepart
 
 	// Set default status
 	if req.Status == "" {
-		req.Status = constants.StatusActive
+		req.Status = domain.StatusActive
 	}
 
 	// Normalize an empty parent ID to the root-level representation.
@@ -108,7 +107,7 @@ func (u *departmentUsecase) Update(ctx context.Context, id string, req *domain.U
 	}
 	if req.Status != nil {
 		// If disabling, ensure no active descendants exist
-		if *req.Status == constants.StatusInactive && dept.Status == constants.StatusActive {
+		if *req.Status == domain.StatusInactive && dept.Status == domain.StatusActive {
 			hasActive, err := u.departmentRepo.HasActiveChildren(ctx, id)
 			if err != nil {
 				return nil, fmt.Errorf("check active children: %w", err)

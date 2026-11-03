@@ -178,8 +178,6 @@ func (rc *RoleController) DeleteRole(c *gin.Context) {
 		return
 	}
 
-	// 注意：由于使用集中同步模式，角色关系会在下次同步时自动清理
-	// 不需要手动删除 Casbin 中的角色分配
 	c.JSON(http.StatusOK, domain.RespSuccess("Role deleted successfully"))
 }
 

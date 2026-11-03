@@ -1,8 +1,12 @@
-import { registerAuthStoreReset } from '@/services/config'
+import { CanceledError } from 'axios'
+import { registerAuthHandlers } from '@/services/config'
 import { getProfile } from '@/services/profileApi'
+import type { NavGroup } from '@/types/layout'
 import { type User } from '@/types/user'
 import { create } from 'zustand'
+import { authUserFromJwt } from '@/lib/jwt'
 import { menuService } from '@/lib/menu-service'
+import { session } from '@/lib/session'
 import {
   getAccessToken,
   setAccessToken as persistAccessToken,
@@ -36,6 +40,8 @@ interface AuthState {
     accessToken: string
     setAccessToken: (accessToken: string) => void
     resetAccessToken: () => void
+    startSession: (accessToken: string, refreshToken: string) => void
+    loadMenus: (reload?: boolean) => Promise<NavGroup[]>
     refreshToken: string
     setRefreshToken: (refreshToken: string) => void
     permissions: UserPermissions | null
@@ -45,54 +51,11 @@ interface AuthState {
   }
 }
 
-// Helper function to decode JWT payload
-function decodeJwt(token: string): Record<string, unknown> | null {
-  try {
-    const parts = token.split('.')
-    if (parts.length < 2) return null
-    const base64Url = parts[1]
-    // base64url -> base64
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    // pad base64 string
-    const pad = base64.length % 4
-    const padded = base64 + (pad ? '='.repeat(4 - pad) : '')
-    const json = decodeURIComponent(
-      atob(padded)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    )
-    return JSON.parse(json)
-  } catch (e) {
-    console.error('Failed to decode JWT', e)
-    return null
-  }
-}
-
 export const useAuthStore = create<AuthState>()((set, get) => {
   const initToken = getAccessToken()
   const initRefreshToken = getRefreshToken()
 
-  // Initialize user from lightweight JWT token (identity only)
-  let initUser: AuthUser | null = null
-  if (initToken) {
-    const tokenPayload = decodeJwt(initToken)
-    if (tokenPayload) {
-      initUser = {
-        accountNo: String(
-          tokenPayload.name ?? tokenPayload.username ?? tokenPayload.id ?? ''
-        ),
-        email: String(tokenPayload.email ?? ''),
-        role: Array.isArray(tokenPayload.role)
-          ? (tokenPayload.role as string[])
-          : ['authenticated_user'],
-        exp:
-          typeof tokenPayload.exp === 'number'
-            ? tokenPayload.exp
-            : Date.now() + 24 * 60 * 60 * 1000,
-      }
-    }
-  }
+  const initUser = initToken ? authUserFromJwt(initToken) : null
 
   return {
     auth: {
@@ -115,12 +78,14 @@ export const useAuthStore = create<AuthState>()((set, get) => {
           return
         }
 
+        const version = session.version
         try {
           set((state) => ({
             ...state,
             auth: { ...state.auth, isLoadingProfile: true },
           }))
           const profile = await getProfile()
+          if (!session.isCurrent(version)) return
           set((state) => ({
             ...state,
             auth: {
@@ -130,6 +95,7 @@ export const useAuthStore = create<AuthState>()((set, get) => {
             },
           }))
         } catch (error: unknown) {
+          if (!session.isCurrent(version)) return
           // eslint-disable-next-line no-console
           console.error('Failed to fetch profile:', error)
           set((state) => ({
@@ -152,11 +118,32 @@ export const useAuthStore = create<AuthState>()((set, get) => {
           persistAccessToken(accessToken)
           return { ...state, auth: { ...state.auth, accessToken } }
         }),
-      resetAccessToken: () =>
-        set((state) => {
-          removeAllTokens()
-          return { ...state, auth: { ...state.auth, accessToken: '' } }
-        }),
+      resetAccessToken: () => get().auth.reset(),
+      startSession: (accessToken, refreshToken) => {
+        get().auth.reset()
+        persistAccessToken(accessToken)
+        persistRefreshToken(refreshToken)
+        set((state) => ({
+          auth: {
+            ...state.auth,
+            accessToken,
+            refreshToken,
+            user: authUserFromJwt(accessToken),
+          },
+        }))
+      },
+      loadMenus: async (reload = false) => {
+        const version = session.version
+        if (reload) {
+          menuService.clearCache()
+          get().auth.setPermissions(null)
+        }
+        const menus = await menuService.loadMenuData()
+        if (!session.isCurrent(version))
+          throw new CanceledError('Session changed')
+        get().auth.setPermissions(menuService.getPermissions())
+        return menus
+      },
       refreshToken: initRefreshToken,
       setRefreshToken: (refreshToken) =>
         set((state) => {
@@ -166,43 +153,35 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       permissions: null,
       setPermissions: (permissions) =>
         set((state) => ({ ...state, auth: { ...state.auth, permissions } })),
-      reset: () =>
-        set((state) => {
-          removeAllTokens()
-
-          // 清除侧边栏缓存
-          try {
-            menuService.clearCache()
-          } catch (error) {
-            console.warn('Failed to clear menu cache:', error)
-          }
-
-          return {
-            ...state,
-            auth: {
-              ...state.auth,
-              user: null,
-              profile: null,
-              isLoadingProfile: false,
-              accessToken: '',
-              refreshToken: '',
-              permissions: null,
-            },
-          }
-        }),
+      reset: () => {
+        session.reset()
+        menuService.clearCache()
+        removeAllTokens()
+        set((state) => ({
+          auth: {
+            ...state.auth,
+            user: null,
+            profile: null,
+            isLoadingProfile: false,
+            accessToken: '',
+            refreshToken: '',
+            permissions: null,
+          },
+        }))
+      },
       clearSidebarCache: () => {
-        // 清除侧边栏相关缓存的辅助方法
-        try {
-          menuService.clearCache()
-        } catch (error) {
-          console.warn('Failed to clear menu cache:', error)
-        }
+        menuService.clearCache()
+        get().auth.setPermissions(null)
       },
     },
   }
 })
 
-// Register store reset with the axios interceptor (breaks circular import)
-registerAuthStoreReset(() => {
-  useAuthStore.getState().auth.reset()
+registerAuthHandlers({
+  reset: () => useAuthStore.getState().auth.reset(),
+  setTokens: (accessToken, refreshToken) => {
+    const { auth } = useAuthStore.getState()
+    auth.setAccessToken(accessToken)
+    if (refreshToken) auth.setRefreshToken(refreshToken)
+  },
 })

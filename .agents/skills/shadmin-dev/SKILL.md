@@ -52,7 +52,7 @@ routes/_authenticated/system/<resource>.tsx
 - IDs `xid.New().String()`; update DTOs use pointer fields; list filters embed `domain.QueryParams` and call `Paginate()`.
 - Responses: `domain.RespSuccess(data)` (code 0) / `domain.RespError(err)` (code 1); lists use `domain.NewPagedResult`.
 - Every usecase method: `context.WithTimeout` + `defer cancel()`; errors wrapped `%w`; sentinel errors mapped to status in the controller.
-- Protected system routes: `group.Use(casbinMiddleware.CheckAPIPermission())`.
+- System routes inherit `CheckAPIPermission()` from the `/system` parent group; do not mount it again per resource.
 
 ### 4. Frontend — read `references/frontend.md`
 - Read `response.data.data` (Axios `.data` → `domain.Response.Data`); services convert date strings to `Date`.
@@ -65,14 +65,19 @@ Two layers, linked by Role → Menu → API resources:
 
 To protect a new feature: register routes (auto-scanned) → add keys to `constants/permissions.ts` → create menu/button entries bound to the API resources (admin UI, or seed in `bootstrap/user_init.go`) and assign to roles. A menu's `path` must equal the route file's URL.
 
-**Authorization writes.** Ent user/role/menu/API-resource relations are the source of truth; each process builds an in-memory Casbin snapshot from them. Any write that changes those edges must commit together with the `authz_states.generation` bump — use `repository.WithAuthorizationTx` (nested calls bump once). Never mutate the live Enforcer or use Casbin AutoSave. A stale snapshot fails closed (HTTP 503). Recovery polling: `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` (default 3600). Keep existing `g/p` semantics (active users/roles, public resources excluded, `admin` wildcard) unless a reviewed change says otherwise.
+**Authorization writes.** Ent user/role/menu/API-resource relations are the source of truth; each process builds an in-memory Casbin snapshot from them. Any write that changes those edges must commit together with the `authz_states.generation` bump — use `repository.WithAuthorizationTx` (nested calls bump once). Never mutate the live Enforcer or use Casbin AutoSave. Every system request checks the shared database generation through `domain.PermissionChecker` before evaluating its snapshot; a remote commit is observed without waiting for a poll. Failed generation reads or rebuilds fail closed (HTTP 503). Background recovery/warming polling: `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` (default 3600). Keep existing `g/p` semantics (active users/roles, public resources excluded, `admin` wildcard) unless a reviewed change says otherwise.
 
-### 6. Verify
+### 6. Runtime boundaries
+- Business constants belong in `domain/`; usecases must not import `internal/`. `architecture_test.go` enforces import boundaries in CI.
+- Frontend sign-in uses `auth.startSession()`; sign-out uses `auth.reset()`. The session revision cancels obsolete requests and clears Query/menu caches. Token refresh updates storage and the auth store without creating a new session.
+- Load menus/permissions through `auth.loadMenus()`; menu services do not import the auth store. Failed permission loads block navigation with retry. In-flight profile/menu/refresh work must not write across session revisions or cache invalidation.
+
+### 7. Verify
 ```bash
 go generate ./ent            # schema changed
 go generate ./...            # Swagger annotations changed (needs swag CLI)
 go fmt ./... && go vet ./... && go test ./...
-cd frontend && pnpm lint && pnpm format:check && pnpm build   # build if routes/config changed
+cd frontend && pnpm lint && pnpm format:check && pnpm test && pnpm build   # build if routes/config changed
 ```
 Full command list: `../..`.
 

@@ -47,10 +47,6 @@ export function UsersTable({
   // Use data as-is since filtering is done server-side
   const filteredData = data
 
-  // Local state management for table (uncomment to use local-only state, not synced with URL)
-  // const [columnFilters, onColumnFiltersChange] = useState<ColumnFiltersState>([])
-  // const [pagination, onPaginationChange] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
-
   // Synced with URL states (keys/defaults mirror users route search schema)
   const {
     columnFilters,

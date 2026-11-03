@@ -1,9 +1,8 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import { session } from '@/lib/session'
 import {
   getAccessToken,
   getRefreshToken,
-  setAccessToken,
-  setRefreshToken,
   removeAllTokens,
 } from '@/lib/token-storage'
 
@@ -42,6 +41,14 @@ function isAuthRoute(url?: string): boolean {
 // --- Request interceptor: attach access token ---
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const request = config as RetryableConfig
+    request._sessionVersion ??= session.version
+    if (!session.isCurrent(request._sessionVersion)) {
+      throw new axios.CanceledError('Session changed')
+    }
+    config.signal = config.signal
+      ? AbortSignal.any([config.signal as AbortSignal, session.signal])
+      : session.signal
     if (!isAuthRoute(config.url)) {
       const token = getAccessToken()
       if (token) {
@@ -59,49 +66,18 @@ apiClient.interceptors.request.use(
 // Extend AxiosRequestConfig to carry our retry flag
 interface RetryableConfig extends InternalAxiosRequestConfig {
   _retry?: boolean
+  _sessionVersion?: number
 }
 
-let isRefreshing = false
 let isLoggingOut = false
-let failedQueue: Array<{
-  resolve: (token: string) => void
-  reject: (error: unknown) => void
-}> = []
-
-function processQueue(error: unknown, token: string | null) {
-  failedQueue.forEach(({ resolve, reject }) => {
-    if (token) resolve(token)
-    else reject(error)
-  })
-  failedQueue = []
-}
+let refreshFlight: { version: number; promise: Promise<string> } | null = null
 
 function forceLogout() {
   if (isLoggingOut) return
   isLoggingOut = true
 
-  // Clear all auth data — import-cycle-free via token-storage
+  authHandlers?.reset()
   removeAllTokens()
-
-  // Reset zustand store lazily to avoid circular import
-  try {
-    // Dynamic import would be async; instead we use a post-init hook (see below)
-    _resetAuthStore?.()
-  } catch {
-    // store may not be initialised yet
-  }
-
-  // Clear menu cache from localStorage directly
-  try {
-    const keys = Object.keys(localStorage)
-    keys.forEach((k) => {
-      if (k.startsWith('menu_') || k.startsWith('sidebar_')) {
-        localStorage.removeItem(k)
-      }
-    })
-  } catch {
-    // ignore
-  }
 
   const currentPath = window.location.pathname + window.location.search
   if (!currentPath.startsWith('/sign-in')) {
@@ -117,18 +93,76 @@ function forceLogout() {
   }, 1000)
 }
 
-// Hook for auth-store to register its reset function (avoids circular import)
-let _resetAuthStore: (() => void) | null = null
-export function registerAuthStoreReset(fn: () => void) {
-  _resetAuthStore = fn
+interface AuthHandlers {
+  reset: () => void
+  setTokens: (accessToken: string, refreshToken?: string) => void
+}
+let authHandlers: AuthHandlers | null = null
+export function registerAuthHandlers(handlers: AuthHandlers) {
+  authHandlers = handlers
+}
+
+function assertCurrentRequest(config: RetryableConfig | undefined) {
+  if (
+    config?._sessionVersion !== undefined &&
+    !session.isCurrent(config._sessionVersion)
+  ) {
+    throw new axios.CanceledError('Session changed')
+  }
+}
+
+async function refreshAccessToken(version: number): Promise<string> {
+  if (refreshFlight?.version === version) return refreshFlight.promise
+
+  const pending = (async () => {
+    const refreshToken = getRefreshToken()
+    if (!refreshToken) {
+      forceLogout()
+      throw new Error('No refresh token')
+    }
+    try {
+      const response = await refreshClient.post(
+        '/api/v1/auth/refresh',
+        { refreshToken },
+        { signal: session.signal }
+      )
+      if (!session.isCurrent(version))
+        throw new axios.CanceledError('Session changed')
+      const data = response.data
+      if (data?.code !== 0 || !data?.data?.accessToken) {
+        throw new Error('Invalid refresh response')
+      }
+      authHandlers?.setTokens(data.data.accessToken, data.data.refreshToken)
+      return data.data.accessToken as string
+    } catch (error) {
+      const status = axios.isAxiosError(error)
+        ? error.response?.status
+        : undefined
+      if (
+        session.isCurrent(version) &&
+        !axios.isCancel(error) &&
+        (!status || [400, 401, 403].includes(status))
+      )
+        forceLogout()
+      throw error
+    }
+  })()
+  refreshFlight = { version, promise: pending }
+  try {
+    return await pending
+  } finally {
+    if (refreshFlight?.promise === pending) refreshFlight = null
+  }
 }
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    assertCurrentRequest(response.config)
+    return response
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableConfig | undefined
-
-    // Only handle 401, skip auth routes and already-retried requests
+    assertCurrentRequest(originalRequest)
     if (
       error.response?.status !== 401 ||
       !originalRequest ||
@@ -138,66 +172,12 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // If a refresh is already in flight, queue this request
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        failedQueue.push({
-          resolve: (token: string) => {
-            originalRequest._retry = true
-            originalRequest.headers['Authorization'] = `Bearer ${token}`
-            resolve(apiClient(originalRequest))
-          },
-          reject,
-        })
-      })
-    }
-
     originalRequest._retry = true
-    isRefreshing = true
-
-    const currentRefreshToken = getRefreshToken()
-
-    if (!currentRefreshToken) {
-      isRefreshing = false
-      processQueue(error, null)
-      forceLogout()
-      return Promise.reject(error)
-    }
-
-    try {
-      const resp = await refreshClient.post('/api/v1/auth/refresh', {
-        refreshToken: currentRefreshToken,
-      })
-
-      const data = resp.data
-      if (data?.code === 0 && data?.data) {
-        const newAccess: string = data.data.accessToken
-        const newRefresh: string = data.data.refreshToken
-
-        setAccessToken(newAccess)
-        if (newRefresh) setRefreshToken(newRefresh)
-
-        processQueue(null, newAccess)
-
-        originalRequest.headers['Authorization'] = `Bearer ${newAccess}`
-        return apiClient(originalRequest)
-      } else {
-        throw new Error('Refresh response invalid')
-      }
-    } catch (refreshError: unknown) {
-      processQueue(refreshError, null)
-
-      // Only force logout on auth-related refresh failures (401/400/403)
-      const status =
-        refreshError instanceof axios.AxiosError
-          ? refreshError.response?.status
-          : undefined
-      if (!status || [400, 401, 403].includes(status)) {
-        forceLogout()
-      }
-      return Promise.reject(refreshError)
-    } finally {
-      isRefreshing = false
-    }
+    const token = await refreshAccessToken(
+      originalRequest._sessionVersion ?? session.version
+    )
+    assertCurrentRequest(originalRequest)
+    originalRequest.headers['Authorization'] = `Bearer ${token}`
+    return apiClient(originalRequest)
   }
 )

@@ -268,8 +268,8 @@ Shadmin 使用 **Casbin RBAC** 进行权限控制：
 
 1. 后端启动时，`bootstrap.InitApiResources()` 扫描所有 Gin 路由，以 `METHOD:/path` 为 ID 写入数据库
 2. 管理员在菜单管理中将 API 资源绑定到菜单项
-3. 授权关系变更在同一事务递增 generation；提交后 Ent trigger 唤醒本地同步，各实例以低频轮询兜底，构建完整 Casbin 快照并原子替换
-4. 前端通过 `/api/v1/resources` 获取当前用户可见的菜单树和权限列表，动态渲染侧边栏
+3. 授权关系变更在同一事务递增 generation。每次系统 API 请求在鉴权前读取 generation，必要时重建本地快照；读取或重建失败返回 503。本地提交触发器与后台轮询负责预热和恢复；权限中间件统一挂载在 `/system` 父组。
+4. 前端通过 `auth.loadMenus()` 获取菜单与权限；加载失败阻止导航并提供重试。登录/退出递增会话版本、取消旧请求并清理 Query 与菜单缓存，迟到响应不能恢复旧账号状态。刷新 Token 同步存储和 Auth Store，不创建新会话。
 
 ## 数据库抽象
 

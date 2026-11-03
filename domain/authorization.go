@@ -2,6 +2,11 @@ package domain
 
 import "context"
 
+// PermissionChecker verifies the current authorization generation before evaluating access.
+type PermissionChecker interface {
+	CheckPermission(ctx context.Context, userID, object, action string) (bool, error)
+}
+
 // AuthorizationSource 为 Casbin 快照提供权限事实（由 repository 实现）。
 type AuthorizationSource interface {
 	// Generation 返回已提交的授权代数。

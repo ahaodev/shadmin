@@ -297,10 +297,10 @@ REDIS_PASSWORD=
 REDIS_DB=0
 ```
 
-- **Casbin**: policies are rebuilt from the Ent authorization relations into a process-local in-memory snapshot. Each instance polls the shared database generation; Redis is not used to persist or broadcast Casbin policies.
+- **Casbin**: policies are rebuilt from the Ent authorization relations into a process-local in-memory snapshot. Every system API request checks the shared database generation and refreshes a changed snapshot before authorization; Redis is not used to persist or broadcast Casbin policies.
 - **Captcha, user-status cache, and JWT blacklist**: Redis allows these cache values to be shared between instances.
 
-> Multi-instance deployments must use the same authoritative database. A committed generation change triggers the local sync through the Ent trigger; `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` is the fallback interval for missed triggers, restarts, and cross-instance changes (default: 1 hour).
+> Multi-instance deployments must use the same authoritative database. A committed generation change triggers the local sync through the Ent trigger; `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` controls background recovery/warming (default: 1 hour), not the revocation delay. Each system request reads the shared generation; failure to read/rebuild returns 503. This adds a database read per protected system request.
 
 ---
 

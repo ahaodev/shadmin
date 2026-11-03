@@ -288,3 +288,49 @@ func TestSyncIfChangedFailsClosedWhenGenerationCannotBeRead(t *testing.T) {
 		t.Fatalf("CheckPermission after generation read failure = (%v, %v), want (false, ErrSnapshotStale)", allowed, err)
 	}
 }
+
+// A request on another instance must observe a committed revocation without a poll/trigger.
+func TestPermissionCheckObservesRemoteRevocation(t *testing.T) {
+	client, firstManager, firstService := newSnapshotTestService(t)
+	userID := addSnapshotTestData(t, client)
+	ctx := context.Background()
+	secondManager := &CasManager{stale: true}
+	secondService := NewSyncService(repository.NewAuthorizationRepository(client), secondManager)
+	for _, service := range []*SyncService{firstService, secondService} {
+		if err := service.SyncFromDatabase(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := repository.WithAuthorizationTx(ctx, client, func(txCtx context.Context, tx *ent.Tx) error {
+		return tx.Role.Update().SetStatus("inactive").Exec(txCtx)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Neither instance received a trigger or background poll.
+	for _, service := range []*SyncService{firstService, secondService} {
+		allowed, err := service.CheckPermission(ctx, userID, "/api/v1/report", "GET")
+		if allowed || err != nil {
+			t.Fatalf("revoked permission = %v, err = %v", allowed, err)
+		}
+	}
+	for _, manager := range []*CasManager{firstManager, secondManager} {
+		if generation, ok := manager.CurrentGeneration(); !ok || generation != 1 {
+			t.Fatalf("generation = %d, loaded = %v", generation, ok)
+		}
+	}
+}
+
+func TestPermissionCheckFailsClosedOnDatabaseFailure(t *testing.T) {
+	client, _, service := newSnapshotTestService(t)
+	userID := addSnapshotTestData(t, client)
+	if err := service.SyncFromDatabase(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
+	}
+	allowed, err := service.CheckPermission(context.Background(), userID, "/api/v1/report", "GET")
+	if allowed || !errors.Is(err, ErrSnapshotStale) {
+		t.Fatalf("permission = %v, err = %v; want stale denial", allowed, err)
+	}
+}
