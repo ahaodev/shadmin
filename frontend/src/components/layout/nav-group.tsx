@@ -43,7 +43,7 @@ export function NavGroup({
   is_frame: isFrame,
 }: NavGroupProps) {
   const { state, isMobile } = useSidebar()
-  const href = useLocation({ select: (location) => location.href })
+  const href = useLocation({ select: (location) => location.pathname })
   const { setOpenMobile } = useSidebar()
 
   // 当侧边栏折叠时，显示为下拉菜单
@@ -140,7 +140,8 @@ export function NavGroup({
 
   return (
     <Collapsible
-      defaultOpen={false} // 默认折叠
+      key={href}
+      defaultOpen={items.some((item) => checkIsActive(href, item))}
       className='group/collapsible'
     >
       <SidebarGroup className='p-0 px-2'>
@@ -333,7 +334,7 @@ function NavGroupCollapsedDropdown({
                   )
                 } else {
                   // Nested menu item with submenu - flatten for simplicity in collapsed mode
-                  return item.items.map((subItem) => (
+                  return getNavLinks(item.items).map((subItem) => (
                     <DropdownMenuItem
                       key={`${item.title}-${subItem.title}`}
                       asChild
@@ -464,7 +465,8 @@ function SidebarMenuCollapsible({
   return (
     <Collapsible
       asChild
-      defaultOpen={checkIsActive(href, item, true)}
+      key={href}
+      defaultOpen={checkIsActive(href, item)}
       className='group/collapsible'
     >
       <SidebarMenuItem>
@@ -490,9 +492,9 @@ function SidebarMenuCollapsible({
               ) {
                 return (
                   <Collapsible
-                    key={subItem.title}
+                    key={`${subItem.title}-${href}`}
                     asChild
-                    defaultOpen={checkIsActive(href, subItem, true)}
+                    defaultOpen={checkIsActive(href, subItem)}
                     className='group/nested-collapsible'
                   >
                     <SidebarMenuSubItem>
@@ -584,13 +586,14 @@ function SidebarMenuCollapsible({
   )
 }
 
-function checkIsActive(href: string, item: NavItem, mainNav = false) {
-  return (
-    href === item.url || // /endpint?search=param
-    href.split('?')[0] === item.url || // endpoint
-    !!item?.items?.filter((i) => i.url === href).length || // if child nav is active
-    (mainNav &&
-      href.split('/')[1] !== '' &&
-      href.split('/')[1] === item?.url?.split('/')[1])
+function checkIsActive(href: string, item: NavItem): boolean {
+  return item.items
+    ? item.items.some((child) => checkIsActive(href, child))
+    : href === item.url
+}
+
+function getNavLinks(items: NavItem[]): NavLink[] {
+  return items.flatMap((item) =>
+    item.items ? getNavLinks(item.items) : [item]
   )
 }

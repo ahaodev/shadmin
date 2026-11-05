@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import React from "react";
 
 type MainProps = React.HTMLAttributes<HTMLElement> & {
   fixed?: boolean
@@ -9,6 +10,8 @@ type MainProps = React.HTMLAttributes<HTMLElement> & {
 export function Main({ fixed, className, fluid, ...props }: MainProps) {
   return (
     <main
+      id='content'
+      tabIndex={-1}
       data-layout={fixed ? 'fixed' : 'auto'}
       className={cn(
         '@container/main px-4 py-6',
