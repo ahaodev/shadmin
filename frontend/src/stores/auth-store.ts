@@ -36,7 +36,7 @@ interface AuthState {
     profile: User | null
     setProfile: (profile: User | null) => void
     isLoadingProfile: boolean
-    fetchProfile: () => Promise<void>
+    fetchProfile: (force?: boolean) => Promise<void>
     accessToken: string
     setAccessToken: (accessToken: string) => void
     resetAccessToken: () => void
@@ -52,6 +52,7 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => {
+  let profileRequestVersion = 0
   const initToken = getAccessToken()
   const initRefreshToken = getRefreshToken()
 
@@ -66,26 +67,29 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       setProfile: (profile) =>
         set((state) => ({ ...state, auth: { ...state.auth, profile } })),
       isLoadingProfile: false,
-      fetchProfile: async () => {
+      fetchProfile: async (force = false) => {
         const currentState = get()
 
-        // Prevent duplicate calls if already loading, already have profile, or no token
+        // Reuse cached data unless a caller explicitly requests a refresh.
         if (
-          currentState.auth.isLoadingProfile ||
-          currentState.auth.profile ||
+          (!force &&
+            (currentState.auth.isLoadingProfile ||
+              currentState.auth.profile)) ||
           !currentState.auth.accessToken
         ) {
           return
         }
 
         const version = session.version
+        const request = ++profileRequestVersion
         try {
           set((state) => ({
             ...state,
             auth: { ...state.auth, isLoadingProfile: true },
           }))
           const profile = await getProfile()
-          if (!session.isCurrent(version)) return
+          if (!session.isCurrent(version) || request !== profileRequestVersion)
+            return
           set((state) => ({
             ...state,
             auth: {
@@ -95,7 +99,8 @@ export const useAuthStore = create<AuthState>()((set, get) => {
             },
           }))
         } catch (error: unknown) {
-          if (!session.isCurrent(version)) return
+          if (!session.isCurrent(version) || request !== profileRequestVersion)
+            return
           // eslint-disable-next-line no-console
           console.error('Failed to fetch profile:', error)
           set((state) => ({

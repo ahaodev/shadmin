@@ -13,6 +13,7 @@ import {
   buildMenuHierarchy,
   transformMenusForRoleSelection,
 } from '@/lib/menu-utils'
+import { refreshPermissions } from '@/lib/refresh-permissions'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -38,6 +39,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { USER_ROLES_QUERY_KEY } from '@/features/system/users/constants/query-keys'
+import { USERS_QUERY_KEY } from '@/features/system/users/hooks/use-users'
 import {
   MENUS_FOR_ROLE_QUERY_KEY,
   ROLE_MENUS_QUERY_KEY,
@@ -113,6 +116,10 @@ export function RolesCreateDialog({
     onSuccess: () => {
       toast.success(isEditMode ? '角色更新成功' : '角色创建成功')
       queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [USER_ROLES_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [ROLE_MENUS_QUERY_KEY] })
+      void refreshPermissions()
       closeDialog()
     },
     onError: (e: unknown) => {

@@ -11,8 +11,12 @@ import {
 import type { QueryParams } from '@/types/api'
 import type { UserUpdateRequest } from '@/types/user'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
 import { getErrorMessage } from '@/lib/error'
+import { refreshPermissions } from '@/lib/refresh-permissions'
+import { session } from '@/lib/session'
 import { useCrudMutation } from '@/hooks/use-crud-mutation'
+import { USER_ROLES_QUERY_KEY } from '@/features/system/users/constants/query-keys'
 
 // Query keys for React Query
 export const USERS_QUERY_KEY = 'users'
@@ -67,9 +71,29 @@ export function useCreateUser() {
 // Custom hook for updating user
 export function useUpdateUser() {
   return useCrudMutation({
-    mutationFn: ({ id, data }: { id: string; data: UserUpdateRequest }) =>
-      updateUser(id, data),
-    queryKeys: (_, { id }) => [[USERS_QUERY_KEY], [USER_QUERY_KEY, id]],
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string
+      data: UserUpdateRequest
+    }) => {
+      const version = session.version
+      const user = await updateUser(id, data)
+      const { auth } = useAuthStore.getState()
+      if (session.isCurrent(version) && auth.profile?.id === id) {
+        await auth.fetchProfile(true)
+        if (session.isCurrent(version) && data.role_ids !== undefined) {
+          await refreshPermissions()
+        }
+      }
+      return user
+    },
+    queryKeys: (_, { id }) => [
+      [USERS_QUERY_KEY],
+      [USER_QUERY_KEY, id],
+      [USER_ROLES_QUERY_KEY, id],
+    ],
     successMessage: '用户更新成功',
     errorMessage: '更新用户失败',
   })

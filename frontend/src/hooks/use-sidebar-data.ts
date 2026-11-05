@@ -78,6 +78,8 @@ export function useSidebarData() {
         email: auth.user?.email,
         profileId: auth.profile?.id,
         profileEmail: auth.profile?.email,
+        profileUsername: auth.profile?.username,
+        profileAvatar: auth.profile?.avatar,
         accessToken: auth.accessToken ?? null,
         permissions: auth.permissions,
       }),
@@ -86,6 +88,8 @@ export function useSidebarData() {
       auth.user?.email,
       auth.profile?.id,
       auth.profile?.email,
+      auth.profile?.username,
+      auth.profile?.avatar,
       auth.accessToken,
       auth.permissions,
     ]

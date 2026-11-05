@@ -6,6 +6,7 @@ import { getRoles } from '@/services/roleApi'
 import { getUserRoleList } from '@/services/userApi'
 import { type User, type UserStatus } from '@/types/user'
 import { ROLES_QUERY_KEY } from '@/features/system/roles/constants/query-keys'
+import { USER_ROLES_QUERY_KEY } from '@/features/system/users/constants/query-keys'
 import { type UserFormData, userFormSchema } from '../data/schema'
 import { USERS_QUERY_KEY, useCreateUser, useUpdateUser } from './use-users'
 
@@ -22,7 +23,7 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
 
   // Fetch user roles if editing
   const { data: userRoles = [] } = useQuery<string[]>({
-    queryKey: ['userRoles', currentRow?.id],
+    queryKey: [USER_ROLES_QUERY_KEY, currentRow?.id],
     queryFn: () => getUserRoleList(currentRow!.id),
     enabled: !!currentRow?.id,
     select: (data) => (Array.isArray(data) ? data : []),
@@ -98,7 +99,7 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
 
         // Invalidate queries
         queryClient.invalidateQueries({
-          queryKey: ['userRoles', currentRow!.id],
+          queryKey: [USER_ROLES_QUERY_KEY, currentRow!.id],
         })
         queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
       } else {

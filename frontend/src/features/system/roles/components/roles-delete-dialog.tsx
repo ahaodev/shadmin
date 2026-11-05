@@ -3,6 +3,7 @@ import { deleteRole } from '@/services/roleApi'
 import type { Role } from '@/types/role'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/error'
+import { refreshPermissions } from '@/lib/refresh-permissions'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,7 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ROLES_QUERY_KEY } from '../constants/query-keys'
+import { USER_ROLES_QUERY_KEY } from '@/features/system/users/constants/query-keys'
+import { USERS_QUERY_KEY } from '@/features/system/users/hooks/use-users'
+import { ROLE_MENUS_QUERY_KEY, ROLES_QUERY_KEY } from '../constants/query-keys'
 
 interface RolesDeleteDialogProps {
   open: boolean
@@ -32,6 +35,10 @@ export function RolesDeleteDialog({
     onSuccess: () => {
       toast.success('角色删除成功')
       queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [USER_ROLES_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [ROLE_MENUS_QUERY_KEY] })
+      void refreshPermissions()
       onOpenChange(false)
     },
     onError: (error: unknown) => {

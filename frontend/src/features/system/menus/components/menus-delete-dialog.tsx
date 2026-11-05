@@ -2,8 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { deleteMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
 import { getErrorMessage } from '@/lib/error'
+import { refreshPermissions } from '@/lib/refresh-permissions'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -13,6 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  MENUS_FOR_ROLE_QUERY_KEY,
+  ROLE_MENUS_QUERY_KEY,
+  ROLES_QUERY_KEY,
+} from '@/features/system/roles/constants/query-keys'
 import {
   MENUS_QUERY_KEY,
   PARENT_MENUS_QUERY_KEY,
@@ -39,7 +44,10 @@ export function MenusDeleteDialog({
       queryClient.invalidateQueries({ queryKey: [MENUS_QUERY_KEY] })
       queryClient.invalidateQueries({ queryKey: [PARENT_MENUS_QUERY_KEY] })
       // Clear sidebar menu cache to refresh navigation menu
-      useAuthStore.getState().auth.clearSidebarCache()
+      queryClient.invalidateQueries({ queryKey: [MENUS_FOR_ROLE_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [ROLE_MENUS_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] })
+      void refreshPermissions()
       onOpenChange(false)
     },
     onError: (error: unknown) => {

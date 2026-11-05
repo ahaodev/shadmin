@@ -5,7 +5,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createMenu, updateMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
+import { refreshPermissions } from '@/lib/refresh-permissions'
+import {
+  MENUS_FOR_ROLE_QUERY_KEY,
+  ROLE_MENUS_QUERY_KEY,
+  ROLES_QUERY_KEY,
+} from '@/features/system/roles/constants/query-keys'
 import {
   MENUS_QUERY_KEY,
   PARENT_MENUS_QUERY_KEY,
@@ -112,7 +117,10 @@ export function useMenuForm({
       toast.success(isEditMode ? '菜单更新成功' : '菜单创建成功')
       queryClient.invalidateQueries({ queryKey: [MENUS_QUERY_KEY] })
       queryClient.invalidateQueries({ queryKey: [PARENT_MENUS_QUERY_KEY] })
-      useAuthStore.getState().auth.clearSidebarCache()
+      queryClient.invalidateQueries({ queryKey: [MENUS_FOR_ROLE_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [ROLE_MENUS_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] })
+      void refreshPermissions()
       onSuccess?.()
       if (!isEditMode) {
         form.reset()

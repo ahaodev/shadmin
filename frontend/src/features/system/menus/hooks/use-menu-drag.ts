@@ -2,9 +2,19 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateMenu } from '@/services/menuApi'
 import type { Menu } from '@/types/menu'
-import { useAuthStore } from '@/stores/auth-store'
+import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/error'
 import type { TableMenuItem } from '@/lib/menu-utils'
-import { MENUS_QUERY_KEY } from '../constants/query-keys'
+import { refreshPermissions } from '@/lib/refresh-permissions'
+import {
+  MENUS_FOR_ROLE_QUERY_KEY,
+  ROLE_MENUS_QUERY_KEY,
+  ROLES_QUERY_KEY,
+} from '@/features/system/roles/constants/query-keys'
+import {
+  MENUS_QUERY_KEY,
+  PARENT_MENUS_QUERY_KEY,
+} from '../constants/query-keys'
 
 export function useMenuDrag(
   tableData: TableMenuItem[],
@@ -44,9 +54,16 @@ export function useMenuDrag(
         })
       }
     },
-    onSuccess: () => {
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, '菜单排序保存失败，已重新加载'))
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [MENUS_QUERY_KEY] })
-      useAuthStore.getState().auth.clearSidebarCache()
+      queryClient.invalidateQueries({ queryKey: [PARENT_MENUS_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [MENUS_FOR_ROLE_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [ROLE_MENUS_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] })
+      void refreshPermissions()
     },
   })
 

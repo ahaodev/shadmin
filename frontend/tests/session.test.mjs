@@ -7,6 +7,8 @@ import { QueryClient } from '@tanstack/react-query'
 
 const cookies = new Map()
 globalThis.document = {
+  head: { appendChild: () => {} },
+  createElement: () => ({ styleSheet: {} }),
   get cookie() { return [...cookies].map(([key, value]) => `${key}=${value}`).join('; ') },
   set cookie(value) {
     const [pair] = value.split(';')
@@ -164,4 +166,37 @@ test('a refresh from an old session cannot overwrite or sign out the new account
   assert.ok(axios.isCancel(await request))
   assert.equal(auth().accessToken, token('bob'))
   assert.equal(auth().refreshToken, 'refresh-bob')
+})
+
+
+test('profile refresh replaces cached data and ignores older in-flight results', async () => {
+  apiClient.defaults.adapter = async (config) => response(config, { id: 'alice', email: 'old@example.com' })
+  await auth().fetchProfile()
+  const started = deferred()
+  const pending = deferred()
+  apiClient.defaults.adapter = async (config) => {
+    started.resolve()
+    await pending.promise
+    return response(config, { id: 'alice', email: 'obsolete@example.com' })
+  }
+  const old = auth().fetchProfile(true)
+  await started.promise
+  apiClient.defaults.adapter = async (config) => response(config, { id: 'alice', email: 'new@example.com' })
+  await auth().fetchProfile(true)
+  pending.resolve()
+  await old
+  assert.equal(auth().profile.email, 'new@example.com')
+  assert.equal(auth().isLoadingProfile, false)
+})
+
+
+test('authorization writes refresh cached menus and current button permissions', async () => {
+  const { refreshPermissions } = await server.ssrLoadModule('/src/lib/refresh-permissions.ts')
+  apiClient.defaults.adapter = async (config) => response(config, resources('/old-role'))
+  await auth().loadMenus()
+  apiClient.defaults.adapter = async (config) => response(config, resources('/new-role'))
+  await refreshPermissions()
+  assert.equal(menuService.isPathAllowed('/old-role'), false)
+  assert.equal(menuService.isPathAllowed('/new-role'), true)
+  assert.deepEqual(auth().permissions.permissions, [['/new-role']])
 })

@@ -18,6 +18,7 @@ import { type Role } from '@/types/role'
 import { Edit, MoreHorizontal, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/error'
+import { refreshPermissions } from '@/lib/refresh-permissions'
 import { cn } from '@/lib/utils'
 import { PERMISSIONS } from '@/constants/permissions'
 import { usePermission } from '@/hooks/usePermission'
@@ -39,7 +40,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DataTablePagination } from '@/components/data-table'
-import { ROLES_QUERY_KEY } from '../constants/query-keys'
+import { USER_ROLES_QUERY_KEY } from '@/features/system/users/constants/query-keys'
+import { USERS_QUERY_KEY } from '@/features/system/users/hooks/use-users'
+import { ROLE_MENUS_QUERY_KEY, ROLES_QUERY_KEY } from '../constants/query-keys'
 import { useRoles } from './roles-provider'
 
 interface RolesTableProps {
@@ -95,6 +98,10 @@ export function RolesTable(_props: RolesTableProps) {
     onSuccess: () => {
       toast.success('角色删除成功')
       queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [USER_ROLES_QUERY_KEY] })
+      queryClient.invalidateQueries({ queryKey: [ROLE_MENUS_QUERY_KEY] })
+      void refreshPermissions()
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, '角色删除失败'))

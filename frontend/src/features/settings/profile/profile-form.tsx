@@ -50,7 +50,7 @@ export function ProfileForm() {
 
   // Fetch profile data and populate form when component loads
   useEffect(() => {
-    fetchProfile()
+    fetchProfile(true)
   }, [fetchProfile])
 
   // Update form values when profile data is available
