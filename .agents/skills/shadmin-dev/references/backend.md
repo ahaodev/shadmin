@@ -22,7 +22,7 @@ Contracts first; everything else implements them.
 
 ## Repository
 - Struct holds `*ent.Client`; `NewXRepository(client)` returns the domain interface; conversion via package funcs like `entDepartmentToDomain`.
-- Not found: `ent.IsNotFound(err)` → domain sentinel (`ErrXNotFound`) on **every** single-row read/update, so callers can tell "absent" from "database failure". Unique violation: `ent.IsConstraintError(err)` → `ErrXExists`.
+- Not found: `ent.IsNotFound(err)` → domain sentinel (`ErrXNotFound`) on **every** single-row read/update, so callers can tell "absent" from "database failure". Unique violations: match the specific columns/index with `isUniqueConstraintOn` → `ErrXExists`, including write-time conflicts after prechecks; preserve unrelated constraint errors.
 - List: `filter.Paginate()` for offset/limit; count on a cloned query before applying them; sort with `ApplySorting(sortBy, order, fieldMap, defaultField)` (`repository/helpers.go`); `buildTree`/`mapSlice` for trees/conversion.
 - Update: set only non-nil pointer fields.
 - Wrap other errors `fmt.Errorf("...: %w", err)`.

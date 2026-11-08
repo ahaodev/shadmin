@@ -2,9 +2,28 @@ package repository
 
 import (
 	"shadmin/ent"
+	"strings"
 
 	"entgo.io/ent/dialect/sql"
 )
+
+// isUniqueConstraintOn matches SQLite columns or the PostgreSQL/MySQL index name.
+// Inspect the key, not the duplicate value, which may contain another index name.
+func isUniqueConstraintOn(err error, columns, index string) bool {
+	if !isUniqueConstraintError(err) {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	if strings.Contains(message, "unique constraint failed: "+columns) ||
+		strings.Contains(message, `unique constraint "`+index+`"`) {
+		return true
+	}
+	if pos := strings.LastIndex(message, "for key '"); pos >= 0 {
+		key, _, _ := strings.Cut(message[pos+len("for key '"):], "'")
+		return key == index || strings.HasSuffix(key, "."+index)
+	}
+	return false
+}
 
 // emptyToNil 把空串转为 nil 指针，用于可空字段写入 NULL 而非空串。
 func emptyToNil(s string) *string {

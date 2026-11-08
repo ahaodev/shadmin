@@ -321,7 +321,7 @@ func (dr *entDictRepository) CreateItem(ctx context.Context, dictItem *domain.Di
 			SetUpdatedAt(dictItem.UpdatedAt).
 			Save(ctx)
 		if err != nil {
-			return err
+			return dictItemWriteError(err)
 		}
 
 		dictItem.ID = created.ID
@@ -493,8 +493,19 @@ func (dr *entDictRepository) UpdateItem(ctx context.Context, id string, updates 
 		}
 
 		_, err = updateQuery.Save(ctx)
-		return err
+		return dictItemWriteError(err)
 	})
+}
+
+func dictItemWriteError(err error) error {
+	switch {
+	case isUniqueConstraintOn(err, "dict_items.type_id, dict_items.label", "dictitem_type_id_label"):
+		return domain.ErrDictItemLabelExists
+	case isUniqueConstraintOn(err, "dict_items.type_id, dict_items.value", "dictitem_type_id_value"):
+		return domain.ErrDictItemValueExists
+	default:
+		return err
+	}
 }
 
 func (dr *entDictRepository) DeleteItem(ctx context.Context, id string) error {

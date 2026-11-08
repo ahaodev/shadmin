@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"shadmin/domain"
+	"shadmin/ent"
 )
 
 // createDictTypeForTest 建一个字典类型，作为字典项的归属。
@@ -16,6 +17,67 @@ func createDictTypeForTest(t *testing.T, repo domain.DictRepository, code string
 		t.Fatalf("create dict type %s: %v", code, err)
 	}
 	return dictType
+}
+
+func TestDictRepositoryMapsWriteTimeConflicts(t *testing.T) {
+	for _, operation := range []ent.Op{ent.OpCreate, ent.OpUpdateOne} {
+		for _, field := range []string{"label", "value"} {
+			t.Run(operation.String()+"/"+field, func(t *testing.T) {
+				client := newAuthorizationStateTestClient(t)
+				repo := NewDictRepository(client)
+				ctx := context.Background()
+				dictType := createDictTypeForTest(t, repo, "write_conflict")
+				item := &domain.DictItem{TypeID: dictType.ID, Label: "new-label", Value: "new-value", Status: domain.StatusActive}
+				initialCount := 0
+				if operation == ent.OpUpdateOne {
+					item.Label, item.Value = "old-label", "old-value"
+					if err := repo.CreateItem(ctx, item); err != nil {
+						t.Fatal(err)
+					}
+					initialCount = 1
+				}
+
+				inserted := false
+				client.DictItem.Use(func(next ent.Mutator) ent.Mutator {
+					return ent.MutateFunc(func(ctx context.Context, mutation ent.Mutation) (ent.Value, error) {
+						if !inserted && mutation.Op() == operation {
+							inserted = true
+							label, value := "other-label", "other-value"
+							if field == "label" {
+								label = "new-label"
+							} else {
+								value = "new-value"
+							}
+							// Inject a collision after prechecks, immediately before the write.
+							if err := ent.TxFromContext(ctx).DictItem.Create().SetTypeID(dictType.ID).
+								SetLabel(label).SetValue(value).Exec(ctx); err != nil {
+								return nil, err
+							}
+						}
+						return next.Mutate(ctx, mutation)
+					})
+				})
+
+				var err error
+				if operation == ent.OpCreate {
+					err = repo.CreateItem(ctx, item)
+				} else {
+					label, value := "new-label", "new-value"
+					err = repo.UpdateItem(ctx, item.ID, domain.UpdateDictItemRequest{Label: &label, Value: &value})
+				}
+				wantErr := domain.ErrDictItemLabelExists
+				if field == "value" {
+					wantErr = domain.ErrDictItemValueExists
+				}
+				if !inserted || !errors.Is(err, wantErr) {
+					t.Fatalf("write error = %v, injected = %v; want %v", err, inserted, wantErr)
+				}
+				if count, err := client.DictItem.Query().Count(ctx); err != nil || count != initialCount {
+					t.Fatalf("items after rollback = %d, err = %v; want %d", count, err, initialCount)
+				}
+			})
+		}
+	}
 }
 
 // 同一类型下 label 唯一：重复 label 必须映射为领域哨兵（→409），而不是落成数据库约束错误（→500）。
