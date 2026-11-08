@@ -56,10 +56,10 @@ func (llc *LoginLogController) GetLoginLogs(c *gin.Context) {
 		if v, err := strconv.Atoi(ps); err == nil && v > 0 {
 			filter.PageSize = v
 		} else {
-			filter.PageSize = 20
+			filter.PageSize = 10
 		}
 	} else {
-		filter.PageSize = 20
+		filter.PageSize = 10
 	}
 
 	// 解析过滤参数
