@@ -73,9 +73,9 @@ lerna-debug.log*
 frontend/dist/
 frontend/build/
 
-# Auto-generated route files
-frontend/src/routeTree.gen.ts
-
+# 生成物规则
+# frontend/src/routeTree.gen.ts 也是生成物，但它被跟踪：tsc -b 在 vite 之前执行，
+# 构建时需要它存在。不要把它加回忽略列表。
 ent/*
 # 但保留 schema 和 gen 目录
 !ent/schema/

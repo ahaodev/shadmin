@@ -23,7 +23,7 @@ type LoginLogController struct {
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Param			page		query		int													false	"Page number (default: 1)"
-//	@Param			page_size	query		int													false	"Page size (default: 20)"
+//	@Param			page_size	query		int													false	"Page size (default: 10)"
 //	@Param			email		query		string												false	"Filter by email"
 //	@Param			login_ip	query		string												false	"Filter by login IP"
 //	@Param			status		query		string												false	"Filter by status (success, failed)"

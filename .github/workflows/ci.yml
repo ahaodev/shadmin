@@ -73,10 +73,13 @@ jobs:
         run: go mod download
 
       - name: Install swag
-        run: go install github.com/swaggo/swag/cmd/swag@latest
+        run: go install github.com/swaggo/swag/cmd/swag@v1.16.6
 
       - name: Generate code (ent & swagger)
         run: go generate ./...
+
+      - name: Verify committed swagger docs match annotations
+        run: git diff --exit-code -- docs
 
       - name: Go fmt check
         run: |

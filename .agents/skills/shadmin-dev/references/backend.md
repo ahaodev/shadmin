@@ -18,11 +18,11 @@ Contracts first; everything else implements them.
 - `created_at`: `Default(time.Now).Immutable()`; `updated_at`: `Default(time.Now).UpdateDefault(time.Now)`.
 - Status: `field.Enum("status").Values("active","inactive").Default("active")`. Optional text: `.Default("")`.
 - Declare edges, unique/filter indexes (`index.Fields("name","parent_id").Unique()`).
-- Run `go generate ./ent`; generated code is committed.
+- Run `go generate ./ent`; generated code is **not** committed (`.gitignore` ignores `ent/*` and keeps `ent/schema`).
 
 ## Repository
 - Struct holds `*ent.Client`; `NewXRepository(client)` returns the domain interface; conversion via package funcs like `entDepartmentToDomain`.
-- Not found: `ent.IsNotFound(err)` → domain sentinel (`ErrXNotFound`) on **every** single-row read/update, so callers can tell "absent" from "database failure". Unique violation: `ent.IsConstraintError(err)` → `ErrXExists`.
+- Not found: `ent.IsNotFound(err)` → domain sentinel (`ErrXNotFound`) on **every** single-row read/update, so callers can tell "absent" from "database failure". Unique violations: match the specific columns/index with `isUniqueConstraintOn` → `ErrXExists`, including write-time conflicts after prechecks; preserve unrelated constraint errors.
 - List: `filter.Paginate()` for offset/limit; count on a cloned query before applying them; sort with `ApplySorting(sortBy, order, fieldMap, defaultField)` (`repository/helpers.go`); `buildTree`/`mapSlice` for trees/conversion.
 - Update: set only non-nil pointer fields.
 - Wrap other errors `fmt.Errorf("...: %w", err)`.

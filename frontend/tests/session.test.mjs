@@ -17,10 +17,11 @@ globalThis.document = {
     else cookies.set(key, token)
   },
 }
+const storage = new Map()
 globalThis.localStorage = {
-  getItem: () => null,
-  setItem: () => {},
-  removeItem: () => {},
+  getItem: (key) => (storage.has(key) ? storage.get(key) : null),
+  setItem: (key, value) => { storage.set(key, String(value)) },
+  removeItem: (key) => { storage.delete(key) },
 }
 globalThis.window = { location: { protocol: 'http:', host: 'localhost', pathname: '/sign-in', search: '', hash: '', replace: () => {} } }
 // The refresh client captures the default adapter when the module is loaded.
@@ -147,6 +148,9 @@ test('concurrent 401s share one refresh and synchronize store and persisted toke
   assert.equal(refreshes, 1)
   assert.equal(auth().accessToken, token('alice-refreshed'))
   assert.equal(auth().refreshToken, 'rotated')
+  // 令牌只落在 localStorage 一处：不再写同名 cookie。
+  assert.equal(cookies.has('accessToken'), false)
+  assert.equal(cookies.has('refreshToken'), false)
   for (const result of responses) assert.equal(result.data.data, `Bearer ${auth().accessToken}`)
 })
 

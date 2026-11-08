@@ -169,6 +169,9 @@ func (rr *entRoleRepository) Update(ctx context.Context, role *domain.Role) erro
 		return err
 	})
 	if err != nil {
+		if isUniqueConstraintOn(err, "roles.name", "role_name") {
+			return domain.ErrRoleNameExists
+		}
 		return fmt.Errorf("failed to update role: %w", err)
 	}
 	return nil

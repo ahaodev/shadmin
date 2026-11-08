@@ -282,6 +282,17 @@ func (dr *entDictRepository) CreateItem(ctx context.Context, dictItem *domain.Di
 			return domain.ErrDictItemValueExists
 		}
 
+		// 检查同一类型下label是否已存在（与 value 一样有唯一索引）
+		labelExists, err := tx.DictItem.Query().
+			Where(dictitem.And(dictitem.TypeID(dictItem.TypeID), dictitem.LabelEQ(dictItem.Label))).
+			Exist(ctx)
+		if err != nil {
+			return err
+		}
+		if labelExists {
+			return domain.ErrDictItemLabelExists
+		}
+
 		// 如果设置为默认项，需要清除同类型的其他默认项
 		if dictItem.IsDefault {
 			if _, err = tx.DictItem.Update().
@@ -310,7 +321,7 @@ func (dr *entDictRepository) CreateItem(ctx context.Context, dictItem *domain.Di
 			SetUpdatedAt(dictItem.UpdatedAt).
 			Save(ctx)
 		if err != nil {
-			return err
+			return dictItemWriteError(err)
 		}
 
 		dictItem.ID = created.ID
@@ -432,9 +443,24 @@ func (dr *entDictRepository) UpdateItem(ctx context.Context, id string, updates 
 			updateQuery = updateQuery.SetValue(*updates.Value)
 		}
 
-		if updates.Label != nil {
+		// 检查label唯一性
+		if updates.Label != nil && *updates.Label != currentItem.Label {
+			labelExists, err := tx.DictItem.Query().
+				Where(dictitem.And(
+					dictitem.TypeID(currentItem.TypeID),
+					dictitem.LabelEQ(*updates.Label),
+					dictitem.Not(dictitem.ID(id)),
+				)).
+				Exist(ctx)
+			if err != nil {
+				return err
+			}
+			if labelExists {
+				return domain.ErrDictItemLabelExists
+			}
 			updateQuery = updateQuery.SetLabel(*updates.Label)
 		}
+
 		if updates.Sort != nil {
 			updateQuery = updateQuery.SetSort(*updates.Sort)
 		}
@@ -467,8 +493,19 @@ func (dr *entDictRepository) UpdateItem(ctx context.Context, id string, updates 
 		}
 
 		_, err = updateQuery.Save(ctx)
-		return err
+		return dictItemWriteError(err)
 	})
+}
+
+func dictItemWriteError(err error) error {
+	switch {
+	case isUniqueConstraintOn(err, "dict_items.type_id, dict_items.label", "dictitem_type_id_label"):
+		return domain.ErrDictItemLabelExists
+	case isUniqueConstraintOn(err, "dict_items.type_id, dict_items.value", "dictitem_type_id_value"):
+		return domain.ErrDictItemValueExists
+	default:
+		return err
+	}
 }
 
 func (dr *entDictRepository) DeleteItem(ctx context.Context, id string) error {
