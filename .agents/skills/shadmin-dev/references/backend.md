@@ -18,7 +18,7 @@ Contracts first; everything else implements them.
 - `created_at`: `Default(time.Now).Immutable()`; `updated_at`: `Default(time.Now).UpdateDefault(time.Now)`.
 - Status: `field.Enum("status").Values("active","inactive").Default("active")`. Optional text: `.Default("")`.
 - Declare edges, unique/filter indexes (`index.Fields("name","parent_id").Unique()`).
-- Run `go generate ./ent`; generated code is committed.
+- Run `go generate ./ent`; generated code is **not** committed (`.gitignore` ignores `ent/*` and keeps `ent/schema`).
 
 ## Repository
 - Struct holds `*ent.Client`; `NewXRepository(client)` returns the domain interface; conversion via package funcs like `entDepartmentToDomain`.

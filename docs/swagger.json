@@ -2421,7 +2421,7 @@
                     },
                     {
                         "type": "integer",
-                        "description": "Page size (default: 20)",
+                        "description": "Page size (default: 10)",
                         "name": "page_size",
                         "in": "query"
                     },
@@ -2947,7 +2947,7 @@
                     },
                     {
                         "type": "integer",
-                        "description": "Page size (default: 20)",
+                        "description": "Page size (default: 10)",
                         "name": "page_size",
                         "in": "query"
                     },

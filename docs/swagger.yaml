@@ -2359,7 +2359,7 @@ paths:
         in: query
         name: page
         type: integer
-      - description: 'Page size (default: 20)'
+      - description: 'Page size (default: 10)'
         in: query
         name: page_size
         type: integer
@@ -2660,7 +2660,7 @@ paths:
         in: query
         name: page
         type: integer
-      - description: 'Page size (default: 20)'
+      - description: 'Page size (default: 10)'
         in: query
         name: page_size
         type: integer

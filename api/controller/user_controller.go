@@ -23,7 +23,7 @@ type UserController struct {
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Param			page		query		int				false	"Page number (default: 1)"
-//	@Param			page_size	query		int				false	"Page size (default: 20)"
+//	@Param			page_size	query		int				false	"Page size (default: 10)"
 //	@Param			keyword		query		string			false	"Filter by username, nickname or email"
 //	@Param			status		query		string			false	"Filter by user status (active, inactive, invited, suspended)"
 //	@Param			role		query		string			false	"Filter by user role"
