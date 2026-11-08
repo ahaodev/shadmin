@@ -76,6 +76,17 @@ func (ru *roleUsecase) Update(ctx context.Context, id string, request *domain.Up
 		return nil, domain.ErrCannotRenameAdminRole
 	}
 
+	// 改名需先检查重名，否则只能由唯一索引兜底并表现为 500
+	if request.Name != nil && *request.Name != existingRole.Name {
+		exists, err := ru.roleRepository.ExistsByName(ctx, *request.Name)
+		if err != nil {
+			return nil, fmt.Errorf("check role name: %w", err)
+		}
+		if exists {
+			return nil, domain.ErrRoleNameExists
+		}
+	}
+
 	if request.Name != nil {
 		existingRole.Name = *request.Name
 	}
