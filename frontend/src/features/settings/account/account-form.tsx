@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { updatePassword } from '@/services'
 import { toast } from 'sonner'
+import { isPasswordLengthValid } from '@/lib/password'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -20,8 +21,7 @@ const accountFormSchema = z
     oldPassword: z.string().min(1, '请输入当前密码。'),
     newPassword: z
       .string()
-      .min(8, '新密码至少需要8个字符。')
-      .max(100, '密码不能超过100个字符。'),
+      .refine(isPasswordLengthValid, '密码至少 8 个字符，且不能超过 72 字节'),
     confirmPassword: z.string().min(1, '请确认新密码。'),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -91,7 +91,9 @@ export function AccountForm() {
               <FormControl>
                 <Input type='password' placeholder='请输入新密码' {...field} />
               </FormControl>
-              <FormDescription>新密码至少需要8个字符。</FormDescription>
+              <FormDescription>
+                至少 8 个字符，且不能超过 72 字节。
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

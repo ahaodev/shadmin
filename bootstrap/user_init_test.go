@@ -2,6 +2,8 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"shadmin/domain"
@@ -11,6 +13,8 @@ import (
 	"shadmin/internal/conf"
 	"shadmin/internal/constants"
 	"shadmin/repository"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestInitDefaultAdminRepairsMissingAdminRole(t *testing.T) {
@@ -60,6 +64,84 @@ func TestInitDefaultAdminRepairsMissingAdminRole(t *testing.T) {
 	}
 	if !viewerRole.IsSystem || viewerRole.Status != constants.StatusActive {
 		t.Fatalf("viewer role = system:%v status:%q, want system and active", viewerRole.IsSystem, viewerRole.Status)
+	}
+}
+
+func TestInitDefaultAdminPasswordPolicy(t *testing.T) {
+	for _, test := range []struct {
+		name, env, password string
+		valid               bool
+	}{
+		{"production default", conf.AppEnvProd, "123", false},
+		{"production short", conf.AppEnvProd, "1234567", false},
+		{"production over bcrypt limit", conf.AppEnvProd, strings.Repeat("x", 73), false},
+		{"production configured", conf.AppEnvProd, "admin-password-123", true},
+		{"development default", conf.AppEnvDev, "123", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			client := newTestEntClient(t)
+			ctx := context.Background()
+			if err := repository.EnsureAuthorizationState(ctx, client); err != nil {
+				t.Fatal(err)
+			}
+			if err := client.Menu.Create().SetName("existing-menu").SetType("menu").
+				SetVisible("show").SetStatus(constants.StatusActive).Exec(ctx); err != nil {
+				t.Fatal(err)
+			}
+			app := &Application{DB: client, Env: &conf.Env{
+				AppEnv: test.env, AdminUsername: "admin", AdminPassword: test.password, AdminEmail: "admin@example.com",
+			}}
+			err := InitDefaultAdmin(app)
+			if !test.valid {
+				if !errors.Is(err, domain.ErrPasswordLength) {
+					t.Fatalf("InitDefaultAdmin = %v; want password validation error", err)
+				}
+				if count, err := client.User.Query().Count(ctx); err != nil || count != 0 {
+					t.Fatalf("users after failed initialization = %d, err = %v", count, err)
+				}
+				if generation, err := repository.CurrentAuthorizationGeneration(ctx, client); err != nil || generation != 0 {
+					t.Fatalf("generation after failed initialization = %d, err = %v", generation, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			admin, err := client.User.Query().Where(user.IsAdminEQ(true)).Only(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if admin.Password == nil {
+				t.Fatal("admin password was not stored")
+			}
+			if err := bcrypt.CompareHashAndPassword([]byte(*admin.Password), []byte(test.password)); err != nil {
+				t.Fatal("admin password was not stored as the expected bcrypt hash")
+			}
+		})
+	}
+}
+
+func TestInitDefaultAdminProductionExistingAccountIgnoresSeedPassword(t *testing.T) {
+	client := newTestEntClient(t)
+	ctx := context.Background()
+	if err := repository.EnsureAuthorizationState(ctx, client); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.Menu.Create().SetName("existing-menu").SetType("menu").
+		SetVisible("show").SetStatus(constants.StatusActive).Exec(ctx); err != nil {
+		t.Fatal(err)
+	}
+	admin, err := client.User.Create().SetUsername("admin").SetIsAdmin(true).SetPassword("existing-hash").Save(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := &Application{DB: client, Env: &conf.Env{AppEnv: conf.AppEnvProd, AdminPassword: "123"}}
+	if err := InitDefaultAdmin(app); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := client.User.Get(ctx, admin.ID)
+	if err != nil || stored.Password == nil || *stored.Password != "existing-hash" {
+		t.Fatalf("existing admin password changed, err = %v", err)
 	}
 }
 

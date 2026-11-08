@@ -116,11 +116,10 @@ func (u *userInvitationUsecase) Accept(ctx context.Context, request *domain.Acce
 	}
 	token := strings.TrimSpace(request.Token)
 	username := strings.TrimSpace(request.Username)
-	passwordLength := len([]byte(request.Password))
 	if token == "" || username == "" {
 		return domain.ErrInvalidInvitation
 	}
-	if passwordLength < 8 || passwordLength > 72 {
+	if err := domain.ValidateNewPassword(request.Password); err != nil {
 		return domain.ErrInvitationPasswordInvalid
 	}
 

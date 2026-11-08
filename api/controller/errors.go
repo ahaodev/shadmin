@@ -27,6 +27,7 @@ var errorRules = []errorRule{
 	{domain.ErrInvalidMenuType, http.StatusBadRequest, "Invalid menu type"},
 	{domain.ErrInvalidMenuStatus, http.StatusBadRequest, "Invalid menu status"},
 	{domain.ErrInvalidPassword, http.StatusBadRequest, "Current password is incorrect"},
+	{domain.ErrPasswordLength, http.StatusBadRequest, ""},
 	{domain.ErrCaptchaRequired, http.StatusBadRequest, "请先完成验证码"},
 	{domain.ErrCaptchaExpired, http.StatusBadRequest, "验证码已过期，请刷新"},
 	{domain.ErrCaptchaInvalid, http.StatusBadRequest, "验证码校验失败，请重试"},
@@ -38,7 +39,7 @@ var errorRules = []errorRule{
 	{domain.ErrMenuHasChildren, http.StatusBadRequest, "Cannot delete menu with children"},
 	{domain.ErrInvalidInvitation, http.StatusBadRequest, "邀请链接无效或已过期"},
 	{domain.ErrInvitationRoleInvalid, http.StatusBadRequest, "所选角色不可用"},
-	{domain.ErrInvitationPasswordInvalid, http.StatusBadRequest, "密码长度必须为 8 到 72 字节"},
+	{domain.ErrInvitationPasswordInvalid, http.StatusBadRequest, domain.ErrPasswordLength.Error()},
 	// 设备授权码流程：CLI 依赖响应体里的原文（authorization_pending / slow_down / ...）
 	{domain.ErrDeviceAuthorizationPending, http.StatusBadRequest, ""},
 	{domain.ErrDeviceSlowDown, http.StatusBadRequest, ""},

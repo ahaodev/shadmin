@@ -29,7 +29,7 @@ func (r *entDepartmentRepository) Create(ctx context.Context, dept *domain.Depar
 
 	d, err := create.Save(ctx)
 	if err != nil {
-		if ent.IsConstraintError(err) {
+		if isDepartmentNameConflict(err) {
 			return domain.ErrDepartmentNameExists
 		}
 		return err
@@ -118,13 +118,17 @@ func (r *entDepartmentRepository) Update(ctx context.Context, dept *domain.Depar
 
 	d, err := update.Save(ctx)
 	if err != nil {
-		if ent.IsConstraintError(err) {
+		if isDepartmentNameConflict(err) {
 			return domain.ErrDepartmentNameExists
 		}
 		return err
 	}
 	dept.UpdatedAt = d.UpdatedAt
 	return nil
+}
+
+func isDepartmentNameConflict(err error) bool {
+	return isUniqueConstraintOn(err, "departments.name, departments.parent_id", "department_name_parent_id")
 }
 
 func (r *entDepartmentRepository) Delete(ctx context.Context, id string) error {

@@ -2,10 +2,14 @@ package usecase
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"shadmin/domain"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type userUpdateTestRepository struct {
@@ -15,6 +19,21 @@ type userUpdateTestRepository struct {
 	updateWithAuthorizationCalls int
 	updateWithRolesCalls         int
 	updatedRoleIDs               []string
+}
+
+func TestUpdateUserPasswordRejectsInvalidNewPassword(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("old-password"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, password := range []string{"", "short", strings.Repeat("x", 73)} {
+		repo := &userUpdateTestRepository{user: &domain.User{ID: "user-1", Password: string(hash)}}
+		uc := NewUserUsecase(repo, time.Second)
+		err := uc.UpdateUserPassword(context.Background(), "user-1", domain.PasswordUpdate{CurrentPassword: "old-password", NewPassword: password})
+		if !errors.Is(err, domain.ErrPasswordLength) || repo.updateCalls != 0 {
+			t.Fatalf("UpdateUserPassword = %v, writes = %d; want rejected without write", err, repo.updateCalls)
+		}
+	}
 }
 
 func (r *userUpdateTestRepository) GetByID(context.Context, string) (*domain.User, error) {

@@ -21,6 +21,10 @@ const (
 	CacheTypeRedis = "redis"
 	StoreTypeMinio = "minio"
 	StoreTypeDisk  = "disk"
+
+	defaultAccessTokenSecret     = "default-access-secret"
+	defaultRefreshTokenSecret    = "default-refresh-secret"
+	defaultIdentitySessionSecret = "shadmin-identity-session-secret-change-me"
 )
 
 type Env struct {
@@ -102,8 +106,8 @@ func setDefaults() {
 		// 令牌配置
 		"ACCESS_TOKEN_EXPIRY_MINUTE":  180,
 		"REFRESH_TOKEN_EXPIRY_MINUTE": 1800,
-		"ACCESS_TOKEN_SECRET":         "default-access-secret",
-		"REFRESH_TOKEN_SECRET":        "default-refresh-secret",
+		"ACCESS_TOKEN_SECRET":         defaultAccessTokenSecret,
+		"REFRESH_TOKEN_SECRET":        defaultRefreshTokenSecret,
 
 		// 管理员配置
 		"ADMIN_USERNAME": "admin",
@@ -131,7 +135,7 @@ func setDefaults() {
 		// 身份登录配置
 		"IDENTITY_BASE_URL":       "http://localhost:55667",
 		"IDENTITY_REDIRECT_URL":   "http://localhost:5173/oauth-callback",
-		"IDENTITY_SESSION_SECRET": "shadmin-identity-session-secret-change-me",
+		"IDENTITY_SESSION_SECRET": defaultIdentitySessionSecret,
 		"GOOGLE_CLIENT_ID":        "",
 		"GOOGLE_CLIENT_SECRET":    "",
 		"GITHUB_CLIENT_ID":        "",
@@ -265,6 +269,17 @@ func (e *Env) validate() error {
 	if len(e.RefreshTokenSecret) < 16 {
 		errs = append(errs, "REFRESH_TOKEN_SECRET长度不能少于16位")
 	}
+	if e.AppEnv == AppEnvProd {
+		if isDevelopmentSecret(e.AccessTokenSecret) {
+			errs = append(errs, "生产环境必须替换默认的ACCESS_TOKEN_SECRET")
+		}
+		if isDevelopmentSecret(e.RefreshTokenSecret) {
+			errs = append(errs, "生产环境必须替换默认的REFRESH_TOKEN_SECRET")
+		}
+		if (e.GoogleClientID != "" || e.GitHubClientID != "") && isDevelopmentSecret(e.IdentitySessionSecret) {
+			errs = append(errs, "生产环境启用第三方登录时必须替换默认的IDENTITY_SESSION_SECRET")
+		}
+	}
 
 	if e.AdminUsername == "" {
 		errs = append(errs, "ADMIN_USERNAME不能为空")
@@ -330,6 +345,15 @@ func (e *Env) validate() error {
 	}
 
 	return nil
+}
+
+func isDevelopmentSecret(secret string) bool {
+	switch strings.TrimSpace(secret) {
+	case defaultAccessTokenSecret, defaultRefreshTokenSecret, defaultIdentitySessionSecret, "shadmin-identity-default-session-secret":
+		return true
+	default:
+		return false
+	}
 }
 
 // NewEnv 加载并校验配置。配置缺失（首次启动写入默认 .env）可恢复；

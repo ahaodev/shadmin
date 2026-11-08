@@ -26,8 +26,10 @@ func NewUserUsecase(userRepository domain.UserRepository, timeout time.Duration)
 func (uu *userUsecase) CreateUser(ctx context.Context, request *domain.CreateUserRequest) (*domain.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
+	if err := domain.ValidateNewPassword(request.Password); err != nil {
+		return nil, err
+	}
 
-	// 创建用户对象
 	user := &domain.User{
 		Username:     request.Username,
 		Email:        request.Email,
@@ -37,19 +39,15 @@ func (uu *userUsecase) CreateUser(ctx context.Context, request *domain.CreateUse
 		DepartmentID: request.DepartmentID,
 	}
 
-	// 设置默认状态
 	if user.Status == "" {
 		user.Status = domain.UserStatusActive
 	}
 
-	// 🔒 加密密码
-	if user.Password != "" {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-		if err != nil {
-			return nil, fmt.Errorf("failed to hash password: %w", err)
-		}
-		user.Password = string(hashedPassword)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
+	user.Password = string(hashedPassword)
 
 	// 创建用户与角色关联在同一授权事务中提交。
 	if err := uu.userRepository.CreateWithRoles(ctx, user, request.RoleIDs); err != nil {
@@ -74,18 +72,15 @@ func (uu *userUsecase) DeleteUser(ctx context.Context, id string, currentUserID 
 	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 
-	// 规则1: 不能删除自己
 	if id == currentUserID {
 		return domain.ErrCannotDeleteSelf
 	}
 
-	// 1. 获取目标用户信息
 	user, err := uu.userRepository.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to get user for deletion: %w", err)
 	}
 
-	// 规则2: 不能删除 isAdmin 管理员
 	if user.IsAdmin {
 		return domain.ErrCannotDeleteAdmin
 	}
@@ -102,22 +97,18 @@ func (uu *userUsecase) UpdateUserProfile(ctx context.Context, userID string, upd
 	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 
-	// Get existing user
 	user, err := uu.userRepository.GetByID(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	// 管理员账户不可被普通接口编辑。
 	if user.IsAdmin {
 		return domain.ErrCannotEditAdmin
 	}
 
-	// Update the user with new data
 	if updates.Name != "" {
 		user.Username = updates.Name
 	}
-	// Note: Avatar field is not in the current User struct, but can be added later
 
 	return uu.userRepository.Update(ctx, user)
 }
@@ -126,29 +117,27 @@ func (uu *userUsecase) UpdateUserPassword(ctx context.Context, userID string, pa
 	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 
-	// Get existing user
 	user, err := uu.userRepository.GetByID(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	// 管理员账户不走"用户自助修改密码"路径；密码应通过 /auth 流程或 admin 重置处理。
 	if user.IsAdmin {
 		return domain.ErrCannotEditAdmin
 	}
 
-	// Verify current password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(passwordUpdate.CurrentPassword)); err != nil {
 		return domain.ErrInvalidPassword
 	}
+	if err := domain.ValidateNewPassword(passwordUpdate.NewPassword); err != nil {
+		return err
+	}
 
-	// Hash new password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordUpdate.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	// Update password
 	user.Password = string(hashedPassword)
 	return uu.userRepository.Update(ctx, user)
 }
@@ -157,18 +146,15 @@ func (uu *userUsecase) UpdateUserPartial(ctx context.Context, userID string, upd
 	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()
 
-	// Get existing user
 	user, err := uu.userRepository.GetByID(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	// 管理员账户不可被普通编辑接口修改。
 	if user.IsAdmin {
 		return domain.ErrCannotEditAdmin
 	}
 
-	// Apply partial updates
 	if updates.Username != nil {
 		user.Username = *updates.Username
 	}
@@ -185,7 +171,9 @@ func (uu *userUsecase) UpdateUserPartial(ctx context.Context, userID string, upd
 		user.Avatar = *updates.Avatar
 	}
 	if updates.Password != nil && *updates.Password != "" {
-		// 🔒 加密密码
+		if err := domain.ValidateNewPassword(*updates.Password); err != nil {
+			return err
+		}
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*updates.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return err
@@ -197,7 +185,7 @@ func (uu *userUsecase) UpdateUserPartial(ctx context.Context, userID string, upd
 	}
 
 	if updates.RoleIDs != nil {
-		// An explicit empty array clears all roles; an omitted field leaves roles unchanged.
+		// 空数组清空角色，未传则保留。
 		return uu.userRepository.UpdateWithRoles(ctx, user, updates.RoleIDs)
 	}
 	if updates.Status != nil {
@@ -206,7 +194,6 @@ func (uu *userUsecase) UpdateUserPartial(ctx context.Context, userID string, upd
 	return uu.userRepository.Update(ctx, user)
 }
 
-// GetUserRoles 获取用户角色
 func (uu *userUsecase) GetUserRoles(ctx context.Context, userID string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
 	defer cancel()

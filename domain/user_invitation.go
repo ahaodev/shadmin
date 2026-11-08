@@ -13,7 +13,7 @@ var (
 	ErrUsernameExists               = errors.New("username already exists")
 	ErrInvitationEmailNotConfigured = errors.New("invitation email is not configured")
 	ErrInvitationDeliveryFailed     = errors.New("invitation was created but email delivery failed")
-	ErrInvitationPasswordInvalid    = errors.New("invitation password must be 8 to 72 bytes")
+	ErrInvitationPasswordInvalid    = errors.New("invitation password must have at least 8 characters and at most 72 bytes")
 )
 
 type AcceptInvitationRequest struct {

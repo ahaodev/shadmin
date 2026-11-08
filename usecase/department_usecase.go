@@ -129,6 +129,9 @@ func (u *departmentUsecase) Update(ctx context.Context, id string, req *domain.U
 			if *newParentID == id {
 				return nil, domain.ErrCircularDepartment
 			}
+			if _, err := u.departmentRepo.GetByID(ctx, *newParentID); err != nil {
+				return nil, fmt.Errorf("parent department not found: %w", err)
+			}
 			// Cannot set parent to own descendant
 			childIDs, err := u.departmentRepo.GetAllChildrenIDs(ctx, id)
 			if err != nil {

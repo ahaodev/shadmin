@@ -11,6 +11,7 @@ import (
 	"shadmin/ent/menu"
 	"shadmin/ent/role"
 	"shadmin/ent/user"
+	"shadmin/internal/conf"
 	"shadmin/internal/constants"
 	"shadmin/repository"
 
@@ -310,6 +311,11 @@ func initDefaultAdmin(app *Application, ctx context.Context) error {
 		return ensureViewerRole(ctx, app.DB)
 	}
 
+	if app.Env.AppEnv == conf.AppEnvProd {
+		if err := domain.ValidateNewPassword(app.Env.AdminPassword); err != nil {
+			return fmt.Errorf("生产环境首次创建管理员必须配置有效的ADMIN_PASSWORD: %w", err)
+		}
+	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(app.Env.AdminPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("hash admin password: %w", err)

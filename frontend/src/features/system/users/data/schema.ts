@@ -1,9 +1,10 @@
 import { z } from 'zod'
+import { isPasswordLengthValid } from '@/lib/password'
 
 const passwordValidation = {
-  minLength: (password: string, isEdit: boolean) => {
+  hasValidLength: (password: string, isEdit: boolean) => {
     if (isEdit && !password) return true
-    return password.length >= 8
+    return isPasswordLengthValid(password)
   },
   hasLowercase: (password: string, isEdit: boolean) => {
     if (isEdit && !password) return true
@@ -46,9 +47,10 @@ export const userFormSchema = z
     path: ['password'],
   })
   .refine(
-    ({ password, isEdit }) => passwordValidation.minLength(password, isEdit),
+    ({ password, isEdit }) =>
+      passwordValidation.hasValidLength(password, isEdit),
     {
-      message: '密码至少为8个字符。',
+      message: '密码至少 8 个字符，且不能超过 72 字节',
       path: ['password'],
     }
   )

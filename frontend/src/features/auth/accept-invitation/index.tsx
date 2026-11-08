@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from '@tanstack/react-router'
 import { acceptUserInvitation } from '@/services/userApi'
 import { getErrorMessage } from '@/lib/error'
+import { isPasswordLengthValid } from '@/lib/password'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -34,10 +35,7 @@ const formSchema = z
       .max(32, '用户名最多32个字符'),
     password: z
       .string()
-      .min(8, '密码至少8个字符')
-      .refine((value) => new TextEncoder().encode(value).length <= 72, {
-        message: '密码最多72字节',
-      }),
+      .refine(isPasswordLengthValid, '密码至少 8 个字符，且不能超过 72 字节'),
     confirmPassword: z.string().min(1, '请确认密码'),
   })
   .refine((values) => values.password === values.confirmPassword, {

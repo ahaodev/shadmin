@@ -43,23 +43,22 @@ func (pu *profileUsecase) UpdatePassword(ctx context.Context, userID string, pas
 	ctx, cancel := context.WithTimeout(ctx, pu.timeout)
 	defer cancel()
 
-	// Get current password hash
 	currentHash, err := pu.profileRepo.GetPasswordHash(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	// Verify current password
 	if err := bcrypt.CompareHashAndPassword([]byte(currentHash), []byte(passwordUpdate.CurrentPassword)); err != nil {
 		return domain.ErrInvalidPassword
 	}
+	if err := domain.ValidateNewPassword(passwordUpdate.NewPassword); err != nil {
+		return err
+	}
 
-	// Hash new password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordUpdate.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	// Update password
 	return pu.profileRepo.UpdatePassword(ctx, userID, string(hashedPassword))
 }

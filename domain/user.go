@@ -4,17 +4,26 @@ import (
 	"context"
 	"errors"
 	"time"
+	"unicode/utf8"
 )
 
 var (
 	ErrUserNotFound      = errors.New("用户不存在")
 	ErrUserExists        = errors.New("用户名、邮箱或手机号已被使用")
 	ErrInvalidPassword   = errors.New("invalid password")
+	ErrPasswordLength    = errors.New("密码至少 8 个字符，且不能超过 72 字节")
 	ErrCannotDeleteSelf  = errors.New("不能删除自己")
 	ErrCannotDeleteAdmin = errors.New("不能删除管理员账户")
 	ErrCannotEditAdmin   = errors.New("不能编辑管理员账户")
 	ErrUserDisabled      = errors.New("账户已停用或未启用")
 )
+
+func ValidateNewPassword(password string) error {
+	if utf8.RuneCountInString(password) < 8 || len(password) > 72 {
+		return ErrPasswordLength
+	}
+	return nil
+}
 
 // User 结构体定义了用户的基本信息 (单租户架构)
 type User struct {
