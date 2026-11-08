@@ -723,7 +723,7 @@ swag init -g main.go --output ./docs
 # 登录获取 token
 curl -X POST http://localhost:55667/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"123456"}'
+  -d '{"username":"admin","password":"123"}'
 
 # 创建项目（替换 YOUR_TOKEN）
 curl -X POST http://localhost:55667/api/v1/system/projects \

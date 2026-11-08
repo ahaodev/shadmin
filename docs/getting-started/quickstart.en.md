@@ -35,7 +35,7 @@ go run .
 ```
 
 On first startup, Shadmin will automatically:
-- Generate a `.env` config file from `.env.example`
+- Generate a `.env` config file from the built-in defaults (when it is missing)
 - Create a SQLite database (`.database/data.db`)
 - Run database migrations
 - Initialize the default admin account
@@ -61,7 +61,7 @@ Open `http://localhost:55667` (or `http://localhost:5173` in dev mode) and log i
 | Field | Default |
 |-------|---------|
 | Username | `admin` |
-| Password | `123456` |
+| Password | `123` |
 
 > Default credentials are configured in `.env` (`ADMIN_USERNAME` / `ADMIN_PASSWORD`). Change them in production.
 
@@ -82,7 +82,7 @@ DB_DSN=
 
 # Authentication tokens
 ACCESS_TOKEN_EXPIRY_MINUTE=180
-REFRESH_TOKEN_EXPIRY_MINUTE=1440
+REFRESH_TOKEN_EXPIRY_MINUTE=1800
 ACCESS_TOKEN_SECRET=default-access-secret    # Must change in production
 REFRESH_TOKEN_SECRET=default-refresh-secret  # Must change in production
 
@@ -116,9 +116,10 @@ docker run -d --name shadmin -p 55667:55667 shadmin
 # Mount volumes for persistence (recommended)
 docker run -d --name shadmin \
   -p 55667:55667 \
-  -v ./database:/app/database \
+  -v ./database:/app/.database \
   -v ./uploads:/app/uploads \
   -v ./logs:/app/logs \
+  -e STORAGE_BASE_PATH=/app/uploads \
   shadmin
 ```
 

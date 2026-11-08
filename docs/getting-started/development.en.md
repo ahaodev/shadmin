@@ -723,7 +723,7 @@ Backend development is now complete. Start the project and test APIs using Swagg
 # Login to get a token
 curl -X POST http://localhost:55667/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"123456"}'
+  -d '{"username":"admin","password":"123"}'
 
 # Create a project (replace YOUR_TOKEN)
 curl -X POST http://localhost:55667/api/v1/system/projects \

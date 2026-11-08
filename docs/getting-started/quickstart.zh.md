@@ -35,7 +35,7 @@ go run .
 ```
 
 首次启动时，Shadmin 会自动：
-- 从 `.env.example` 生成 `.env` 配置文件
+- 用内置默认值生成 `.env` 配置文件（缺失配置项时）
 - 创建 SQLite 数据库（`.database/data.db`）
 - 执行数据库迁移
 - 初始化默认管理员账号
@@ -61,7 +61,7 @@ pnpm dev
 | 字段 | 默认值      |
 |------|----------|
 | 用户名 | `admin`  |
-| 密码 | `123456` |
+| 密码 | `123` |
 
 > 默认凭据在 `.env` 中配置（`ADMIN_USERNAME` / `ADMIN_PASSWORD`），请在生产环境中修改。
 
@@ -82,7 +82,7 @@ DB_DSN=
 
 # 认证令牌
 ACCESS_TOKEN_EXPIRY_MINUTE=180
-REFRESH_TOKEN_EXPIRY_MINUTE=1440
+REFRESH_TOKEN_EXPIRY_MINUTE=1800
 ACCESS_TOKEN_SECRET=default-access-secret    # 生产环境务必修改
 REFRESH_TOKEN_SECRET=default-refresh-secret  # 生产环境务必修改
 
@@ -116,9 +116,10 @@ docker run -d --name shadmin -p 55667:55667 shadmin
 # 挂载数据卷持久化（推荐）
 docker run -d --name shadmin \
   -p 55667:55667 \
-  -v ./database:/app/database \
+  -v ./database:/app/.database \
   -v ./uploads:/app/uploads \
   -v ./logs:/app/logs \
+  -e STORAGE_BASE_PATH=/app/uploads \
   shadmin
 ```
 

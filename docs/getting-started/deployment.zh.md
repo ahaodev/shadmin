@@ -61,7 +61,8 @@ docker run -d \
   -v ./database:/app/.database \
   -v ./uploads:/app/uploads \
   -v ./logs:/app/logs \
-  -e APP_ENV=production \
+  -e STORAGE_BASE_PATH=/app/uploads \
+  -e APP_ENV=prod \
   -e ACCESS_TOKEN_SECRET=your-strong-secret-here \
   -e REFRESH_TOKEN_SECRET=your-strong-refresh-secret \
   -e ADMIN_PASSWORD=your-admin-password \
@@ -80,10 +81,12 @@ docker run -d \
 
 | 变量 | 说明 | 生产建议 |
 |------|------|----------|
-| `APP_ENV` | 运行环境 | 设为 `production` |
+| `APP_ENV` | 运行环境 | 设为 `prod` |
 | `ACCESS_TOKEN_SECRET` | Access Token 签名密钥 | 使用 `openssl rand -hex 32` 生成 |
 | `REFRESH_TOKEN_SECRET` | Refresh Token 签名密钥 | 使用 `openssl rand -hex 32` 生成 |
-| `ADMIN_PASSWORD` | 默认管理员密码 | 使用强密码 |
+| `ADMIN_PASSWORD` | 首次创建管理员的密码 | 使用至少 8 个字符且不超过 72 UTF-8 字节的强密码；已有管理员不重置 |
+
+`APP_ENV=prod` 会拒绝内置的默认 JWT 密钥。启用 Google/GitHub 登录时，还必须设置独立的 `IDENTITY_SESSION_SECRET`，不能使用内置默认值。首次创建生产管理员时会校验 `ADMIN_PASSWORD`；管理员已存在时，不再使用该种子密码。新建和修改本地密码统一要求至少 8 个字符且不超过 72 UTF-8 字节，长度不合法返回 HTTP 400。
 
 ### 可选项
 
@@ -92,11 +95,11 @@ docker run -d \
 | `PORT` | `:55667` | 服务端口 |
 | `CONTEXT_TIMEOUT` | `60` | 请求超时（秒） |
 | `ACCESS_TOKEN_EXPIRY_MINUTE` | `180` | Access Token 有效期（分钟） |
-| `REFRESH_TOKEN_EXPIRY_MINUTE` | `1440` | Refresh Token 有效期（分钟） |
+| `REFRESH_TOKEN_EXPIRY_MINUTE` | `1800` | Refresh Token 有效期（分钟） |
 | `DB_TYPE` | `sqlite` | 数据库类型：`sqlite` / `postgres` / `mysql` |
 | `DB_DSN` | 空（SQLite 默认 `.database/data.db`） | 数据库连接串 |
-| `STORAGE_TYPE` | `disk` | 存储类型：`disk` / `s3` / `minio` |
-| `STORAGE_BASE_PATH` | `./uploads` | 本地存储路径 |
+| `STORAGE_TYPE` | `disk` | 存储类型：`disk` / `minio` |
+| `STORAGE_BASE_PATH` | `.uploads` | 本地存储路径 |
 | `CACHE_TYPE` | `mem` | 缓存后端：`mem` / `redis` |
 | `REDIS_ADDRESS` | 空 | Redis 地址；用于共享用户状态、Captcha 和 JWT 黑名单缓存 |
 | `REDIS_USERNAME` / `REDIS_PASSWORD` / `REDIS_DB` | 空 / 空 / `0` | Redis 连接配置 |
@@ -145,7 +148,7 @@ services:
     ports:
       - "55667:55667"
     environment:
-      - APP_ENV=production
+      - APP_ENV=prod
       - DB_TYPE=postgres
       - DB_DSN=postgres://shadmin:shadmin_password@postgres:5432/shadmin?sslmode=disable
       - ACCESS_TOKEN_SECRET=your-strong-access-secret
@@ -198,7 +201,7 @@ services:
     ports:
       - "55667:55667"
     environment:
-      - APP_ENV=production
+      - APP_ENV=prod
       - DB_TYPE=postgres
       - DB_DSN=postgres://shadmin:shadmin_password@postgres:5432/shadmin?sslmode=disable
       - ACCESS_TOKEN_SECRET=your-strong-access-secret
@@ -280,8 +283,6 @@ S3_SECRET_KEY=your-secret-key
 S3_BUCKET=shadmin
 S3_TOKEN=                          # 通常留空
 ```
-
-如果使用 AWS S3，将 `STORAGE_TYPE` 设为 `s3`，`S3_ADDRESS` 设为 S3 端点。
 
 ---
 

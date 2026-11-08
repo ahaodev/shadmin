@@ -61,7 +61,8 @@ docker run -d \
   -v ./database:/app/.database \
   -v ./uploads:/app/uploads \
   -v ./logs:/app/logs \
-  -e APP_ENV=production \
+  -e STORAGE_BASE_PATH=/app/uploads \
+  -e APP_ENV=prod \
   -e ACCESS_TOKEN_SECRET=your-strong-secret-here \
   -e REFRESH_TOKEN_SECRET=your-strong-refresh-secret \
   -e ADMIN_PASSWORD=your-admin-password \
@@ -80,10 +81,12 @@ The following settings must be changed for production (via `.env` file or enviro
 
 | Variable | Description | Production Recommendation |
 |----------|-------------|--------------------------|
-| `APP_ENV` | Runtime environment | Set to `production` |
+| `APP_ENV` | Runtime environment | Set to `prod` |
 | `ACCESS_TOKEN_SECRET` | Access token signing key | Generate with `openssl rand -hex 32` |
 | `REFRESH_TOKEN_SECRET` | Refresh token signing key | Generate with `openssl rand -hex 32` |
-| `ADMIN_PASSWORD` | Default admin password | Use a strong password |
+| `ADMIN_PASSWORD` | Initial administrator password | Use a strong password of at least 8 characters and at most 72 UTF-8 bytes; existing passwords are preserved |
+
+`APP_ENV=prod` rejects built-in default JWT secrets. When Google/GitHub login is enabled, set a separate `IDENTITY_SESSION_SECRET` instead of its built-in default. `ADMIN_PASSWORD` is validated when creating the first production administrator and is not used to reset an existing administrator. Newly set local passwords must contain at least 8 characters and at most 72 UTF-8 bytes; invalid lengths return HTTP 400.
 
 ### Optional Settings
 
@@ -92,11 +95,11 @@ The following settings must be changed for production (via `.env` file or enviro
 | `PORT` | `:55667` | Server port |
 | `CONTEXT_TIMEOUT` | `60` | Request timeout (seconds) |
 | `ACCESS_TOKEN_EXPIRY_MINUTE` | `180` | Access token expiry (minutes) |
-| `REFRESH_TOKEN_EXPIRY_MINUTE` | `1440` | Refresh token expiry (minutes) |
+| `REFRESH_TOKEN_EXPIRY_MINUTE` | `1800` | Refresh token expiry (minutes) |
 | `DB_TYPE` | `sqlite` | Database type: `sqlite` / `postgres` / `mysql` |
 | `DB_DSN` | empty (SQLite defaults to `.database/data.db`) | Database connection string |
-| `STORAGE_TYPE` | `disk` | Storage type: `disk` / `s3` / `minio` |
-| `STORAGE_BASE_PATH` | `./uploads` | Local storage path |
+| `STORAGE_TYPE` | `disk` | Storage type: `disk` / `minio` |
+| `STORAGE_BASE_PATH` | `.uploads` | Local storage path |
 | `CACHE_TYPE` | `mem` | Cache backend: `mem` / `redis` |
 | `REDIS_ADDRESS` | empty | Redis address for shared user-status, captcha, and JWT blacklist cache |
 | `REDIS_USERNAME` / `REDIS_PASSWORD` / `REDIS_DB` | empty / empty / `0` | Redis connection settings |
@@ -145,7 +148,7 @@ services:
     ports:
       - "55667:55667"
     environment:
-      - APP_ENV=production
+      - APP_ENV=prod
       - DB_TYPE=postgres
       - DB_DSN=postgres://shadmin:shadmin_password@postgres:5432/shadmin?sslmode=disable
       - ACCESS_TOKEN_SECRET=your-strong-access-secret
@@ -198,7 +201,7 @@ services:
     ports:
       - "55667:55667"
     environment:
-      - APP_ENV=production
+      - APP_ENV=prod
       - DB_TYPE=postgres
       - DB_DSN=postgres://shadmin:shadmin_password@postgres:5432/shadmin?sslmode=disable
       - ACCESS_TOKEN_SECRET=your-strong-access-secret
@@ -280,8 +283,6 @@ S3_SECRET_KEY=your-secret-key
 S3_BUCKET=shadmin
 S3_TOKEN=                          # Usually leave empty
 ```
-
-For AWS S3, set `STORAGE_TYPE` to `s3` and `S3_ADDRESS` to the S3 endpoint.
 
 ---
 
