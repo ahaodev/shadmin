@@ -13,6 +13,7 @@ var (
 	ErrDictTypeNotFound        = errors.New("dictionary type not found")
 	ErrDictItemNotFound        = errors.New("dictionary item not found")
 	ErrDictItemValueExists     = errors.New("dictionary item value already exists in this type")
+	ErrDictItemLabelExists     = errors.New("dictionary item label already exists in this type")
 	ErrDictItemDefaultConflict = errors.New("dictionary type already has a default item")
 )
 

@@ -77,6 +77,7 @@ var errorRules = []errorRule{
 	{domain.ErrDepartmentNameExists, http.StatusConflict, ""},
 	{domain.ErrDictTypeCodeExists, http.StatusConflict, "Dictionary type code already exists"},
 	{domain.ErrDictItemValueExists, http.StatusConflict, "Dictionary item value already exists in this type"},
+	{domain.ErrDictItemLabelExists, http.StatusConflict, "Dictionary item label already exists in this type"},
 	{domain.ErrDictItemDefaultConflict, http.StatusConflict, "Dictionary type already has a default item"},
 	{domain.ErrUserExists, http.StatusConflict, ""},
 	{domain.ErrUserAlreadyExists, http.StatusConflict, "该邮箱已关联现有用户"},
