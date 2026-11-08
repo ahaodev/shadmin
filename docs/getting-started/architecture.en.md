@@ -289,7 +289,7 @@ Switch storage backends via `STORAGE_TYPE`:
 
 | STORAGE_TYPE | Description | Key Config |
 |-------------|-------------|-----------|
-| `disk` | Default, local filesystem | `STORAGE_BASE_PATH=./uploads` |
+| `disk` | Default, local filesystem | `STORAGE_BASE_PATH` (default `.uploads`) |
 | `minio` | MinIO / S3-compatible storage | `S3_ADDRESS`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` |
 
 A unified `domain.FileRepository` interface allows transparent backend switching.

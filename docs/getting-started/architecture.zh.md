@@ -289,7 +289,7 @@ Shadmin 使用 **Casbin RBAC** 进行权限控制：
 
 | STORAGE_TYPE | 说明 | 关键配置 |
 |-------------|------|---------|
-| `disk` | 默认，本地磁盘 | `STORAGE_BASE_PATH=./uploads` |
+| `disk` | 默认，本地磁盘 | `STORAGE_BASE_PATH`（默认 `.uploads`） |
 | `minio` | MinIO / S3 兼容存储 | `S3_ADDRESS`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` |
 
 实现统一的 `domain.FileRepository` 接口，业务层无感切换。
