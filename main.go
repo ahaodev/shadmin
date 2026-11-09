@@ -7,7 +7,7 @@ import (
 	_ "shadmin/docs" // Import generated docs
 )
 
-//	@title			ShadMIN API
+//	@title			Sahdmin API
 //	@version		1.0
 //	@description	admin dashboard system with RBAC
 //	@termsOfService	http://swagger.io/terms/
