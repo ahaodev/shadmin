@@ -90,3 +90,5 @@ shadmin.exe
 .examples
 /cli/shadmin-cli
 /.env.online
+.codex
+.claude
