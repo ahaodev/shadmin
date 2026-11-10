@@ -3,51 +3,33 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-backend=false
-frontend=false
-cli=false
+# Keep commits quick; full module checks run during development and in CI.
+# Read staged content so partially staged files are checked as committed.
 while IFS= read -r -d '' file; do
   case "$file" in
-    cli/*) cli=true ;;
-    frontend/*.go) backend=true ;;
-    frontend/*) frontend=true ;;
-    *.go|go.mod|go.sum) backend=true ;;
-  esac
-
-  # Check the staged version, including partially staged files, without rewriting it.
-  case "$file" in
     *.go)
-      if git cat-file -e ":$file" 2>/dev/null; then
-        diff=$(git show ":$file" | gofmt -s -d)
-        if [ -n "$diff" ]; then
-          printf '[pre-commit] Go formatting required: %s (format and stage again)\n' "$file" >&2
-          printf '%s\n' "$diff" >&2
-          exit 1
-        fi
+      diff=$(git show ":$file" | gofmt -s -d)
+      if [ -n "$diff" ]; then
+        printf '[pre-commit] Go formatting required: %s (format and stage again)\n' "$file" >&2
+        printf '%s\n' "$diff" >&2
+        exit 1
       fi
+      continue
+      ;;
+    frontend/*.ts|frontend/*.tsx|frontend/*.js|frontend/*.jsx|frontend/*.mjs|frontend/*.cjs|frontend/*.json|frontend/*.css|frontend/*.scss|frontend/*.html|frontend/*.md|frontend/*.mdx|frontend/*.yaml|frontend/*.yml|frontend/.prettierrc)
+      if ! command -v pnpm >/dev/null 2>&1 || [ ! -d frontend/node_modules ]; then
+        echo "[pre-commit] Frontend checks require pnpm and dependencies; run: cd frontend && pnpm install --frozen-lockfile" >&2
+        exit 1
+      fi
+      printf '[pre-commit] Checking staged file: %s\n' "$file"
+      git show ":$file" | (cd frontend && pnpm exec prettier --check --ignore-unknown --stdin-filepath "${file#frontend/}")
+      case "$file" in
+        *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs)
+          git show ":$file" | (cd frontend && pnpm exec eslint --stdin --stdin-filename "${file#frontend/}")
+          ;;
+      esac
       ;;
   esac
-done < <(git diff --cached --name-only --no-renames -z)
-
-# Module checks run against the working tree; CI checks the committed tree.
-if "$backend"; then
-  echo "[pre-commit] Running backend vet and tests"
-  go vet ./...
-  go test ./...
-fi
-
-if "$cli"; then
-  echo "[pre-commit] Running CLI vet and tests"
-  (cd cli && go vet ./... && go test ./...)
-fi
-
-if "$frontend"; then
-  if ! command -v pnpm >/dev/null 2>&1 || [ ! -d frontend/node_modules ]; then
-    echo "[pre-commit] Frontend checks require pnpm and dependencies; run: cd frontend && pnpm install --frozen-lockfile" >&2
-    exit 1
-  fi
-  echo "[pre-commit] Running frontend lint, format check and tests"
-  (cd frontend && pnpm run -s lint && pnpm run -s format:check && pnpm run -s test)
-fi
+done < <(git diff --cached --name-only --diff-filter=ACMR --no-renames -z)
 
 echo "[pre-commit] All applicable checks passed."
