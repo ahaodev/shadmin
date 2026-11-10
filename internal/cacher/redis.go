@@ -76,6 +76,7 @@ func NewRedisCacheWithClusterClient(cli *redis.ClusterClient, opts ...Option) Ca
 
 // redisClienter 抽象出需要的命令子集，使单机与集群客户端均可注入。
 type redisClienter interface {
+	SetNX(ctx context.Context, key string, value any, expiration time.Duration) *redis.BoolCmd
 	Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd
 	Get(ctx context.Context, key string) *redis.StringCmd
 	Incr(ctx context.Context, key string) *redis.IntCmd
@@ -102,6 +103,10 @@ func (r *redisCache) tl(exp []time.Duration) time.Duration {
 		return exp[0]
 	}
 	return 0 // Redis Set 传 0 表示无 TTL，等价于永不过期
+}
+
+func (r *redisCache) SetIfAbsent(ctx context.Context, ns, key, value string, expiration time.Duration) (bool, error) {
+	return r.cli.SetNX(ctx, r.o.joinKey(ns, key), value, expiration).Result()
 }
 
 func (r *redisCache) Set(ctx context.Context, ns, key, value string, expiration ...time.Duration) error {
