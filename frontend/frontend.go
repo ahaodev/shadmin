@@ -2,6 +2,7 @@ package frontend
 
 import (
 	"embed"
+	"shadmin/domain"
 	"strings"
 
 	"github.com/gin-contrib/static"
@@ -28,7 +29,7 @@ func Register(r *gin.Engine) {
 			strings.HasPrefix(path, "/share/") ||
 			strings.HasPrefix(path, "/swagger") ||
 			strings.HasPrefix(path, "/client-access") {
-			c.JSON(404, gin.H{"error": "API endpoint not found"})
+			c.JSON(404, domain.RespError("API endpoint not found"))
 			return
 		}
 
