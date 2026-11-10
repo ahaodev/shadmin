@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+backend=false
+frontend=false
+cli=false
+while IFS= read -r -d '' file; do
+  case "$file" in
+    cli/*) cli=true ;;
+    frontend/*.go) backend=true ;;
+    frontend/*) frontend=true ;;
+    *.go|go.mod|go.sum) backend=true ;;
+  esac
+
+  # Check the staged version, including partially staged files, without rewriting it.
+  case "$file" in
+    *.go)
+      if git cat-file -e ":$file" 2>/dev/null; then
+        diff=$(git show ":$file" | gofmt -s -d)
+        if [ -n "$diff" ]; then
+          printf '[pre-commit] Go formatting required: %s (format and stage again)\n' "$file" >&2
+          printf '%s\n' "$diff" >&2
+          exit 1
+        fi
+      fi
+      ;;
+  esac
+done < <(git diff --cached --name-only --no-renames -z)
+
+# Module checks run against the working tree; CI checks the committed tree.
+if "$backend"; then
+  echo "[pre-commit] Running backend vet and tests"
+  go vet ./...
+  go test ./...
+fi
+
+if "$cli"; then
+  echo "[pre-commit] Running CLI vet and tests"
+  (cd cli && go vet ./... && go test ./...)
+fi
+
+if "$frontend"; then
+  if ! command -v pnpm >/dev/null 2>&1 || [ ! -d frontend/node_modules ]; then
+    echo "[pre-commit] Frontend checks require pnpm and dependencies; run: cd frontend && pnpm install --frozen-lockfile" >&2
+    exit 1
+  fi
+  echo "[pre-commit] Running frontend lint, format check and tests"
+  (cd frontend && pnpm run -s lint && pnpm run -s format:check && pnpm run -s test)
+fi
+
+echo "[pre-commit] All applicable checks passed."
