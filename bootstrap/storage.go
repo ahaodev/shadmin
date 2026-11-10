@@ -30,7 +30,7 @@ func InitStorage(env *conf.Env) (*StorageConfig, error) {
 func initMinioStorage(env *conf.Env) (*StorageConfig, error) {
 	minioClient, err := minio.New(env.S3Address, &minio.Options{
 		Creds:  credentials.NewStaticV4(env.S3AccessKey, env.S3SecretKey, env.S3Token),
-		Secure: false,
+		Secure: env.S3Secure,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("connect to MinIO: %w", err)
