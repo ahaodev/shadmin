@@ -23,7 +23,9 @@ globalThis.localStorage = {
   setItem: (key, value) => { storage.set(key, String(value)) },
   removeItem: (key) => { storage.delete(key) },
 }
-globalThis.window = { location: { protocol: 'http:', host: 'localhost', pathname: '/sign-in', search: '', hash: '', replace: () => {} } }
+const storageListeners = []
+globalThis.window = { addEventListener: (_, fn) => storageListeners.push(fn), location: { protocol: 'http:', host: 'localhost', pathname: '/sign-in', search: '', hash: '', replace: () => {}, reload: () => {} } }
+Object.defineProperty(globalThis.navigator, 'locks', { configurable: true, value: { request: async (_name, _options, fn) => fn() } })
 // The refresh client captures the default adapter when the module is loaded.
 let refreshAdapter = async () => { throw new Error('Unexpected refresh') }
 const originalAdapter = axios.defaults.adapter
@@ -203,4 +205,149 @@ test('authorization writes refresh cached menus and current button permissions',
   assert.equal(menuService.isPathAllowed('/old-role'), false)
   assert.equal(menuService.isPathAllowed('/new-role'), true)
   assert.deepEqual(auth().permissions.permissions, [['/new-role']])
+})
+
+test('a remote account change cancels late work and clears identity caches before sending', async () => {
+  const oldIdentity = localStorage.getItem('shadmin-session')
+  const tokens = await server.ssrLoadModule('/src/lib/token-storage.ts')
+  const client = new QueryClient()
+  const off = session.onReset(() => { void client.cancelQueries(); client.clear() })
+  try {
+    client.setQueryData(['private'], 'alice')
+    auth().setProfile({ id: 'alice' })
+    auth().setPermissions({ permissions: [['alice']], roles: [], menus: [], is_admin: false })
+    const started = deferred(), pending = deferred()
+    apiClient.defaults.adapter = async (config) => { started.resolve(); await pending.promise; return response(config, 'alice') }
+    const old = apiClient.get('/private').catch((e) => e)
+    await started.promise
+    localStorage.setItem('accessToken:remote-bob', token('bob'))
+    localStorage.setItem('refreshToken:remote-bob', 'bob-refresh')
+    localStorage.setItem('shadmin-session', 'remote-bob')
+    // A refresh writer in another process can finish after the identity check.
+    tokens.setAccessToken(token('obsolete-alice'), oldIdentity)
+    assert.equal(tokens.getAccessToken(), token('bob'))
+    const newRequest = await apiClient.get('/private').catch((e) => e)
+    assert.ok(axios.isCancel(newRequest))
+    pending.resolve()
+    assert.ok(axios.isCancel(await old))
+    assert.equal(auth().user.accountNo, 'bob')
+    assert.equal(auth().profile, null)
+    assert.equal(auth().permissions, null)
+    assert.equal(client.getQueryData(['private']), undefined)
+  } finally { off(); client.clear() }
+})
+
+test('refresh completed by another tab is reused without rotating or clearing caches', async () => {
+  const revision = session.version
+  const started = deferred(), pending = deferred()
+  let refreshes = 0
+  refreshAdapter = async () => { refreshes++; throw new Error('must reuse remote tokens') }
+  const originalLocks = navigator.locks
+  Object.defineProperty(navigator, 'locks', { configurable: true, value: {
+    request: async (_name, _options, fn) => { started.resolve(); await pending.promise; return fn() },
+  } })
+  try {
+    apiClient.defaults.adapter = async (config) => {
+      if (!config._retry) throw unauthorized(config)
+      return response(config, config.headers.Authorization)
+    }
+    const result = apiClient.get('/private')
+    await started.promise
+    localStorage.setItem(`accessToken:${localStorage.getItem('shadmin-session')}`, token('alice-remote-refresh'))
+    localStorage.setItem(`refreshToken:${localStorage.getItem('shadmin-session')}`, 'remote-rotated')
+    pending.resolve()
+    assert.equal((await result).data.data, `Bearer ${token('alice-remote-refresh')}`)
+    assert.equal(refreshes, 0)
+    assert.equal(session.version, revision)
+  } finally { Object.defineProperty(navigator, 'locks', { configurable: true, value: originalLocks }) }
+})
+
+test('HTTP sign-in and reset work without crypto.randomUUID', () => {
+  const descriptor = Object.getOwnPropertyDescriptor(crypto, 'randomUUID')
+  Object.defineProperty(crypto, 'randomUUID', { configurable: true, value: undefined })
+  try {
+    auth().startSession(token('http-user'), 'http-refresh')
+    const identity = localStorage.getItem('shadmin-session')
+    assert.ok(identity)
+    assert.equal(auth().user.accountNo, 'http-user')
+    assert.equal(auth().accessToken, token('http-user'))
+    assert.equal(auth().reset(), true)
+    assert.notEqual(localStorage.getItem('shadmin-session'), identity)
+    assert.equal(auth().accessToken, '')
+    assert.equal(auth().refreshToken, '')
+    assert.equal(auth().user, null)
+  } finally {
+    if (descriptor) Object.defineProperty(crypto, 'randomUUID', descriptor)
+    else delete crypto.randomUUID
+  }
+})
+
+test('late logout completion preserves a remote session with or without a storage event', async () => {
+  const { logout } = await server.ssrLoadModule('/src/services/authApi.ts')
+  for (const delivered of [false, true]) {
+    auth().startSession(token('alice'), 'refresh-alice')
+    const originalAuth = auth()
+    const version = session.version
+    const started = deferred(), pending = deferred()
+    let navigated = false
+    apiClient.defaults.adapter = async (config) => {
+      started.resolve()
+      await pending.promise
+      return response(config, null)
+    }
+    const signingOut = (async () => {
+      try { await logout() } catch {} finally {
+        if (originalAuth.reset(version)) navigated = true
+      }
+    })()
+    await started.promise
+    const identity = `bob-during-logout-${delivered}`
+    localStorage.setItem(`accessToken:${identity}`, token('bob'))
+    localStorage.setItem(`refreshToken:${identity}`, 'bob-refresh')
+    localStorage.setItem('shadmin-session', identity)
+    if (delivered) storageListeners.forEach((fn) => fn({ key: 'shadmin-session' }))
+    pending.resolve()
+    await signingOut
+    assert.equal(navigated, false)
+    assert.equal(localStorage.getItem('shadmin-session'), identity)
+    assert.equal(localStorage.getItem(`accessToken:${identity}`), token('bob'))
+    assert.equal(localStorage.getItem(`refreshToken:${identity}`), 'bob-refresh')
+    assert.equal(auth().user.accountNo, 'bob')
+  }
+})
+
+test('scoped cleanup checks shared identity before a storage event arrives', () => {
+  const version = session.version
+  localStorage.setItem('accessToken:bob-before-event', token('bob'))
+  localStorage.setItem('refreshToken:bob-before-event', 'bob-refresh')
+  localStorage.setItem('shadmin-session', 'bob-before-event')
+  assert.equal(auth().reset(version), false)
+  assert.equal(localStorage.getItem('shadmin-session'), 'bob-before-event')
+  assert.equal(auth().accessToken, token('bob'))
+})
+
+test('scoped cleanup clears its own session but ignores a newer local sign-in', () => {
+  const version = session.version
+  assert.equal(auth().reset(version), true)
+  assert.equal(auth().accessToken, '')
+  auth().startSession(token('bob'), 'bob-refresh')
+  const identity = localStorage.getItem('shadmin-session')
+  assert.equal(auth().reset(version), false)
+  assert.equal(localStorage.getItem('shadmin-session'), identity)
+  assert.equal(auth().accessToken, token('bob'))
+})
+
+test('refresh without Web Locks requires a new sign-in instead of consuming tokens', async () => {
+  const originalLocks = navigator.locks
+  let refreshes = 0
+  Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined })
+  refreshAdapter = async () => { refreshes++; throw new Error('must not refresh without a lock') }
+  apiClient.defaults.adapter = async (config) => { throw unauthorized(config) }
+  try {
+    await assert.rejects(apiClient.get('/private'), /Token refresh requires Web Locks/)
+    assert.equal(refreshes, 0)
+    assert.equal(auth().user, null)
+    assert.equal(auth().accessToken, '')
+    assert.equal(auth().refreshToken, '')
+  } finally { Object.defineProperty(navigator, 'locks', { configurable: true, value: originalLocks }) }
 })

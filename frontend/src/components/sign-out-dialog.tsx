@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import { logout } from '@/services/authApi'
 import { useAuthStore } from '@/stores/auth-store'
+import { session } from '@/lib/session'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
 interface SignOutDialogProps {
@@ -13,18 +14,19 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
   const { auth } = useAuthStore()
 
   const handleSignOut = async () => {
+    const version = session.version
     try {
       await logout()
     } catch {
       // Continue local cleanup even if the server-side logout request fails.
     } finally {
       // Reset cancels old requests and clears identity, query data and menu permissions.
-      auth.reset()
-
-      navigate({
-        to: '/sign-in',
-        replace: true,
-      })
+      if (auth.reset(version)) {
+        await navigate({
+          to: '/sign-in',
+          replace: true,
+        })
+      }
     }
   }
 

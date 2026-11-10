@@ -41,6 +41,10 @@ function isAuthRoute(url?: string): boolean {
 // --- Request interceptor: attach access token ---
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const beforeSync = session.version
+    authHandlers?.synchronize?.()
+    if (!session.isCurrent(beforeSync))
+      throw new axios.CanceledError('Session changed')
     const request = config as RetryableConfig
     request._sessionVersion ??= session.version
     if (!session.isCurrent(request._sessionVersion)) {
@@ -51,6 +55,7 @@ apiClient.interceptors.request.use(
       : session.signal
     if (!isAuthRoute(config.url)) {
       const token = getAccessToken()
+      request._accessToken = token
       if (token) {
         config.headers = config.headers || {}
         config.headers['Authorization'] = `Bearer ${token}`
@@ -65,6 +70,7 @@ apiClient.interceptors.request.use(
 
 // Extend AxiosRequestConfig to carry our retry flag
 interface RetryableConfig extends InternalAxiosRequestConfig {
+  _accessToken?: string
   _retry?: boolean
   _sessionVersion?: number
 }
@@ -76,8 +82,8 @@ function forceLogout() {
   if (isLoggingOut) return
   isLoggingOut = true
 
-  authHandlers?.reset()
-  removeAllTokens()
+  if (authHandlers) authHandlers.reset()
+  else removeAllTokens()
 
   const currentPath = window.location.pathname + window.location.search
   if (!currentPath.startsWith('/sign-in')) {
@@ -95,6 +101,7 @@ function forceLogout() {
 
 interface AuthHandlers {
   reset: () => void
+  synchronize?: () => void
   setTokens: (accessToken: string, refreshToken?: string) => void
 }
 let authHandlers: AuthHandlers | null = null
@@ -103,6 +110,7 @@ export function registerAuthHandlers(handlers: AuthHandlers) {
 }
 
 function assertCurrentRequest(config: RetryableConfig | undefined) {
+  authHandlers?.synchronize?.()
   if (
     config?._sessionVersion !== undefined &&
     !session.isCurrent(config._sessionVersion)
@@ -111,10 +119,18 @@ function assertCurrentRequest(config: RetryableConfig | undefined) {
   }
 }
 
-async function refreshAccessToken(version: number): Promise<string> {
+async function refreshAccessToken(
+  version: number,
+  failedToken?: string
+): Promise<string> {
   if (refreshFlight?.version === version) return refreshFlight.promise
 
-  const pending = (async () => {
+  const rotate = async () => {
+    authHandlers?.synchronize?.()
+    if (!session.isCurrent(version))
+      throw new axios.CanceledError('Session changed')
+    const currentToken = getAccessToken()
+    if (currentToken && currentToken !== failedToken) return currentToken
     const refreshToken = getRefreshToken()
     if (!refreshToken) {
       forceLogout()
@@ -126,6 +142,7 @@ async function refreshAccessToken(version: number): Promise<string> {
         { refreshToken },
         { signal: session.signal }
       )
+      authHandlers?.synchronize?.()
       if (!session.isCurrent(version))
         throw new axios.CanceledError('Session changed')
       const data = response.data
@@ -135,6 +152,7 @@ async function refreshAccessToken(version: number): Promise<string> {
       authHandlers?.setTokens(data.data.accessToken, data.data.refreshToken)
       return data.data.accessToken as string
     } catch (error) {
+      authHandlers?.synchronize?.()
       const status = axios.isAxiosError(error)
         ? error.response?.status
         : undefined
@@ -146,7 +164,18 @@ async function refreshAccessToken(version: number): Promise<string> {
         forceLogout()
       throw error
     }
-  })()
+  }
+  // Web Locks serialize rotation across same-origin tabs. Unsupported browsers
+  // must sign in again rather than racing a one-use refresh token.
+  if (!navigator.locks) {
+    forceLogout()
+    throw new Error('Token refresh requires Web Locks; sign in again')
+  }
+  const pending = navigator.locks.request(
+    'shadmin-refresh',
+    { signal: session.signal },
+    rotate
+  )
   refreshFlight = { version, promise: pending }
   try {
     return await pending
@@ -174,7 +203,8 @@ apiClient.interceptors.response.use(
 
     originalRequest._retry = true
     const token = await refreshAccessToken(
-      originalRequest._sessionVersion ?? session.version
+      originalRequest._sessionVersion ?? session.version,
+      originalRequest._accessToken
     )
     assertCurrentRequest(originalRequest)
     originalRequest.headers['Authorization'] = `Bearer ${token}`
