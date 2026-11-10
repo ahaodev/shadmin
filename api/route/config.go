@@ -2,6 +2,8 @@ package route
 
 import (
 	"fmt"
+	"net/http"
+	"shadmin/domain"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,6 +32,13 @@ func (c *ServerConfig) Apply(engine *gin.Engine) error {
 
 	engine.MaxMultipartMemory = c.MaxMultipartMemory
 	engine.RedirectTrailingSlash = c.RedirectSlash
+	engine.HandleMethodNotAllowed = true
+	engine.NoRoute(func(ctx *gin.Context) {
+		ctx.JSON(http.StatusNotFound, domain.RespError("API endpoint not found"))
+	})
+	engine.NoMethod(func(ctx *gin.Context) {
+		ctx.JSON(http.StatusMethodNotAllowed, domain.RespError("Method not allowed"))
+	})
 
 	return nil
 }
