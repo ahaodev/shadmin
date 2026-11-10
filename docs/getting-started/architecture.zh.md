@@ -242,7 +242,7 @@ sequenceDiagram
     BE->>DB: 校验凭据 (bcrypt)
     BE->>BE: 生成 Access Token (短期) + Refresh Token (长期)
     BE-->>FE: { accessToken, refreshToken }
-    FE->>FE: 存储 Token (localStorage + Cookie)
+    FE->>FE: 存储 Token (localStorage)
     FE->>FE: 解析 JWT 获取用户基本信息
     FE->>BE: GET /api/v1/profile (带 Bearer Token)
     BE-->>FE: 用户详细信息
@@ -281,7 +281,7 @@ Shadmin 使用 **Casbin RBAC** 进行权限控制：
 | `postgres` | 生产推荐 | `postgres://user:pass@localhost:5432/shadmin?sslmode=disable` |
 | `mysql` | 可选 | `user:pass@tcp(localhost:3306)/shadmin?parseTime=true&loc=Local` |
 
-启动时 Ent ORM 自动执行 schema 迁移。
+开发启动仅执行增量 schema 同步；生产启动不迁移，见部署文档的迁移步骤。
 
 ## 文件存储抽象
 

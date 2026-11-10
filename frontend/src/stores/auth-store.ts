@@ -13,6 +13,7 @@ import {
   getRefreshToken,
   setRefreshToken as persistRefreshToken,
   removeAllTokens,
+  removeLegacyTokens,
 } from '@/lib/token-storage'
 
 export interface AuthUser {
@@ -66,6 +67,7 @@ function publishSession(accessToken?: string, refreshToken?: string) {
 
 export const useAuthStore = create<AuthState>()((set, get) => {
   let profileRequestVersion = 0
+  removeLegacyTokens()
   const initToken = getAccessToken()
   const initRefreshToken = getRefreshToken()
 
