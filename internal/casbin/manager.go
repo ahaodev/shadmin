@@ -17,6 +17,7 @@ type Manager interface {
 	CheckPermission(userID, object, action string) (bool, error)
 	ReplaceSnapshot(enforcer *casbin.SyncedEnforcer, generation int64) error
 	CurrentGeneration() (int64, bool)
+	SnapshotFresh() bool
 	MarkSnapshotStale()
 	MarkSnapshotFresh(generation int64) bool
 }
@@ -92,8 +93,16 @@ func (m *CasManager) MarkSnapshotFresh(generation int64) bool {
 	return true
 }
 
+func (m *CasManager) SnapshotFresh() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return !m.stale && m.snapshot != nil
+}
+
 func (m *CasManager) CurrentGeneration() (int64, bool) {
-	snapshot := m.currentSnapshot()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	snapshot := m.snapshot
 	if snapshot == nil {
 		return 0, false
 	}

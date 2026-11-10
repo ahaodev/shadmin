@@ -19,6 +19,14 @@ type blacklist struct {
 	cacher cacher.Cacher
 }
 
+func (b *blacklist) Consume(ctx context.Context, jti string, expiry time.Time) (bool, error) {
+	ttl := time.Until(expiry)
+	if jti == "" || ttl <= 0 {
+		return false, nil
+	}
+	return b.cacher.SetIfAbsent(ctx, blacklistNS, jti, "1", ttl)
+}
+
 func (b *blacklist) Add(ctx context.Context, jti string, expiry time.Time) error {
 	if jti == "" {
 		return nil

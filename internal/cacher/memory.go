@@ -42,6 +42,13 @@ func (m *memoryCache) tl(exp []time.Duration) time.Duration {
 	return cache.NoExpiration
 }
 
+func (m *memoryCache) SetIfAbsent(ctx context.Context, ns, key, value string, expiration time.Duration) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	return m.c.Add(m.o.joinKey(ns, key), value, expiration) == nil, nil
+}
+
 func (m *memoryCache) Set(_ context.Context, ns, key, value string, expiration ...time.Duration) error {
 	m.c.Set(m.o.joinKey(ns, key), value, m.tl(expiration))
 	return nil

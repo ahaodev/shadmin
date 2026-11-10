@@ -83,6 +83,8 @@ type TokenIssuer interface {
 
 // TokenBlacklist 记录已登出令牌的 jti，直到其原始过期时间（由 internal/auth 实现）。
 type TokenBlacklist interface {
+	// Consume atomically revokes a live JTI; only the first caller returns true.
+	Consume(ctx context.Context, jti string, expiry time.Time) (bool, error)
 	// Add 将 jti 加入黑名单直到 expiry；expiry 已过则直接忽略。
 	Add(ctx context.Context, jti string, expiry time.Time) error
 	// Exists 检查 jti 是否在黑名单中且仍有效。

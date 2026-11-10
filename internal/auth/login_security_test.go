@@ -78,6 +78,10 @@ var errCacheDown = errors.New("cache unavailable")
 // 缓存故障时登录必须放行，不能把所有用户挡在门外。
 type brokenCacher struct{}
 
+func (brokenCacher) SetIfAbsent(context.Context, string, string, string, time.Duration) (bool, error) {
+	return false, errCacheDown
+}
+
 func (brokenCacher) Set(context.Context, string, string, string, ...time.Duration) error {
 	return errCacheDown
 }

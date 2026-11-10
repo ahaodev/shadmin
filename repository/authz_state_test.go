@@ -4,8 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
+
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 
 	"shadmin/domain"
 	"shadmin/ent"
@@ -17,7 +21,12 @@ import (
 func newAuthorizationStateTestClient(t *testing.T) *ent.Client {
 	t.Helper()
 	name := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
-	client, err := ent.Open("sqlite3", fmt.Sprintf("file:%s?mode=memory&cache=shared&_fk=1", name))
+	driver, dsn := "sqlite3", fmt.Sprintf("file:%s?mode=memory&cache=shared&_fk=1", name)
+	if external := os.Getenv("SHADMIN_TEST_DB_DSN"); external != "" {
+		driver, dsn = os.Getenv("SHADMIN_TEST_DB_DRIVER"), external
+		resetTestDatabase(t, driver, dsn)
+	}
+	client, err := ent.Open(driver, dsn)
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}

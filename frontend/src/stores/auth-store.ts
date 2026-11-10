@@ -46,9 +46,22 @@ interface AuthState {
     setRefreshToken: (refreshToken: string) => void
     permissions: UserPermissions | null
     setPermissions: (permissions: UserPermissions | null) => void
-    reset: () => void
+    reset: (expectedVersion?: number) => boolean
     clearSidebarCache: () => void
   }
+}
+
+const sessionKey = 'shadmin-session'
+let sharedSession = localStorage.getItem(sessionKey)
+function publishSession(accessToken?: string, refreshToken?: string) {
+  // This is a cache identity, not a credential. getRandomValues also works on HTTP.
+  sharedSession = Array.from(
+    crypto.getRandomValues(new Uint8Array(16)),
+    (byte) => byte.toString(16).padStart(2, '0')
+  ).join('')
+  if (accessToken) persistAccessToken(accessToken, sharedSession)
+  if (refreshToken) persistRefreshToken(refreshToken, sharedSession)
+  localStorage.setItem(sessionKey, sharedSession)
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => {
@@ -120,20 +133,24 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       accessToken: initToken,
       setAccessToken: (accessToken) =>
         set((state) => {
-          persistAccessToken(accessToken)
+          persistAccessToken(accessToken, sharedSession)
           return { ...state, auth: { ...state.auth, accessToken } }
         }),
       resetAccessToken: () => get().auth.reset(),
       startSession: (accessToken, refreshToken) => {
-        get().auth.reset()
-        persistAccessToken(accessToken)
-        persistRefreshToken(refreshToken)
+        session.reset()
+        menuService.clearCache()
+        removeAllTokens()
+        publishSession(accessToken, refreshToken)
         set((state) => ({
           auth: {
             ...state.auth,
             accessToken,
             refreshToken,
             user: authUserFromJwt(accessToken),
+            profile: null,
+            permissions: null,
+            isLoadingProfile: false,
           },
         }))
       },
@@ -152,16 +169,24 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       refreshToken: initRefreshToken,
       setRefreshToken: (refreshToken) =>
         set((state) => {
-          persistRefreshToken(refreshToken)
+          persistRefreshToken(refreshToken, sharedSession)
           return { ...state, auth: { ...state.auth, refreshToken } }
         }),
       permissions: null,
       setPermissions: (permissions) =>
         set((state) => ({ ...state, auth: { ...state.auth, permissions } })),
-      reset: () => {
+      reset: (expectedVersion) => {
+        if (expectedVersion !== undefined) {
+          if (!session.isCurrent(expectedVersion)) return false
+          if (localStorage.getItem(sessionKey) !== sharedSession) {
+            synchronizeSession()
+            return false
+          }
+        }
         session.reset()
         menuService.clearCache()
         removeAllTokens()
+        publishSession()
         set((state) => ({
           auth: {
             ...state.auth,
@@ -173,6 +198,7 @@ export const useAuthStore = create<AuthState>()((set, get) => {
             permissions: null,
           },
         }))
+        return true
       },
       clearSidebarCache: () => {
         menuService.clearCache()
@@ -182,7 +208,42 @@ export const useAuthStore = create<AuthState>()((set, get) => {
   }
 })
 
+function synchronizeSession() {
+  const current = localStorage.getItem(sessionKey)
+  if (current === sharedSession) return
+  sharedSession = current
+  session.reset()
+  menuService.clearCache()
+  const accessToken = getAccessToken()
+  useAuthStore.setState((state) => ({
+    auth: {
+      ...state.auth,
+      accessToken,
+      refreshToken: getRefreshToken(),
+      user: accessToken ? authUserFromJwt(accessToken) : null,
+      profile: null,
+      permissions: null,
+      isLoadingProfile: false,
+    },
+  }))
+  // Re-run route guards and permission loading for the shared identity.
+  window.location.reload()
+}
+window.addEventListener('storage', (event) => {
+  if (event.key === sessionKey || event.key === null) synchronizeSession()
+  else if (localStorage.getItem(sessionKey) === sharedSession) {
+    useAuthStore.setState((state) => ({
+      auth: {
+        ...state.auth,
+        accessToken: getAccessToken(),
+        refreshToken: getRefreshToken(),
+      },
+    }))
+  }
+})
+
 registerAuthHandlers({
+  synchronize: synchronizeSession,
   reset: () => useAuthStore.getState().auth.reset(),
   setTokens: (accessToken, refreshToken) => {
     const { auth } = useAuthStore.getState()

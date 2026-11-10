@@ -10,6 +10,8 @@ import (
 
 // Cacher 抽象带命名空间的通用 key-value 缓存。
 type Cacher interface {
+	// SetIfAbsent atomically writes only when the key is absent (or expired).
+	SetIfAbsent(ctx context.Context, ns, key, value string, expiration time.Duration) (bool, error)
 	// Set 写入（或覆盖）一对键值；expiration 取首个非空值，未传则永不过期。
 	Set(ctx context.Context, ns, key, value string, expiration ...time.Duration) error
 	// Incr 把键的整数值加一，返回加一后的值；键不存在或已过期时从 1 开始。

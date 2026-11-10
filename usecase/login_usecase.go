@@ -115,19 +115,8 @@ func (lu *loginUsecase) Refresh(ctx context.Context, refreshToken string) (*doma
 		return nil, domain.ErrInvalidRefreshToken
 	}
 
-	if lu.tokenBlacklist != nil {
-		// 黑名单以 jti 为键：无 jti 的令牌无法吊销，直接拒绝
-		if claims.JTI == "" {
-			return nil, domain.ErrInvalidRefreshToken
-		}
-
-		revoked, err := lu.tokenBlacklist.Exists(ctx, claims.JTI)
-		if err != nil {
-			return nil, domain.ErrInvalidRefreshToken
-		}
-		if revoked {
-			return nil, domain.ErrRefreshTokenRevoked
-		}
+	if lu.tokenBlacklist == nil || claims.JTI == "" || !claims.ExpiresAt.After(time.Now()) {
+		return nil, domain.ErrInvalidRefreshToken
 	}
 
 	user, err := lu.userRepository.GetByID(ctx, claims.ID)
@@ -148,12 +137,13 @@ func (lu *loginUsecase) Refresh(ctx context.Context, refreshToken string) (*doma
 		return nil, err
 	}
 
-	// 轮换：新令牌全部签发成功后吊销旧 refresh token，阻断旧令牌重放。
-	// 吊销失败时旧令牌仍有效，客户端重试即可，不会造成会话中断。
-	if lu.tokenBlacklist != nil && claims.JTI != "" && !claims.ExpiresAt.IsZero() {
-		if err := lu.tokenBlacklist.Add(ctx, claims.JTI, claims.ExpiresAt); err != nil {
-			return nil, fmt.Errorf("revoke rotated refresh token: %w", err)
-		}
+	// Generate before consuming, but return tokens only to the atomic winner.
+	consumed, err := lu.tokenBlacklist.Consume(ctx, claims.JTI, claims.ExpiresAt)
+	if err != nil {
+		return nil, fmt.Errorf("consume refresh token: %w", err)
+	}
+	if !consumed {
+		return nil, domain.ErrRefreshTokenRevoked
 	}
 
 	return tokens, nil
