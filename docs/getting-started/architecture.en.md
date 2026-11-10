@@ -242,7 +242,7 @@ sequenceDiagram
     BE->>DB: Validate credentials (bcrypt)
     BE->>BE: Generate Access Token (short-lived) + Refresh Token (long-lived)
     BE-->>FE: { accessToken, refreshToken }
-    FE->>FE: Store tokens (localStorage + Cookie)
+    FE->>FE: Store tokens (localStorage)
     FE->>FE: Parse JWT for basic user info
     FE->>BE: GET /api/v1/profile (with Bearer Token)
     BE-->>FE: User details
@@ -281,7 +281,7 @@ Switch databases via `DB_TYPE` in `.env` — no code changes required:
 | `postgres` | Recommended for production | `postgres://user:pass@localhost:5432/shadmin?sslmode=disable` |
 | `mysql` | Optional | `user:pass@tcp(localhost:3306)/shadmin?parseTime=true&loc=Local` |
 
-Ent ORM automatically runs schema migrations on startup.
+Development startup applies additive Ent schema changes. Production startup never migrates; see the deployment migration runbook.
 
 ## File Storage Abstraction
 
