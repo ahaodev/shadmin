@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"flag"
 	"fmt"
 	"log/slog"
+	"shadmin/internal/conf"
 
 	"shadmin/api"
-	bootstrap "shadmin/bootstrap"
+	"shadmin/bootstrap"
 	"shadmin/pkg"
 )
 
@@ -18,7 +20,20 @@ var (
 
 // Run 启动应用并返回进程退出码。所有启动失败统一处理，保证 defer 清理逻辑（关闭数据库、缓存、调度器）总能执行。
 func Run() int {
+	migrate := flag.Bool("migrate", false, "apply additive schema migration and exit (back up first)")
+	flag.Parse()
 	pkg.InitLogger()
+	if *migrate {
+		env, err := conf.NewEnv()
+		if err == nil {
+			err = bootstrap.MigrateDatabase(env)
+		}
+		if err != nil {
+			slog.Error("migration failed", "error", err)
+			return 1
+		}
+		return 0
+	}
 	// 记录版本信息
 	slog.Info("starting", "version", version, "commit", commit, "built", date)
 

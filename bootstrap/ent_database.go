@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"shadmin/ent"
-	"shadmin/ent/migrate"
 	"shadmin/internal/conf"
 	"shadmin/repository"
 	"strings"
@@ -18,6 +17,20 @@ import (
 )
 
 func NewEntDatabase(env *conf.Env) (*ent.Client, error) {
+	return openDatabase(env, env.AppEnv != conf.AppEnvProd && env.DBAutoMigrate)
+}
+
+// MigrateDatabase is an explicit, additive schema step, separate from serving requests.
+// Destructive upgrades must use reviewed versioned SQL migrations.
+func MigrateDatabase(env *conf.Env) error {
+	client, err := openDatabase(env, true)
+	if err != nil {
+		return err
+	}
+	return client.Close()
+}
+
+func openDatabase(env *conf.Env, migrate bool) (*ent.Client, error) {
 	var client *ent.Client
 	var err error
 
@@ -43,22 +56,20 @@ func NewEntDatabase(env *conf.Env) (*ent.Client, error) {
 		return nil, fmt.Errorf("connect to database: %w", err)
 	}
 
-	// Auto migrate schema
-	slog.Info("running database schema migration")
 	ctx := context.Background()
-	if err := client.Schema.Create(ctx,
-		migrate.WithDropIndex(true),
-		migrate.WithDropColumn(true),
-	); err != nil {
-		_ = client.Close()
-		return nil, fmt.Errorf("create schema resources: %w", err)
+	// Production schema changes belong to an explicit deployment migration step.
+	if migrate {
+		if err := client.Schema.Create(ctx); err != nil {
+			_ = client.Close()
+			return nil, fmt.Errorf("create schema resources: %w", err)
+		}
 	}
 	if err := repository.EnsureAuthorizationState(ctx, client); err != nil {
 		_ = client.Close()
-		return nil, fmt.Errorf("initialize authorization state: %w", err)
+		return nil, fmt.Errorf("initialize authorization state (apply the reviewed schema migration before starting production): %w", err)
 	}
 
-	slog.Info("database schema migration completed", "type", strings.ToUpper(dbType))
+	slog.Info("database initialization completed", "type", strings.ToUpper(dbType))
 	return client, nil
 }
 

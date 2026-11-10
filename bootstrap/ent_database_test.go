@@ -2,7 +2,8 @@ package bootstrap
 
 import (
 	"bytes"
-	"context"
+	"database/sql"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -11,15 +12,54 @@ import (
 	"shadmin/internal/conf"
 )
 
-func TestProductionStartupCreatesSchema(t *testing.T) {
+func TestProductionRequiresExplicitMigration(t *testing.T) {
 	t.Chdir(t.TempDir())
-	client, err := NewEntDatabase(&conf.Env{AppEnv: conf.AppEnvProd, DBType: "sqlite"})
+	env := &conf.Env{AppEnv: conf.AppEnvProd, DBType: "sqlite", DBAutoMigrate: true}
+	if client, err := NewEntDatabase(env); err == nil {
+		client.Close()
+		t.Fatal("production created schema implicitly")
+	}
+	if err := MigrateDatabase(env); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite3", "./.database/data.db")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
-	if _, err := client.User.Query().Count(context.Background()); err != nil {
+	defer db.Close()
+	if _, err := db.Exec("ALTER TABLE users ADD COLUMN legacy_data TEXT; INSERT INTO users (id, username, created_at, updated_at, legacy_data) VALUES ('legacy', 'legacy', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'keep')"); err != nil {
 		t.Fatal(err)
+	}
+	for _, mode := range []string{conf.AppEnvDev, conf.AppEnvProd} {
+		env.AppEnv = mode
+		client, err := NewEntDatabase(env)
+		if err != nil {
+			t.Fatal(err)
+		}
+		client.Close()
+		var value string
+		if err := db.QueryRow("SELECT legacy_data FROM users WHERE id='legacy'").Scan(&value); err != nil || value != "keep" {
+			t.Fatalf("legacy data = %q, %v", value, err)
+		}
+	}
+}
+
+func TestDevelopmentAutoMigrate(t *testing.T) {
+	for _, enabled := range []bool{true, false} {
+		t.Run(fmt.Sprintf("enabled=%t", enabled), func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			env := &conf.Env{AppEnv: conf.AppEnvDev, DBType: "sqlite", DBAutoMigrate: enabled}
+			client, err := NewEntDatabase(env)
+			if enabled {
+				if err != nil {
+					t.Fatal(err)
+				}
+				client.Close()
+			} else if err == nil {
+				client.Close()
+				t.Fatal("created schema with auto-migration disabled")
+			}
+		})
 	}
 }
 

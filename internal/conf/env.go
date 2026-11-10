@@ -34,8 +34,10 @@ type Env struct {
 	Port                         string `mapstructure:"PORT"`
 
 	// Database configuration
-	DBType string `mapstructure:"DB_TYPE"` // "sqlite" or "postgres"
-	DBDSN  string `mapstructure:"DB_DSN"`  // PostgreSQL connection string
+	DBAutoMigrate bool   `mapstructure:"DB_AUTO_MIGRATE"`
+	DBType        string `mapstructure:"DB_TYPE"` // "sqlite" or "postgres"
+	DBDSN         string `mapstructure:"DB_DSN"`  // PostgreSQL connection string
+
 	// 令牌配置
 	AccessTokenExpiryMinute  int    `mapstructure:"ACCESS_TOKEN_EXPIRY_MINUTE"`
 	RefreshTokenExpiryMinute int    `mapstructure:"REFRESH_TOKEN_EXPIRY_MINUTE"`
@@ -52,6 +54,7 @@ type Env struct {
 	StorageBasePath string `mapstructure:"STORAGE_BASE_PATH"` // 本地存储基础路径
 
 	// S3/MinIO 配置
+	S3Secure    bool   `mapstructure:"S3_SECURE"`
 	S3Address   string `mapstructure:"S3_ADDRESS"`
 	S3AccessKey string `mapstructure:"S3_ACCESS_KEY"`
 	S3SecretKey string `mapstructure:"S3_SECRET_KEY"`
@@ -100,8 +103,9 @@ func setDefaults() {
 		"PORT":                             ":55667",
 
 		// 数据库配置
-		"DB_TYPE": DbTypeSqlite,
-		"DB_DSN":  "",
+		"DB_TYPE":         DbTypeSqlite,
+		"DB_DSN":          "",
+		"DB_AUTO_MIGRATE": true,
 
 		// 令牌配置
 		"ACCESS_TOKEN_EXPIRY_MINUTE":  180,
@@ -119,9 +123,10 @@ func setDefaults() {
 		"STORAGE_BASE_PATH": ".uploads",
 
 		// S3/MinIO 配置
-		"S3_ADDRESS":    "192.168.8.6:9000",
-		"S3_ACCESS_KEY": "IjJm2N3ZZTYjt8C9WkJf",
-		"S3_SECRET_KEY": "eIuV0i4ChbLqx54g9rhsZDRTC2LE1xEcnIAnAw1C",
+		"S3_ADDRESS":    "",
+		"S3_SECURE":     true,
+		"S3_ACCESS_KEY": "",
+		"S3_SECRET_KEY": "",
 		"S3_BUCKET":     "shadmin",
 		"S3_TOKEN":      "",
 
@@ -151,7 +156,10 @@ func setDefaults() {
 	viper.AutomaticEnv()
 	for key, value := range defaults {
 		viper.SetDefault(key, value)
-		viper.BindEnv(key)
+		err := viper.BindEnv(key)
+		if err != nil {
+			return
+		}
 	}
 }
 
@@ -170,7 +178,7 @@ func generateEnvFile() error {
 		},
 		{
 			title: "# 数据库配置",
-			keys:  []string{"DB_TYPE", "DB_DSN"},
+			keys:  []string{"DB_TYPE", "DB_DSN", "DB_AUTO_MIGRATE"},
 		},
 		{
 			title: "# 令牌配置",
@@ -186,7 +194,7 @@ func generateEnvFile() error {
 		},
 		{
 			title: "# S3/MinIO 配置",
-			keys:  []string{"S3_ADDRESS", "S3_ACCESS_KEY", "S3_SECRET_KEY", "S3_BUCKET", "S3_TOKEN"},
+			keys:  []string{"S3_SECURE", "S3_ADDRESS", "S3_ACCESS_KEY", "S3_SECRET_KEY", "S3_BUCKET", "S3_TOKEN"},
 		},
 		{
 			title: "# 缓存配置（mem=内存，redis=Redis）",
