@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"shadmin/api/middleware"
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/internal/auth"
@@ -127,7 +128,8 @@ func App() (*Application, error) {
 	// gin 的访问日志与 panic 恢复日志也进入轮换文件。
 	gin.DefaultWriter = pkg.LogWriter
 	gin.DefaultErrorWriter = pkg.LogWriter
-	app.ApiEngine = gin.Default()
+	app.ApiEngine = gin.New()
+	app.ApiEngine.Use(gin.Logger(), middleware.Recovery())
 
 	// 注册第三方登录 provider（Google/GitHub），并初始化 gothic session store
 	InitIdentityProviders(app.Env)
