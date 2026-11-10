@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"sync"
 	"time"
 
 	"shadmin/domain"
@@ -21,11 +20,11 @@ var errAuthorizationChanged = errors.New("authorization data changed while build
 type SyncService struct {
 	source  domain.AuthorizationSource
 	manager Manager
-	mu      sync.Mutex
+	rebuild chan struct{}
 }
 
 func NewSyncService(source domain.AuthorizationSource, manager Manager) *SyncService {
-	return &SyncService{source: source, manager: manager}
+	return &SyncService{source: source, manager: manager, rebuild: make(chan struct{}, 1)}
 }
 
 // CheckPermission checks the shared generation on every protected request. A remote
@@ -41,27 +40,47 @@ func (s *SyncService) CheckPermission(ctx context.Context, userID, object, actio
 
 // SyncFromDatabase rebuilds the complete snapshot from the authoritative data source.
 func (s *SyncService) SyncFromDatabase(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	if err := s.lock(ctx); err != nil {
+		return err
+	}
+	defer s.unlock()
 	return s.rebuildLocked(ctx)
 }
 
 // SyncIfChanged checks the shared generation and rebuilds only when this process is stale.
 func (s *SyncService) SyncIfChanged(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	generation, err := s.currentGeneration(ctx)
 	if err != nil {
 		s.manager.MarkSnapshotStale()
 		return err
 	}
-	if applied, ok := s.manager.CurrentGeneration(); ok && applied == generation {
-		s.manager.MarkSnapshotFresh(generation)
+	if applied, ok := s.manager.CurrentGeneration(); ok && applied == generation && s.manager.SnapshotFresh() {
+		return nil
+	}
+	if err := s.lock(ctx); err != nil {
+		return err
+	}
+	defer s.unlock()
+	// Another request may have rebuilt while we waited. Re-read after taking the gate.
+	generation, err = s.currentGeneration(ctx)
+	if err != nil {
+		return err
+	}
+	if applied, ok := s.manager.CurrentGeneration(); ok && applied == generation && s.manager.SnapshotFresh() {
 		return nil
 	}
 	return s.rebuildLocked(ctx)
 }
+
+func (s *SyncService) lock(ctx context.Context) error {
+	select {
+	case s.rebuild <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+func (s *SyncService) unlock() { <-s.rebuild }
 
 func (s *SyncService) rebuildLocked(ctx context.Context) error {
 	s.manager.MarkSnapshotStale()
