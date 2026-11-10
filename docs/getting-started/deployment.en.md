@@ -109,7 +109,7 @@ The following settings must be changed for production (via `.env` file or enviro
 
 ## Database Switching
 
-Shadmin defaults to SQLite. For production, switching to PostgreSQL or MySQL is recommended. Ent ORM handles table migration automatically — no manual table creation needed.
+Shadmin defaults to SQLite. For production, switching to PostgreSQL or MySQL is recommended. Only development startup applies additive schema changes. Production requires an explicit migration step.
 
 ### Switch to PostgreSQL
 

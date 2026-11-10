@@ -109,7 +109,7 @@ docker run -d \
 
 ## 数据库切换
 
-Shadmin 默认使用 SQLite，生产环境建议切换到 PostgreSQL 或 MySQL。Ent ORM 自动处理表迁移，无需手动建表。
+Shadmin 默认使用 SQLite，生产环境建议切换到 PostgreSQL 或 MySQL。开发环境仅增量建表，生产必须显式执行迁移。
 
 ### 切换到 PostgreSQL
 
@@ -127,7 +127,7 @@ DB_DSN=shadmin:your-password@tcp(localhost:3306)/shadmin?parseTime=true&loc=Loca
 
 > **重要：** MySQL 连接串必须包含 `parseTime=true`，否则时间字段解析会失败。
 
-首次启动时，Ent 会自动创建所有表和索引。如果从 SQLite 切换，数据不会自动迁移，需要手动导入。
+仅开发环境首次启动会增量创建表和索引。如果从 SQLite 切换，数据不会自动迁移，需要手动导入。
 
 ---
 
