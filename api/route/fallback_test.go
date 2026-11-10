@@ -2,22 +2,24 @@ package route
 
 import (
 	"encoding/json"
-	"github.com/gin-gonic/gin"
 	"net/http/httptest"
 	"shadmin/domain"
 	"shadmin/frontend"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
 func TestFallbackContract(t *testing.T) {
 	for _, production := range []bool{false, true} {
 		t.Run(map[bool]string{false: "dev", true: "prod"}[production], func(t *testing.T) {
 			r := gin.New()
-			var fallback gin.HandlerFunc
-			if production {
-				fallback = frontend.Register(r)
+			if err := DefaultServerConfig().Apply(r); err != nil {
+				t.Fatal(err)
 			}
-			setupFallback(r, fallback)
+			if production {
+				frontend.Register(r)
+			}
 			r.GET("/api/v1/known", func(c *gin.Context) { c.JSON(200, domain.RespSuccess(nil)) })
 			for _, req := range []struct {
 				method, path string
