@@ -4655,7 +4655,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "localhost:55667",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
-	Title:            "ShadMIN API",
+	Title:            "SHADMIN API",
 	Description:      "admin dashboard system with RBAC",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

@@ -871,7 +871,7 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
   termsOfService: http://swagger.io/terms/
-  title: ShadMIN API
+  title: SHADMIN API
   version: "1.0"
 paths:
   /api-resources:

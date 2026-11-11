@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
         "description": "admin dashboard system with RBAC",
-        "title": "ShadMIN API",
+        "title": "SHADMIN API",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",
