@@ -52,7 +52,7 @@ func TestAutoMigrateConfig(t *testing.T) {
 func TestProductionSecrets(t *testing.T) {
 	base := Env{
 		AppEnv: AppEnvProd, ContextTimeout: 60, AuthzSyncPollIntervalSeconds: 3600,
-		Port: ":55667", DBType: DbTypeSqlite, CacheType: CacheTypeRedis, RedisAddress: "localhost:6379",
+		Port: ":55667", DBType: DbTypeSqlite, CacheType: CacheTypeMem,
 		StorageType: StoreTypeDisk, StorageBasePath: ".uploads",
 		AccessTokenExpiryMinute: 180, RefreshTokenExpiryMinute: 1800,
 		AccessTokenSecret: "configured-access-secret-for-test", RefreshTokenSecret: "configured-refresh-secret-for-test",
@@ -64,7 +64,11 @@ func TestProductionSecrets(t *testing.T) {
 		want   string
 	}{
 		{"configured JWT keys without OAuth", func(*Env) {}, ""},
-		{"production memory sessions", func(e *Env) { e.CacheType = CacheTypeMem }, "CACHE_TYPE"},
+		{"production memory cache without Redis", func(*Env) {}, ""},
+		{"production Redis cache", func(e *Env) {
+			e.CacheType, e.RedisAddress = CacheTypeRedis, "localhost:6379"
+		}, ""},
+		{"Redis cache without address", func(e *Env) { e.CacheType = CacheTypeRedis }, "REDIS_ADDRESS"},
 		{"access default", func(e *Env) { e.AccessTokenSecret = defaultAccessTokenSecret }, "ACCESS_TOKEN_SECRET"},
 		{"refresh default", func(e *Env) { e.RefreshTokenSecret = defaultRefreshTokenSecret }, "REFRESH_TOKEN_SECRET"},
 		{"swapped public default", func(e *Env) { e.AccessTokenSecret = defaultRefreshTokenSecret }, "ACCESS_TOKEN_SECRET"},
