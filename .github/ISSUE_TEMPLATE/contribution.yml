@@ -1,0 +1,62 @@
+name: Contribution Proposal
+description: Propose a change or feature, or a change to the design
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you start:** Read [CONTRIBUTING.md](https://github.com/ahaodev/shadmin/blob/main/CONTRIBUTING.md) and [`AGENTS.md`](https://github.com/ahaodev/shadmin/blob/main/AGENTS.md).
+
+        Keep this short. If it doesn't fit on one screen, it's too long. Write in your own voice — agent-generated proposals will be closed.
+
+        State the problem, the smallest change that solves it, and how it fits the layering.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What do you want to change?
+      description: The smallest change that fully solves the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: What problem does this solve, and who hits it today?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Which layers does it touch?
+      multiple: true
+      options:
+        - Domain contracts
+        - Ent schema / migration
+        - Repository
+        - Usecase
+        - Controller / routes
+        - Permissions / menus (registration)
+        - Frontend
+        - CLI
+        - Docs / agent instructions
+    validations:
+      required: true
+
+  - type: textarea
+    id: how
+    attributes:
+      label: How? (optional)
+      description: Brief technical approach, if you have one. Note any dependency direction or response-shape change.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: intent
+    attributes:
+      label: Do you intend to implement it?
+      options:
+        - label: Yes, I will open a PR for this.
+          required: false
