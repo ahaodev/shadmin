@@ -20,7 +20,7 @@ Review the completed workpackage and simplify its implementation without changin
 - Remove speculative defensive programming inside trusted code. Validate at real trust boundaries; rely on types and established invariants internally.
 - Do not keep fallback behavior for states that should be impossible. Prefer fixing the invariant or type model.
 - Simplify excessive state, boolean flags, branching, indirection, and special cases. Rework the underlying representation when that is clearer.
-- Tighten TypeScript types so invalid states are unrepresentable. Avoid `any`, unnecessary assertions, broad types, and optional fields for impossible states.
+- Tighten Go and TypeScript types so invalid states are unrepresentable. Avoid `any`, unnecessary assertions, broad types, and optional fields for impossible states.
 - Prefer direct, readable code over cleverness, premature abstraction, and framework-like infrastructure.
 - Delete comments that merely restate the code, but preserve comments that explain constraints, intent, or non-obvious decisions.
 
@@ -53,7 +53,7 @@ Routine, behavior-preserving cleanup does not require approval, such as inlining
 - Do not remove code merely because it is unused until you have checked whether it is a public API, extension point, generated entry point, or intentionally retained compatibility surface.
 - Do not replace clear code with a new abstraction solely to reduce line count.
 - Do not weaken tests to permit simplification. Update tests only when an approved behavior change or a cleaner equivalent structure requires it.
-- Follow the repository's validation and testing instructions after edits.
+- Follow the checks in `.agents/CONTRIBUTING.md` for the surfaces changed after edits.
 
 ## Completion
 

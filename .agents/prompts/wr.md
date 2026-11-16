@@ -15,7 +15,7 @@ Rules for context detection:
 
 Unless I explicitly override something in this request, do the following in order:
 
-1. Add or update the relevant package changelog entry under `## [Unreleased]` using the repo changelog rules.
+1. Add or update the changelog entry in the root `CHANGELOG.md`: a new `## [x.y.z] - YYYY-MM-DD` section above the latest one, using the section order from `cl.md`.
 2. If this task is tied to a GitHub issue or PR and a final issue or PR comment has not already been posted in this session, draft it in my tone, preview it, and post exactly one final comment. The comment must end with this exact standalone disclaimer line, with no variations:
 
    ```text
@@ -25,17 +25,15 @@ Unless I explicitly override something in this request, do the following in orde
 4. If this task is tied to exactly one GitHub issue, include `closes #<issue>` in the commit message. If it is tied to multiple issues, stop and ask which one to use. If it is not tied to any issue, do not include `closes #` or `fixes #` in the commit message.
 5. Check the current git branch. If it is not `main`, stop and ask what to do. Do not push from another branch unless I explicitly say so.
 6. Push the current branch.
-7. If this task is tied to exactly one GitHub issue, explicitly close that issue with reason `completed` after the push so the issue-close workflows in `.github/` run. This applies to issues only, not PRs.
-   - Inspect `gh issue view <issue> --json state,stateReason,labels`.
+7. If this task is tied to exactly one GitHub issue, explicitly close that issue with reason `completed` after the push.
+   - Inspect `gh issue view <issue> --json state`.
    - If the issue is open, run `gh issue close <issue> --reason completed`.
-   - If the issue is already closed with any reason other than `COMPLETED`, reopen it first, then close it with `gh issue close <issue> --reason completed` so GitHub emits a fresh close event.
-   - If the issue is already closed as `COMPLETED`, leave it closed unless the `inprogress` label is still present; in that case reopen it and close it again with reason `completed`.
+   - If it is already closed, leave it closed.
 
 Constraints:
 - Never stage unrelated files.
 - Never use `git add .` or `git add -A`.
-- Run required checks before committing if code changed.
+- Run the checks from `.agents/CONTRIBUTING.md` for the surfaces changed before committing.
 - Do not open a PR unless I explicitly ask.
 - If this is not GitHub issue or PR work, do not post a GitHub comment.
 - If a final issue or PR comment was already posted in this session, do not post another one unless I explicitly ask.
-- Skip the changelog only when the work targets a branch other than `main`. Feature branches, worktrees, and PRs that target `main` get changelog entries.

@@ -11,7 +11,7 @@ Steps:
 
 A duplicate reports the same problem or requests the same change: same symptom with the same likely cause, or a PR that fixes this exact issue. Sharing a component, an error message, or a related cause is not enough.
 
-Output a short draft GitHub comment with a writte by AI disclosure.
+Output a short draft GitHub comment with an AI-generated disclosure.
 
 If there are none, reply "No duplicates found."
 
