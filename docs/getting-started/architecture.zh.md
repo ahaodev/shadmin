@@ -1,318 +1,93 @@
 # 架构概览
 
-本文帮助你理解 Shadmin 的整体设计，以便快速定位代码、理解请求链路、扩展新功能。
+本文解释代码位置，以及请求、会话和授权之间的关系。具体实现规则见[开发技能](../../.agents/skills/shadmin-dev/SKILL.md)及其前后端参考规范。
 
-## 技术栈
+## 边界与装配
 
-| 层 | 技术                                    |
-|----|---------------------------------------|
-| 后端框架 | Go 1.27 + Gin                         |
-| 数据库 ORM | Ent（支持 SQLite / PostgreSQL / MySQL）   |
-| 认证 | JWT（access + refresh token）           |
-| 授权 | Casbin RBAC（基于路径 + 方法的策略）             |
-| API 文档 | Swagger / OpenAPI（swaggo 自动生成）        |
-| 日志 | slog + lumberjack                         |
-| 前端框架 | React 19 + TypeScript                 |
-| 构建工具 | Vite + SWC                            |
-| UI 组件 | Shadcn UI（Radix UI + Tailwind CSS v4） |
-| 路由 | TanStack Router（文件路由，自动代码分割）          |
-| 数据层 | TanStack Query + Axios                |
-| 状态管理 | Zustand                               |
-| 表单 | React Hook Form + Zod                 |
-
-## 系统架构图
+后端使用 Gin 处理 HTTP、Ent 访问数据库、Casbin 执行授权。领域契约将框架和基础设施隔离在业务逻辑之外。
 
 ```mermaid
-graph TB
-    User[用户] --> FE[前端 React SPA]
-    FE -->|HTTP /api/v1/*| GW[Gin 路由层]
-    GW --> MW[中间件链]
-    MW -->|JWT 校验| AUTH[JWT Auth]
-    MW -->|权限校验| CASBIN[Casbin RBAC]
-    MW --> CTRL[Controller 控制器]
-    CTRL --> UC[Usecase 用例层]
-    UC --> REPO[Repository 仓储层]
-    REPO --> ENT[Ent ORM]
-    ENT --> DB[(SQLite / PostgreSQL / MySQL)]
-    UC --> FS[文件存储]
-    FS --> DISK[本地磁盘]
-    FS --> MINIO[MinIO / S3]
+flowchart LR
+    Route --> Controller
+    Controller --> Usecase
+    Usecase --> Contracts[Domain 接口]
+    Repository -. 实现 .-> Contracts
+    Repository --> Ent --> DB[(数据库)]
+    Infrastructure -. 实现 .-> Contracts
 ```
 
-## 目录结构速查
+箭头表示依赖关系。运行时，用例通过领域接口调用注入的实现。
 
-```
-shadmin/
-├── main.go              # 入口，os.Exit(cmd.Run())
-├── cmd/                 # 应用启动与版本管理
-├── bootstrap/           # 启动装配：DB、Casbin、存储、种子数据、usecase 装配 (usecases.go)
-├── api/
-│   ├── controller/      # HTTP 控制器（请求解析 + 响应，无业务逻辑）
-│   ├── route/           # 路由注册 + 中间件挂载 + controller 工厂
-│   └── middleware/      # JWT 认证、Casbin 授权、日志
-├── domain/              # 领域层：实体、DTO、接口契约、错误定义、响应包装
-├── usecase/             # 用例层：业务编排、校验、超时控制
-├── repository/          # 仓储层：Ent 数据访问 + 文件存储实现
-├── ent/
-│   └── schema/          # Ent 数据库 schema 定义
-├── internal/            # 内部工具：Casbin 管理器、Token 服务、登录安全
-├── pkg/                 # 公共工具：日志等
-├── docs/                # Swagger 生成文件 + 架构文档
-├── frontend/                 # React 前端
-│   ├── src/
-│   │   ├── routes/      # 文件路由（TanStack Router）
-│   │   ├── features/    # 功能模块（页面 + 组件 + hooks + schema）
-│   │   ├── services/    # API 调用封装
-│   │   ├── stores/      # Zustand 状态管理
-│   │   ├── components/  # 通用组件 + Shadcn UI
-│   │   ├── hooks/       # 自定义 Hooks
-│   │   ├── types/       # TypeScript 类型定义
-│   │   ├── lib/         # 工具函数
-│   │   └── context/     # React Context Providers
-│   └── frontend.go           # Go embed，将 dist/ 嵌入二进制
-└── .env.example         # 环境变量模板
-```
+| 位置                                                                   | 职责                                    |
+| ---------------------------------------------------------------------- | --------------------------------------- |
+| [domain/](../../domain/)                                               | 实体、DTO、接口、错误、请求与响应契约   |
+| [usecase/](../../usecase/)                                             | 业务规则、校验和超时                    |
+| [repository/](../../repository/)                                       | 数据访问和领域实体与 Ent 的转换         |
+| [ent/schema/](../../ent/schema/)                                       | 数据库模型；其余 Ent 代码由工具生成     |
+| [api/controller/](../../api/controller/)                               | HTTP 解析、用例调用和错误到状态码的映射 |
+| [api/route/](../../api/route/) 与 [middleware/](../../api/middleware/) | 路由注册和独立的访问控制关卡            |
+| [bootstrap/usecases.go](../../bootstrap/usecases.go)                   | 仓储 → 用例装配                         |
+| [api/route/factory.go](../../api/route/factory.go)                     | 用例 → 控制器装配                       |
+| [internal/](../../internal/)                                           | Token、授权、缓存等基础设施实现         |
 
-## 后端分层
+各层通过构造函数手动注入。用例依赖 `domain/` 中的接口，`bootstrap` 选择并注入实现。
 
-Shadmin 后端采用 **Clean Architecture**，从外到内依赖关系为：
+## 请求链路
 
-```
-Route → Controller → Usecase → Repository → Ent/DB
-                         ↑
-                      Domain（接口契约）
-```
-
-| 层 | 目录 | 职责 | 关键规则 |
-|----|------|------|---------|
-| Domain | `domain/` | 实体、DTO、Repository/UseCase 接口、错误定义 | 纯定义，不依赖任何实现 |
-| Schema | `ent/schema/` | 数据库表结构 | 修改后必须 `go generate ./ent` |
-| Repository | `repository/` | Ent 数据读写 + domain↔ent 转换 | 仅做数据访问，不含 HTTP 或业务逻辑 |
-| Usecase | `usecase/` | 业务编排、校验、超时控制 | 每个方法 `context.WithTimeout`，错误用 `%w` 包装；只依赖 domain 接口 |
-| Controller | `api/controller/` | HTTP 请求解析 + 响应返回 | 仅做解析和调用 Usecase，不含业务逻辑 |
-| Route | `api/route/` | 路由注册、中间件挂载 | REST 风格，系统路由用 Casbin 中间件 |
-| Wiring | `bootstrap/usecases.go` | 组装 Repo → Usecase（`bootstrap.Usecases`） | 唯一构造用例所需仓储的位置 |
-| Factory | `api/route/factory.go` | 基于 usecase 组装 Controller | 使用 `f.uc` / `f.app`；不 import `ent` 或 `repository` |
-
-### 依赖注入
-
-Shadmin 使用 **工厂模式** 进行手动依赖注入，没有 DI 框架：
-
-```go
-// bootstrap/usecases.go —— 唯一进行 repository → usecase 装配的位置
-func newUsecases(app *Application) *Usecases {
-    timeout := time.Duration(app.Env.ContextTimeout) * time.Second
-    return &Usecases{
-        User: usecase.NewUserUsecase(repository.NewUserRepository(app.DB), timeout),
-        // ...
-    }
-}
-
-// api/route/factory.go —— 只基于 usecase 组装 controller
-func (f *ControllerFactory) CreateUserController() *controller.UserController {
-    return &controller.UserController{UserUsecase: f.uc.User}
-}
-```
-
-Usecase 依赖 domain 中声明的接口（端口），由基础设施实现（例如 `internal/tokenservice` 实现 `TokenIssuer`，`repository` 实现 `AuthorizationSource` 与 `UnitOfWork`），再由 `bootstrap` 注入。
-
-### 统一响应格式
-
-所有 API 使用 `domain.Response` 统一返回：
-
-```go
-type Response struct {
-    Code int         `json:"code"`  // 0 = 成功, 1 = 错误
-    Msg  string      `json:"msg"`
-    Data interface{} `json:"data"`
-}
-
-// 使用方式
-c.JSON(http.StatusOK, domain.RespSuccess(result))
-c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
-```
-
-分页结果使用 `domain.PagedResult[T]`：
-
-```json
-{
-  "code": 0,
-  "msg": "success",
-  "data": {
-    "list": [...],
-    "total": 100,
-    "page": 1,
-    "page_size": 10,
-    "total_pages": 10
-  }
-}
-```
-
-## 请求处理链路
-
-以 `GET /api/v1/system/user` 为例：
+`GET /api/v1/system/user` 等系统请求在进入业务逻辑前，依次经过独立的关卡：
 
 ```mermaid
-sequenceDiagram
-    participant C as 客户端
-    participant R as Gin 路由
-    participant JWT as JWT 中间件
-    participant CAS as Casbin 中间件
-    participant CTRL as UserController
-    participant UC as UserUsecase
-    participant REPO as UserRepository
-    participant DB as 数据库
-
-    C->>R: GET /api/v1/system/user
-    R->>JWT: 校验 Authorization Header
-    JWT->>JWT: 解析 Token，注入用户上下文 (x-user-*)
-    JWT->>CAS: 通过
-    CAS->>CAS: CheckPermission(userID, path, method)
-    CAS->>CTRL: 通过
-    CTRL->>CTRL: 解析 Query 参数 (page, page_size, search...)
-    CTRL->>UC: ListUsers(ctx, filter)
-    UC->>UC: context.WithTimeout + QueryParams.Paginate()
-    UC->>REPO: Query(ctx, filter)
-    REPO->>DB: Ent Query (Where + Offset + Limit)
-    DB-->>REPO: 返回数据
-    REPO-->>UC: []*domain.User
-    UC-->>CTRL: *PagedResult[*User]
-    CTRL-->>C: JSON { code: 0, data: {...} }
+flowchart TD
+    Request[Bearer 请求] --> JWT[校验 Token 与黑名单状态]
+    JWT --> Account[校验账号状态]
+    Account --> Generation[检查共享授权 generation]
+    Generation --> Casbin[使用本地 Casbin 快照鉴权]
+    Casbin --> Controller --> Usecase --> Repository --> DB[(数据库)]
 ```
 
-## 前端结构
+`/system` 父组统一挂载授权中间件。`/profile`、`/resources` 等基础认证接口位于该组之外；公开接口单独注册。见 [protected.go](../../api/route/protected.go) 和 [public.go](../../api/route/public.go)。
 
-### 路由组织
+控制器返回统一的[响应与分页类型](../../domain/response.go)。[控制器错误映射](../../api/controller/errors.go)将已知错误转换为 HTTP 状态码，并阻止意外内部错误泄露到客户端。
 
-前端使用 TanStack Router 的 **文件路由**，路由定义即文件路径：
+## 授权与菜单
 
-```
-frontend/src/routes/
-├── __root.tsx              # 根布局（DevTools、进度条）
-├── (auth)/                 # 公开路由组（登录、注册）
-│   └── sign-in.tsx
-├── (errors)/               # 错误页面（404、500）
-└── _authenticated/         # 受保护路由组
-    ├── route.tsx            # 认证守卫（beforeLoad 校验 JWT）
-    └── system/
-        ├── user.tsx         # → features/system/users
-        ├── role.tsx         # → features/system/roles
-        └── menu.tsx         # → features/system/menus
-```
+Ent 中的用户、角色、菜单和 API 资源关系是授权事实的来源。各进程据此构建本地 Casbin 快照：
 
-`_authenticated/route.tsx` 中的 `beforeLoad` 会检查 `accessToken`，无效则重定向至登录页。
+1. 启动时扫描 Gin 路由，生成 ID 为 `METHOD:/path` 的 API 资源。
+2. 菜单和按钮绑定 API 资源，角色获得菜单，用户获得角色。
+3. 授权变更与共享 generation 的递增在同一事务内提交。
+4. 每个系统请求先读取 generation，必要时重建快照再鉴权。读取或重建失败返回 HTTP 503。
 
-### 功能模块
+本地提交触发器与后台轮询负责预热和恢复快照。轮询间隔不决定撤权延迟；Redis 不分发 Casbin 快照。多实例要求见[部署指南](deployment.zh.md#多实例)。
 
-每个功能封装为独立模块：
+前端从 `/api/v1/resources` 获取菜单和权限标识。侧边栏渲染后端数据，路由守卫检查菜单访问权，`usePermission()` 控制操作按钮显隐。API 权限由后端强制执行。
 
-```
-features/system/users/
-├── index.tsx            # 页面入口组件
-├── components/          # 表格、弹窗、表单、按钮
-├── hooks/               # TanStack Query hooks (useUsers, useCreateUser...)
-├── data/schema.ts       # Zod 运行时校验
-└── lib/                 # 表单 schema、工具函数
+## 前端与会话
+
+React 使用 TanStack Router 组织文件路由、TanStack Query 管理服务端状态、Axios 处理 HTTP、Zustand 管理认证状态；表单由 React Hook Form 和 Zod 处理。
+
+```text
+routes/ → features/ → query hooks → services/ → apiClient → API
+                           ↕
+                    stores/auth-store
 ```
 
-### 数据流
+类型位于 `types/`，API 封装位于 `services/`，页面、表单、表格和弹窗位于 `features/`。[用户模块](../../frontend/src/features/system/users/)提供服务端分页的参考实现。
 
-```
-API Service (Axios) → TanStack Query (缓存 + 自动重取) → React 组件
-                                                            ↕
-                                                    Zustand Store (认证状态)
-```
+密码登录返回访问令牌和刷新令牌。`auth.startSession()` 建立会话，当前通过 [token-storage.ts](../../frontend/src/lib/token-storage.ts) 将令牌存入 localStorage。客户端通过 Bearer 请求头发送访问令牌，获取 `/profile` 并加载 `/resources` 后渲染获准访问的页面。
 
-- **API 调用**：`services/` 下的函数使用 `apiClient`（Axios），自动注入 `Bearer` token
-- **数据缓存**：TanStack Query 管理请求缓存、加载状态、自动重试
-- **全局状态**：`auth-store` 管理用户身份、Token、权限信息
-- **响应解析**：`response.data.data` 获取业务数据（外层 `.data` 是 Axios，内层 `.data` 是 `domain.Response.Data`）
+`auth.reset()` 和新的登录会递增会话版本，取消旧请求并清理身份、Query 和菜单缓存。刷新仅更新当前会话的令牌。同源标签页通过 Web Locks 串行刷新；不支持该 API 的浏览器需要重新登录。迟到响应不能恢复旧账号，菜单加载失败会阻止导航并显示重试入口。
 
-## 认证流程
+## 基础设施与启动
 
-```mermaid
-sequenceDiagram
-    participant U as 用户
-    participant FE as 前端
-    participant BE as 后端
-    participant DB as 数据库
+数据库、存储和缓存通过 [.env.example](../../.env.example) 中的配置选择：
 
-    U->>FE: 输入用户名/密码
-    FE->>BE: POST /api/v1/auth/login
-    BE->>DB: 校验凭据 (bcrypt)
-    BE->>BE: 生成 Access Token (短期) + Refresh Token (长期)
-    BE-->>FE: { accessToken, refreshToken }
-    FE->>FE: 存储 Token (localStorage)
-    FE->>FE: 解析 JWT 获取用户基本信息
-    FE->>BE: GET /api/v1/profile (带 Bearer Token)
-    BE-->>FE: 用户详细信息
-    FE->>BE: GET /api/v1/resources (带 Bearer Token)
-    BE-->>FE: 菜单 + 权限列表
-    FE->>FE: 渲染侧边栏 + 启用权限控制
-```
+- Ent 支持 SQLite、PostgreSQL 和 MySQL。
+- 文件存储通过 `domain.FileRepository` 对接本地磁盘或 MinIO/S3。
+- 缓存通过契约对接内存或 Redis 实现。
 
-## 权限模型
+配置、迁移和持久化操作见[部署指南](deployment.zh.md)。
 
-Shadmin 使用 **Casbin RBAC** 进行权限控制：
+[cmd.Run](../../cmd/main.go) 加载应用、注册路由、扫描 API 资源、初始化管理员和菜单、构建首个授权快照，最后启动服务。启动失败会返回错误并释放已初始化的资源；SIGINT/SIGTERM 触发优雅停机。
 
-```
-用户 → 角色 → 权限策略 → API 资源（path + method）
-              ↓
-          菜单绑定 → 前端侧边栏 + 按钮显隐
-```
-
-**后端**：Casbin 中间件检查 `(userID, requestPath, requestMethod)` 是否匹配策略。  
-**前端**：`auth-store` 提供 `hasPermission()` / `hasRole()` / `canAccessMenu()` 方法，UI 显隐由 `usePermission()` hook 配合 `auth-store` 判定控制。
-
-### 菜单与资源机制
-
-1. 后端启动时，`bootstrap.InitApiResources()` 扫描所有 Gin 路由，以 `METHOD:/path` 为 ID 写入数据库
-2. 管理员在菜单管理中将 API 资源绑定到菜单项
-3. 授权关系变更在同一事务递增 generation。每次系统 API 请求在鉴权前读取 generation，必要时重建本地快照；读取或重建失败返回 503。本地提交触发器与后台轮询负责预热和恢复；权限中间件统一挂载在 `/system` 父组。
-4. 前端通过 `auth.loadMenus()` 获取菜单与权限；加载失败阻止导航并提供重试。登录/退出递增会话版本、取消旧请求并清理 Query 与菜单缓存，迟到响应不能恢复旧账号状态。刷新 Token 同步存储和 Auth Store，不创建新会话。
-
-## 数据库抽象
-
-通过 `.env` 中的 `DB_TYPE` 切换数据库，代码无需任何修改：
-
-| DB_TYPE | 说明 | DB_DSN 示例 |
-|---------|------|------------|
-| `sqlite` | 默认，零配置 | 留空（自动使用 `.database/data.db`） |
-| `postgres` | 生产推荐 | `postgres://user:pass@localhost:5432/shadmin?sslmode=disable` |
-| `mysql` | 可选 | `user:pass@tcp(localhost:3306)/shadmin?parseTime=true&loc=Local` |
-
-开发启动仅执行增量 schema 同步；生产启动不迁移，见部署文档的迁移步骤。
-
-## 文件存储抽象
-
-通过 `STORAGE_TYPE` 切换存储后端：
-
-| STORAGE_TYPE | 说明 | 关键配置 |
-|-------------|------|---------|
-| `disk` | 默认，本地磁盘 | `STORAGE_BASE_PATH`（默认 `.uploads`） |
-| `minio` | MinIO / S3 兼容存储 | `S3_ADDRESS`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` |
-
-实现统一的 `domain.FileRepository` 接口，业务层无感切换。
-
-## 启动流程
-
-```
-main.go
-  → os.Exit(cmd.Run())             # Run 返回退出码，保证 defer 清理总会执行
-    → bootstrap.App()              # 加载并校验 .env、连接 DB、初始化 Casbin/存储/Gin（失败返回 error）
-    → api.SetupRoutes(app)         # 注册静态资源、Swagger、API 路由
-    → bootstrap.InitApiResources() # 扫描 Gin 路由写入 DB
-    → bootstrap.InitDefaultAdmin() # 初始化 admin 角色/用户和菜单
-    → bootstrap.InitCasbin(app)    # 构建初始快照并启动 generation 触发同步与低频轮询
-    → api.Run(app)                 # 监听配置的端口；收到 SIGINT/SIGTERM 时优雅停机
-```
-
-## 前后端协作
-
-- **生产模式**：前端构建产物 (`frontend/dist/`) 通过 `frontend/frontend.go` 以 Go embed 方式嵌入二进制，由后端统一提供 SPA + API 服务
-- **开发模式**：前端 Vite 开发服务器运行在 `:5173`，通过 `vite.config.ts` 中的 proxy 将 `/api` 请求代理到后端 `:55667`
-
-## 下一步
-
-- [开发指南](./development.zh.md) — 基于脚手架新增功能模块
-- [部署指南](./deployment.zh.md) — 生产环境部署
+生产环境通过 [frontend.go](../../frontend/frontend.go) 将 `frontend/dist/` 嵌入 Go 二进制。开发环境由 Vite 提供前端并代理 API 请求。构建和运行步骤见 [README](../../README.zh.md#-跑起来)，新增模块见[开发技能](../../.agents/skills/shadmin-dev/SKILL.md)。

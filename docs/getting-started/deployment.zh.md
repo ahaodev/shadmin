@@ -1,470 +1,153 @@
 # 部署指南
 
-本文档介绍如何将 Shadmin 部署到生产环境，涵盖 Docker 单容器、Docker Compose 编排及反向代理配置。
+本文介绍生产配置、迁移和持久化。开发环境请使用 [README](../../README.zh.md#-跑起来)。完整配置参考见 [.env.example](../../.env.example)。
 
-## 部署策略概览
+## 生产配置
 
-| 方式 | 适用场景 | 复杂度 |
-|------|----------|--------|
-| Docker 单容器 | 快速验证、小型团队 | ⭐ |
-| Docker Compose | 推荐的生产部署方式 | ⭐⭐ |
-| 裸机部署 | 已有基础设施、特殊需求 | ⭐⭐⭐ |
-
----
-
-## 生产环境构建
-
-### 手动构建
+首次部署时，复制模板为 `.env`，编辑后再启动服务：
 
 ```bash
-# 1. 构建前端
-cd frontend && pnpm install && pnpm run build && cd ..
-
-# 2. 构建后端（注入版本信息）
-VERSION=$(git describe --tags --always 2>/dev/null || echo "dev")
-COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-CGO_ENABLED=1 go build \
-  -ldflags="-s -w -X cmd.version=${VERSION} -X cmd.commit=${COMMIT} -X cmd.date=${DATE}" \
-  -o shadmin .
+cp .env.example .env
+chmod 600 .env
 ```
 
-> **注意：** 前端必须先构建（`pnpm run build`），因为 `frontend/frontend.go` 使用 Go embed 嵌入 `frontend/dist/` 目录。
+设置以下字段；每个密钥分别用 `openssl rand -hex 32` 生成：
 
-构建产物 `shadmin` 是一个自包含的单二进制文件，包含前端资源、后端逻辑和 Swagger 文档。
-
-### Docker 构建
-
-项目自带多阶段 Dockerfile：
-
-```bash
-docker build -t shadmin:latest .
+```dotenv
+APP_ENV=prod
+ACCESS_TOKEN_SECRET=replace-with-generated-access-secret
+REFRESH_TOKEN_SECRET=replace-with-generated-refresh-secret
+ADMIN_PASSWORD=replace-with-a-strong-admin-password
 ```
 
-构建过程：
-1. **Stage 1（Node）**：安装前端依赖并构建 `frontend/dist/`
-2. **Stage 2（Go）**：编译 Go 后端，嵌入前端资源
-3. **Stage 3（UPX）**：压缩二进制文件，减小镜像体积
-4. **Stage 4（Debian slim）**：最终运行镜像
+生产环境拒绝内置 JWT 密钥。种子密码仅在首次创建管理员时使用，不会重置已有账号。本地密码要求至少 8 个字符，且不超过 72 UTF-8 字节。
 
----
+启用 Google/GitHub 登录时，配置 provider 凭据和独立的 `IDENTITY_SESSION_SECRET`。`IDENTITY_BASE_URL` 应为后端公网 origin，`IDENTITY_REDIRECT_URL` 应为前端 `/oauth-callback` 地址。启用邮件邀请时，将 `INVITATION_ACCEPT_URL` 设为前端公网 `/accept-invitation` 地址，并配置 Resend 字段。
 
-## Docker 单容器部署
+环境变量优先于 `.env`。修改配置后需重启服务。
 
-最简单的部署方式，使用 SQLite 数据库：
+## Docker Compose
 
-```bash
-docker run -d \
-  --name shadmin \
-  -p 55667:55667 \
-  -v ./database:/app/.database \
-  -v ./uploads:/app/uploads \
-  -v ./logs:/app/logs \
-  -e STORAGE_BASE_PATH=/app/uploads \
-  -e APP_ENV=prod \
-  -e ACCESS_TOKEN_SECRET=your-strong-secret-here \
-  -e REFRESH_TOKEN_SECRET=your-strong-refresh-secret \
-  -e ADMIN_PASSWORD=your-admin-password \
-  shadmin:latest
-```
-
-部署后访问 `http://your-server:55667`。
-
----
-
-## 环境变量配置
-
-生产环境必须修改以下配置（通过 `.env` 文件或环境变量）：
-
-### 必改项
-
-| 变量 | 说明 | 生产建议 |
-|------|------|----------|
-| `APP_ENV` | 运行环境 | 设为 `prod` |
-| `ACCESS_TOKEN_SECRET` | Access Token 签名密钥 | 使用 `openssl rand -hex 32` 生成 |
-| `REFRESH_TOKEN_SECRET` | Refresh Token 签名密钥 | 使用 `openssl rand -hex 32` 生成 |
-| `ADMIN_PASSWORD` | 首次创建管理员的密码 | 使用至少 8 个字符且不超过 72 UTF-8 字节的强密码；已有管理员不重置 |
-
-`APP_ENV=prod` 会拒绝内置的默认 JWT 密钥。启用 Google/GitHub 登录时，还必须设置独立的 `IDENTITY_SESSION_SECRET`，不能使用内置默认值。首次创建生产管理员时会校验 `ADMIN_PASSWORD`；管理员已存在时，不再使用该种子密码。新建和修改本地密码统一要求至少 8 个字符且不超过 72 UTF-8 字节，长度不合法返回 HTTP 400。
-
-### 可选项
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `PORT` | `:55667` | 服务端口 |
-| `CONTEXT_TIMEOUT` | `60` | 请求超时（秒） |
-| `ACCESS_TOKEN_EXPIRY_MINUTE` | `180` | Access Token 有效期（分钟） |
-| `REFRESH_TOKEN_EXPIRY_MINUTE` | `1800` | Refresh Token 有效期（分钟） |
-| `DB_TYPE` | `sqlite` | 数据库类型：`sqlite` / `postgres` / `mysql` |
-| `DB_DSN` | 空（SQLite 默认 `.database/data.db`） | 数据库连接串 |
-| `STORAGE_TYPE` | `disk` | 存储类型：`disk` / `minio` |
-| `STORAGE_BASE_PATH` | `.uploads` | 本地存储路径 |
-| `CACHE_TYPE` | `mem` | 缓存后端：`mem` / `redis` |
-| `REDIS_ADDRESS` | 空 | Redis 地址；用于共享用户状态、Captcha 和 JWT 黑名单缓存 |
-| `REDIS_USERNAME` / `REDIS_PASSWORD` / `REDIS_DB` | 空 / 空 / `0` | Redis 连接配置 |
-| `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` | `3600` | generation 触发同步的兜底轮询间隔（秒），默认 1 小时 |
-
----
-
-## 数据库切换
-
-Shadmin 默认使用 SQLite，生产环境建议切换到 PostgreSQL 或 MySQL。开发环境仅增量建表，生产必须显式执行迁移。
-
-### 切换到 PostgreSQL
-
-```bash
-DB_TYPE=postgres
-DB_DSN=postgres://shadmin:your-password@localhost:5432/shadmin?sslmode=disable
-```
-
-### 切换到 MySQL
-
-```bash
-DB_TYPE=mysql
-DB_DSN=shadmin:your-password@tcp(localhost:3306)/shadmin?parseTime=true&loc=Local&charset=utf8mb4
-```
-
-> **重要：** MySQL 连接串必须包含 `parseTime=true`，否则时间字段解析会失败。
-
-仅开发环境首次启动会增量创建表和索引。如果从 SQLite 切换，数据不会自动迁移，需要手动导入。
-
----
-
-## Docker Compose 编排
-
-推荐的生产部署方式。根据需求选择配置方案：
-
-### 方案一：应用 + PostgreSQL（推荐起步方案）
+[Dockerfile](../../Dockerfile) 负责构建前端、生成 Go 代码并打包单个二进制。以下示例使用 SQLite 和持久化绑定目录。在仓库根目录创建 `compose.yaml`：
 
 ```yaml
-version: '3.8'
-
 services:
   shadmin:
     build: .
-    container_name: shadmin
+    image: shadmin:local
     restart: unless-stopped
     ports:
-      - "55667:55667"
-    environment:
-      - APP_ENV=prod
-      - DB_TYPE=postgres
-      - DB_DSN=postgres://shadmin:shadmin_password@postgres:5432/shadmin?sslmode=disable
-      - ACCESS_TOKEN_SECRET=your-strong-access-secret
-      - REFRESH_TOKEN_SECRET=your-strong-refresh-secret
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=your-admin-password
-      - ADMIN_EMAIL=admin@example.com
-      - STORAGE_TYPE=disk
-      - STORAGE_BASE_PATH=/app/uploads
+      - "127.0.0.1:55667:55667"
+    env_file: .env
     volumes:
-      - ./logs:/app/logs
-      - ./uploads:/app/uploads
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: shadmin-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: shadmin
-      POSTGRES_USER: shadmin
-      POSTGRES_PASSWORD: shadmin_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shadmin"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres_data:
+      - ./.database:/app/.database
+      - ./.uploads:/app/.uploads
+      - ./.logs:/app/.logs
 ```
 
-### 方案二：应用 + PostgreSQL + MinIO（完整生产方案）
-
-如果需要对象存储（如文件上传量大、多节点部署），添加 MinIO：
-
-```yaml
-version: '3.8'
-
-services:
-  shadmin:
-    build: .
-    # 或使用已构建的镜像：image: shadmin:latest
-    container_name: shadmin
-    restart: unless-stopped
-    ports:
-      - "55667:55667"
-    environment:
-      - APP_ENV=prod
-      - DB_TYPE=postgres
-      - DB_DSN=postgres://shadmin:shadmin_password@postgres:5432/shadmin?sslmode=disable
-      - ACCESS_TOKEN_SECRET=your-strong-access-secret
-      - REFRESH_TOKEN_SECRET=your-strong-refresh-secret
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=your-admin-password
-      - ADMIN_EMAIL=admin@example.com
-      - STORAGE_TYPE=minio
-      - S3_ADDRESS=minio:9000
-      - S3_ACCESS_KEY=minioadmin
-      - S3_SECRET_KEY=minioadmin123
-      - S3_BUCKET=shadmin
-    volumes:
-      - ./logs:/app/logs
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: shadmin-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: shadmin
-      POSTGRES_USER: shadmin
-      POSTGRES_PASSWORD: shadmin_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shadmin"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  minio:
-    image: minio/minio:latest
-    container_name: shadmin-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
-    ports:
-      - "9001:9001"   # MinIO 控制台
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres_data:
-  minio_data:
-```
-
-启动：
+镜像使用 UID/GID 1000 运行。在 Linux 主机上，先创建绑定目录并赋予该用户写权限：
 
 ```bash
+mkdir -p .database .uploads .logs
+sudo chown 1000:1000 .database .uploads .logs
+
+docker compose build
+docker compose run --rm shadmin ./shadmin-runner -migrate
 docker compose up -d
 ```
 
-> **MinIO 初始化：** 首次启动后需手动在 MinIO 控制台（`http://your-server:9001`）创建 `shadmin` 存储桶。
+迁移成功后再启动服务。通过 `docker compose logs --tail=100 shadmin` 检查启动日志。端口仅绑定本机，供反向代理访问；远程检查且尚未配置代理时，可通过 SSH 转发访问。
 
----
+## 数据库迁移
 
-## MinIO 对象存储配置
+生产启动不会修改表结构，即使 `DB_AUTO_MIGRATE=true`。非生产环境默认启用增量表结构同步，可设置 `DB_AUTO_MIGRATE=false` 关闭。
 
-将文件存储从本地磁盘切换到 MinIO / S3 兼容存储：
-
-```bash
-STORAGE_TYPE=minio
-S3_ADDRESS=your-minio-host:9000
-S3_ACCESS_KEY=your-access-key
-S3_SECRET_KEY=your-secret-key
-S3_BUCKET=shadmin
-S3_TOKEN=                          # 通常留空
-```
-
----
-
-## Redis 缓存配置
-
-Shadmin 支持 Redis 作为共享缓存后端，用于用户状态缓存、Captcha 验证码和 JWT 登出黑名单。通过 `CACHE_TYPE=redis` 和 `REDIS_ADDRESS` 启用；留空或设为 `mem` 时使用进程内缓存。
+`-migrate` 执行 Ent 增量表结构变更后退出，不启动服务。使用与服务进程一致的配置和数据库运行：
 
 ```bash
-CACHE_TYPE=redis
-REDIS_ADDRESS=127.0.0.1:6379
-REDIS_USERNAME=
-REDIS_PASSWORD=
-REDIS_DB=0
+# Docker Compose
+docker compose run --rm shadmin ./shadmin-runner -migrate
+
+# 原生二进制
+./shadmin -migrate
 ```
 
-- **Casbin**：策略是从 Ent 用户/角色/菜单/API 资源关系生成的进程内快照，不再写入 Casbin adapter。每次系统 API 请求先检查共享 DB 的授权 generation，变化时先重建本地快照再鉴权；Redis 本身不刷新其他进程的 Enforcer。
-- **Captcha、用户状态缓存和 JWT 黑名单**：Redis 可让这些缓存状态在多实例间共享。
+操作前备份，并在恢复的数据库副本上验证。删除或重命名列、转换已有数据需要经过审查的版本化 SQL 迁移，不能用 `-migrate` 替代。
 
-> 多实例必须连接同一权威数据库；授权 generation 提交后会通过 Ent trigger 唤醒当前实例同步，`AUTHZ_SYNC_POLL_INTERVAL_SECONDS` 仅控制后台恢复与预热（默认 1 小时），不决定撤权延迟。每次系统请求读取共享 generation，读取或重建失败返回 503；每个受保护系统请求因此增加一次数据库读取。
+升级流程：
 
----
+1. 构建新镜像或二进制。
+2. 停止应用，备份数据库、`.env` 和上传文件。SQLite 应在服务停止后备份整个 `.database/` 目录。
+3. 使用新版本执行所需迁移；失败时先排查解决，再启动服务。
+4. 启动新版本，验证健康接口、登录和角色访问。回退二进制不会撤销数据库变更。
 
-## Nginx 反向代理
+## 数据库、存储与缓存选择
 
-生产环境建议使用 Nginx 反向代理，提供 HTTPS、域名和静态资源缓存。
+### PostgreSQL 或 MySQL
 
-创建 `/etc/nginx/conf.d/shadmin.conf`：
+预先创建数据库，在 `.env` 设置 `DB_TYPE` 和 `DB_DSN`。使用外部数据库时，Docker 示例中的 `.database/` 挂载可移除。
+
+```dotenv
+# PostgreSQL
+DB_TYPE=postgres
+DB_DSN=postgres://shadmin:password@database-host:5432/shadmin?sslmode=require
+
+# 或 MySQL
+DB_TYPE=mysql
+DB_DSN=shadmin:password@tcp(database-host:3306)/shadmin?parseTime=true&loc=Local&charset=utf8mb4
+```
+
+数据库地址必须能从容器内访问；容器内的 `localhost` 指向容器自身。MySQL 需要 `parseTime=true`。切换数据库引擎不会自动迁移数据，需单独导入，并对目标数据库执行迁移步骤。
+
+### 文件存储
+
+磁盘存储默认使用 `.uploads/`。修改 `STORAGE_BASE_PATH` 时，同时调整挂载路径。使用 MinIO/S3 时，设置 `STORAGE_TYPE=minio` 和 [.env.example](../../.env.example) 中的 `S3_*` 字段。`S3_ADDRESS` 是不带 URL 协议头的 `host:port` 地址，`S3_SECURE` 决定是否使用 HTTPS。使用适合部署环境的 bucket 和凭据。
+
+| 容器路径         | 持久化内容                         |
+| ---------------- | ---------------------------------- |
+| `/app/.database` | SQLite 数据库，含 journal/WAL 文件 |
+| `/app/.uploads`  | 使用默认磁盘存储时的上传文件       |
+| `/app/.logs`     | 轮转应用日志                       |
+
+`.env` 和备份保存在镜像之外。使用外部服务时，单独保护并备份数据库和对象存储。
+
+### 多实例
+
+所有实例必须连接同一权威数据库，使用一致的 Token 密钥。上传文件使用共享对象存储；设置 `CACHE_TYPE=redis` 和 `REDIS_*` 字段，共享用户状态、Captcha 和 JWT 黑名单缓存。
+
+每个系统请求先读取数据库授权 generation，再使用本地 Casbin 快照。generation 变化时重建快照，读取或重建失败返回 HTTP 503。因此，每个受保护系统请求会增加一次数据库读取。本地提交触发器和 `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` 轮询仅负责快照预热与恢复，Redis 不会刷新其他实例的 Enforcer。
+
+## 反向代理与健康检查
+
+由反向代理终止 HTTPS，将请求转发到应用的本机端口。在已有 Nginx TLS server 块中，可配置：
 
 ```nginx
-server {
-    listen 80;
-    server_name admin.example.com;
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name admin.example.com;
-
-    ssl_certificate     /etc/nginx/ssl/admin.example.com.crt;
-    ssl_certificate_key /etc/nginx/ssl/admin.example.com.key;
-
-    # SSL 安全配置
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    # 请求大小限制（文件上传）
+location / {
+    proxy_pass http://127.0.0.1:55667;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
     client_max_body_size 50m;
-
-    location / {
-        proxy_pass http://127.0.0.1:55667;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # WebSocket 支持（如需要）
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-
-    # 静态资源缓存
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        proxy_pass http://127.0.0.1:55667;
-        proxy_cache_valid 200 30d;
-        add_header Cache-Control "public, max-age=2592000";
-    }
-
-    # Swagger 文档（生产环境可选择关闭）
-    # location /swagger/ {
-    #     return 404;
-    # }
 }
 ```
 
-```bash
-# 验证配置
-nginx -t
+按实际需求设置上传限制。如果 Swagger 不应公开，在代理层拦截 `/swagger/`。修改后检查并重载代理配置。
 
-# 重载
-nginx -s reload
-```
-
----
-
-## 数据持久化
-
-确保以下目录通过 Volume 持久化：
-
-| 路径 | 内容 | Docker Volume |
-|------|------|--------------|
-| `.database/` | SQLite 数据库文件 | `-v ./database:/app/.database` |
-| `uploads/` | 上传的文件（仅 `STORAGE_TYPE=disk` 时） | `-v ./uploads:/app/uploads` |
-| `logs/` | 应用日志 | `-v ./logs:/app/logs` |
-
-> **提示：** 使用 PostgreSQL/MySQL 时，不需要挂载 `.database/` 目录。使用 MinIO 时，不需要挂载 `uploads/` 目录。
-
----
-
-## 构建时版本注入
-
-Shadmin 支持通过 Go 的 `-ldflags` 在编译时注入版本信息：
+在宿主机或监控服务中执行健康检查：
 
 ```bash
-go build -ldflags="-s -w \
-  -X cmd.version=v1.0.0 \
-  -X cmd.commit=$(git rev-parse --short HEAD) \
-  -X cmd.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  -o shadmin .
+curl --fail http://127.0.0.1:55667/api/v1/health
 ```
 
-| 变量 | 说明 |
-|------|------|
-| `cmd.version` | 版本号（如 `v1.0.0`，或 `git describe --tags` 的输出） |
-| `cmd.commit` | Git commit SHA 短哈希 |
-| `cmd.date` | 构建日期（ISO 8601 格式） |
+该接口仅说明 HTTP 服务能响应，不检测数据库就绪状态或授权功能。运行镜像未安装 `curl`，容器内检查需使用包含探测客户端的派生镜像。登录接口使用 POST，不能作为 GET 健康检查地址。
 
-启动时会打印：`starting - Version: v1.0.0, Commit: abc1234, Built: 2024-01-01T00:00:00Z`
+## 原生二进制
 
-在 CI/CD 流水线中，通常从环境变量或 Git tag 自动获取这些值。
-
----
-
-## 健康检查
-
-为 Docker 容器添加健康检查：
-
-```dockerfile
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD curl -f http://localhost:55667/api/v1/auth/login || exit 1
-```
-
-在 Docker Compose 中：
-
-```yaml
-services:
-  shadmin:
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:55667/api/v1/auth/login"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-```
-
----
-
-## 安全加固
-
-### Token Secret
-
-生产环境务必替换默认的 Token Secret：
+按 [README](../../README.zh.md#-跑起来) 构建前端并生成 Ent 后，在仓库根目录执行：
 
 ```bash
-# 生成强密钥
-openssl rand -hex 32
-
-# 设置环境变量
-ACCESS_TOKEN_SECRET=生成的密钥1
-REFRESH_TOKEN_SECRET=生成的密钥2
+CGO_ENABLED=1 go build -o shadmin .
 ```
 
-### 最小权限运行
-
-在 Dockerfile 中添加非 root 用户：
-
-```dockerfile
-RUN useradd -r -s /bin/false shadmin
-USER shadmin
-```
-
-### 防火墙
-
-仅暴露必要端口：
-
-```bash
-# 仅允许 Nginx 访问应用端口
-ufw allow 80/tcp
-ufw allow 443/tcp
-# 不要直接暴露 55667 端口到公网
-```
-
-### Swagger 文档
-
-生产环境建议通过 Nginx 禁止访问 `/swagger/` 路径，或在代码中根据 `APP_ENV` 条件注册 Swagger 路由。
+在目标主机的工作目录放置 `.env`，赋予服务用户所配置数据与日志目录的写权限，执行 `./shadmin -migrate`，再通过进程管理器启动 `./shadmin`。二进制嵌入了前端和 Swagger，但仍需要运行时库和持久化数据。迁移、备份和反向代理步骤与 Docker 部署一致。

@@ -1,470 +1,153 @@
 # Deployment Guide
 
-This document covers deploying Shadmin to production, including single Docker containers, Docker Compose orchestration, and reverse proxy configuration.
+This guide covers production configuration, migrations and persistence. For local development, use the [README](../../README.md#-get-running). The complete configuration reference is [.env.example](../../.env.example).
 
-## Deployment Strategy Overview
+## Production configuration
 
-| Method | Use Case | Complexity |
-|--------|----------|-----------|
-| Single Docker Container | Quick validation, small teams | ⭐ |
-| Docker Compose | Recommended for production | ⭐⭐ |
-| Bare Metal | Existing infrastructure, special requirements | ⭐⭐⭐ |
-
----
-
-## Production Build
-
-### Manual Build
+On a new deployment, copy the template to `.env` and edit it before starting:
 
 ```bash
-# 1. Build the frontend
-cd frontend && pnpm install && pnpm run build && cd ..
-
-# 2. Build the backend (with version injection)
-VERSION=$(git describe --tags --always 2>/dev/null || echo "dev")
-COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-CGO_ENABLED=1 go build \
-  -ldflags="-s -w -X cmd.version=${VERSION} -X cmd.commit=${COMMIT} -X cmd.date=${DATE}" \
-  -o shadmin .
+cp .env.example .env
+chmod 600 .env
 ```
 
-> **Note:** The frontend must be built first (`pnpm run build`), because `frontend/frontend.go` uses Go embed to include `frontend/dist/`.
+Set these values; generate each secret independently with `openssl rand -hex 32`:
 
-The build output `shadmin` is a self-contained single binary that includes frontend assets, backend logic, and Swagger documentation.
-
-### Docker Build
-
-The project includes a multi-stage Dockerfile:
-
-```bash
-docker build -t shadmin:latest .
+```dotenv
+APP_ENV=prod
+ACCESS_TOKEN_SECRET=replace-with-generated-access-secret
+REFRESH_TOKEN_SECRET=replace-with-generated-refresh-secret
+ADMIN_PASSWORD=replace-with-a-strong-admin-password
 ```
 
-Build stages:
-1. **Stage 1 (Node)**: Install frontend dependencies and build `frontend/dist/`
-2. **Stage 2 (Go)**: Compile Go backend with embedded frontend assets
-3. **Stage 3 (UPX)**: Compress the binary to reduce image size
-4. **Stage 4 (Debian slim)**: Final runtime image
+Production rejects built-in JWT secrets. The seed password is used only when creating the first administrator; it does not reset an existing account. Local passwords must contain at least 8 characters and at most 72 UTF-8 bytes.
 
----
+For Google/GitHub login, configure provider credentials and an independent `IDENTITY_SESSION_SECRET`. Set `IDENTITY_BASE_URL` to the public backend origin and `IDENTITY_REDIRECT_URL` to the frontend `/oauth-callback` URL. When using email invitations, set `INVITATION_ACCEPT_URL` to the public frontend `/accept-invitation` URL and configure the Resend fields.
 
-## Single Docker Container Deployment
+Environment variables override `.env`. Changing configuration requires restarting the service.
 
-The simplest deployment method, using SQLite:
+## Docker Compose
 
-```bash
-docker run -d \
-  --name shadmin \
-  -p 55667:55667 \
-  -v ./database:/app/.database \
-  -v ./uploads:/app/uploads \
-  -v ./logs:/app/logs \
-  -e STORAGE_BASE_PATH=/app/uploads \
-  -e APP_ENV=prod \
-  -e ACCESS_TOKEN_SECRET=your-strong-secret-here \
-  -e REFRESH_TOKEN_SECRET=your-strong-refresh-secret \
-  -e ADMIN_PASSWORD=your-admin-password \
-  shadmin:latest
-```
-
-Access the application at `http://your-server:55667`.
-
----
-
-## Environment Variable Configuration
-
-The following settings must be changed for production (via `.env` file or environment variables):
-
-### Required Changes
-
-| Variable | Description | Production Recommendation |
-|----------|-------------|--------------------------|
-| `APP_ENV` | Runtime environment | Set to `prod` |
-| `ACCESS_TOKEN_SECRET` | Access token signing key | Generate with `openssl rand -hex 32` |
-| `REFRESH_TOKEN_SECRET` | Refresh token signing key | Generate with `openssl rand -hex 32` |
-| `ADMIN_PASSWORD` | Initial administrator password | Use a strong password of at least 8 characters and at most 72 UTF-8 bytes; existing passwords are preserved |
-
-`APP_ENV=prod` rejects built-in default JWT secrets. When Google/GitHub login is enabled, set a separate `IDENTITY_SESSION_SECRET` instead of its built-in default. `ADMIN_PASSWORD` is validated when creating the first production administrator and is not used to reset an existing administrator. Newly set local passwords must contain at least 8 characters and at most 72 UTF-8 bytes; invalid lengths return HTTP 400.
-
-### Optional Settings
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `:55667` | Server port |
-| `CONTEXT_TIMEOUT` | `60` | Request timeout (seconds) |
-| `ACCESS_TOKEN_EXPIRY_MINUTE` | `180` | Access token expiry (minutes) |
-| `REFRESH_TOKEN_EXPIRY_MINUTE` | `1800` | Refresh token expiry (minutes) |
-| `DB_TYPE` | `sqlite` | Database type: `sqlite` / `postgres` / `mysql` |
-| `DB_DSN` | empty (SQLite defaults to `.database/data.db`) | Database connection string |
-| `STORAGE_TYPE` | `disk` | Storage type: `disk` / `minio` |
-| `STORAGE_BASE_PATH` | `.uploads` | Local storage path |
-| `CACHE_TYPE` | `mem` | Cache backend: `mem` / `redis` |
-| `REDIS_ADDRESS` | empty | Redis address for shared user-status, captcha, and JWT blacklist cache |
-| `REDIS_USERNAME` / `REDIS_PASSWORD` / `REDIS_DB` | empty / empty / `0` | Redis connection settings |
-| `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` | `3600` | Fallback authorization-generation poll interval (seconds); default 1 hour |
-
----
-
-## Database Switching
-
-Shadmin defaults to SQLite. For production, switching to PostgreSQL or MySQL is recommended. Only development startup applies additive schema changes. Production requires an explicit migration step.
-
-### Switch to PostgreSQL
-
-```bash
-DB_TYPE=postgres
-DB_DSN=postgres://shadmin:your-password@localhost:5432/shadmin?sslmode=disable
-```
-
-### Switch to MySQL
-
-```bash
-DB_TYPE=mysql
-DB_DSN=shadmin:your-password@tcp(localhost:3306)/shadmin?parseTime=true&loc=Local&charset=utf8mb4
-```
-
-> **Important:** The MySQL connection string must include `parseTime=true`, otherwise time field parsing will fail.
-
-On first startup, Ent will automatically create all tables and indexes. When switching from SQLite, data is not automatically migrated — you'll need to import it manually.
-
----
-
-## Docker Compose Orchestration
-
-The recommended production deployment method. Choose a configuration based on your needs:
-
-### Option 1: App + PostgreSQL (Recommended Starting Point)
+The [Dockerfile](../../Dockerfile) builds the frontend, generates Go code and packages a single binary. The following example runs SQLite with persistent bind mounts. Create `compose.yaml` at the repository root:
 
 ```yaml
-version: '3.8'
-
 services:
   shadmin:
     build: .
-    container_name: shadmin
+    image: shadmin:local
     restart: unless-stopped
     ports:
-      - "55667:55667"
-    environment:
-      - APP_ENV=prod
-      - DB_TYPE=postgres
-      - DB_DSN=postgres://shadmin:shadmin_password@postgres:5432/shadmin?sslmode=disable
-      - ACCESS_TOKEN_SECRET=your-strong-access-secret
-      - REFRESH_TOKEN_SECRET=your-strong-refresh-secret
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=your-admin-password
-      - ADMIN_EMAIL=admin@example.com
-      - STORAGE_TYPE=disk
-      - STORAGE_BASE_PATH=/app/uploads
+      - "127.0.0.1:55667:55667"
+    env_file: .env
     volumes:
-      - ./logs:/app/logs
-      - ./uploads:/app/uploads
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: shadmin-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: shadmin
-      POSTGRES_USER: shadmin
-      POSTGRES_PASSWORD: shadmin_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shadmin"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres_data:
+      - ./.database:/app/.database
+      - ./.uploads:/app/.uploads
+      - ./.logs:/app/.logs
 ```
 
-### Option 2: App + PostgreSQL + MinIO (Full Production Setup)
-
-If you need object storage (e.g., large file uploads, multi-node deployments), add MinIO:
-
-```yaml
-version: '3.8'
-
-services:
-  shadmin:
-    build: .
-    # Or use a pre-built image: image: shadmin:latest
-    container_name: shadmin
-    restart: unless-stopped
-    ports:
-      - "55667:55667"
-    environment:
-      - APP_ENV=prod
-      - DB_TYPE=postgres
-      - DB_DSN=postgres://shadmin:shadmin_password@postgres:5432/shadmin?sslmode=disable
-      - ACCESS_TOKEN_SECRET=your-strong-access-secret
-      - REFRESH_TOKEN_SECRET=your-strong-refresh-secret
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=your-admin-password
-      - ADMIN_EMAIL=admin@example.com
-      - STORAGE_TYPE=minio
-      - S3_ADDRESS=minio:9000
-      - S3_ACCESS_KEY=minioadmin
-      - S3_SECRET_KEY=minioadmin123
-      - S3_BUCKET=shadmin
-    volumes:
-      - ./logs:/app/logs
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: shadmin-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: shadmin
-      POSTGRES_USER: shadmin
-      POSTGRES_PASSWORD: shadmin_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shadmin"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  minio:
-    image: minio/minio:latest
-    container_name: shadmin-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
-    ports:
-      - "9001:9001"   # MinIO Console
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres_data:
-  minio_data:
-```
-
-Start the services:
+The image runs as UID/GID 1000. On a Linux host, prepare the bind mounts so that user can write to them:
 
 ```bash
+mkdir -p .database .uploads .logs
+sudo chown 1000:1000 .database .uploads .logs
+
+docker compose build
+docker compose run --rm shadmin ./shadmin-runner -migrate
 docker compose up -d
 ```
 
-> **MinIO Initialization:** After first startup, you'll need to manually create the `shadmin` bucket in the MinIO Console (`http://your-server:9001`).
+Migration must succeed before starting the service. Inspect startup with `docker compose logs --tail=100 shadmin`. The port is bound to localhost for access through a reverse proxy; use SSH forwarding for remote administrative checks before the proxy is configured.
 
----
+## Database migrations
 
-## MinIO Object Storage Configuration
+Production startup never changes the schema, even if `DB_AUTO_MIGRATE=true`. Outside production, automatic additive schema synchronization is enabled by default and can be disabled with `DB_AUTO_MIGRATE=false`.
 
-Switch file storage from local disk to MinIO / S3-compatible storage:
-
-```bash
-STORAGE_TYPE=minio
-S3_ADDRESS=your-minio-host:9000
-S3_ACCESS_KEY=your-access-key
-S3_SECRET_KEY=your-secret-key
-S3_BUCKET=shadmin
-S3_TOKEN=                          # Usually leave empty
-```
-
----
-
-## Redis Cache Configuration
-
-Shadmin optionally uses Redis as a shared cache for user-status state, captcha challenges, and the JWT logout blacklist. Configure it with `CACHE_TYPE=redis` and `REDIS_ADDRESS`; `CACHE_TYPE=mem` uses process-local memory.
+`-migrate` applies additive Ent schema changes and exits without starting the server. Run it with the same configuration and database as the serving process:
 
 ```bash
-CACHE_TYPE=redis
-REDIS_ADDRESS=127.0.0.1:6379
-REDIS_USERNAME=
-REDIS_PASSWORD=
-REDIS_DB=0
+# Docker Compose
+docker compose run --rm shadmin ./shadmin-runner -migrate
+
+# Native binary
+./shadmin -migrate
 ```
 
-- **Casbin**: policies are rebuilt from the Ent authorization relations into a process-local in-memory snapshot. Every system API request checks the shared database generation and refreshes a changed snapshot before authorization; Redis is not used to persist or broadcast Casbin policies.
-- **Captcha, user-status cache, and JWT blacklist**: Redis allows these cache values to be shared between instances.
+Back up first and test changes against a restored copy. Removing/renaming columns or transforming existing data requires reviewed versioned SQL migrations; `-migrate` does not replace those steps.
 
-> Multi-instance deployments must use the same authoritative database. A committed generation change triggers the local sync through the Ent trigger; `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` controls background recovery/warming (default: 1 hour), not the revocation delay. Each system request reads the shared generation; failure to read/rebuild returns 503. This adds a database read per protected system request.
+For an upgrade:
 
----
+1. Build the new image or binary.
+2. Stop the application and back up the database, `.env` and uploaded files. For SQLite, back up the whole `.database/` directory while the service is stopped.
+3. Apply the required migrations using the new version. If they fail, resolve the failure before starting the service.
+4. Start the new version and verify health, login and role access. A binary rollback does not reverse database changes.
 
-## Nginx Reverse Proxy
+## Database, storage and cache choices
 
-For production, using Nginx as a reverse proxy is recommended to provide HTTPS, domain names, and static asset caching.
+### PostgreSQL or MySQL
 
-Create `/etc/nginx/conf.d/shadmin.conf`:
+Provision the database and set `DB_TYPE` and `DB_DSN` in `.env`. The Docker example needs no `.database/` mount when using an external database.
+
+```dotenv
+# PostgreSQL
+DB_TYPE=postgres
+DB_DSN=postgres://shadmin:password@database-host:5432/shadmin?sslmode=require
+
+# Or MySQL
+DB_TYPE=mysql
+DB_DSN=shadmin:password@tcp(database-host:3306)/shadmin?parseTime=true&loc=Local&charset=utf8mb4
+```
+
+Use a database host reachable from the container; `localhost` inside the container refers to the container itself. MySQL needs `parseTime=true`. Changing database engines does not transfer existing data; import it separately and run the migration step against the target database.
+
+### File storage
+
+Disk storage defaults to `.uploads/`. If you change `STORAGE_BASE_PATH`, update the corresponding mount. For MinIO/S3, set `STORAGE_TYPE=minio` and the `S3_*` fields in [.env.example](../../.env.example). `S3_ADDRESS` is a `host:port` endpoint without a URL scheme; `S3_SECURE` selects HTTPS. Use a bucket and credentials appropriate for the deployment.
+
+| Container path   | Persist                                      |
+| ---------------- | -------------------------------------------- |
+| `/app/.database` | SQLite database, including journal/WAL files |
+| `/app/.uploads`  | Files when using default disk storage        |
+| `/app/.logs`     | Rotating application logs                    |
+
+Keep `.env` and backups outside the image. Protect and back up database/object storage independently when using external services.
+
+### Multiple instances
+
+All instances must use the same authoritative database and consistent token secrets. Use shared object storage for uploads and `CACHE_TYPE=redis` with the `REDIS_*` fields to share user-state, Captcha and JWT blacklist caches.
+
+Each system request checks the database authorization generation before using its local Casbin snapshot. A changed generation triggers a rebuild; read/build failures return HTTP 503. Each protected system request therefore adds a database read. Local commit triggers and `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` polling only warm and recover snapshots; Redis does not refresh other instances' Enforcers.
+
+## Reverse proxy and health
+
+Terminate HTTPS at the reverse proxy and forward requests to the local application port. For an existing Nginx TLS server block, the application location can be:
 
 ```nginx
-server {
-    listen 80;
-    server_name admin.example.com;
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name admin.example.com;
-
-    ssl_certificate     /etc/nginx/ssl/admin.example.com.crt;
-    ssl_certificate_key /etc/nginx/ssl/admin.example.com.key;
-
-    # SSL security settings
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    # Request size limit (file uploads)
+location / {
+    proxy_pass http://127.0.0.1:55667;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
     client_max_body_size 50m;
-
-    location / {
-        proxy_pass http://127.0.0.1:55667;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # WebSocket support (if needed)
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-
-    # Static asset caching
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        proxy_pass http://127.0.0.1:55667;
-        proxy_cache_valid 200 30d;
-        add_header Cache-Control "public, max-age=2592000";
-    }
-
-    # Swagger docs (consider disabling in production)
-    # location /swagger/ {
-    #     return 404;
-    # }
 }
 ```
 
-```bash
-# Verify configuration
-nginx -t
+Set the upload limit for your use case. If Swagger should be private, block `/swagger/` at the proxy. Check and reload your proxy configuration after changes.
 
-# Reload
-nginx -s reload
-```
-
----
-
-## Data Persistence
-
-Ensure the following directories are persisted via volumes:
-
-| Path | Contents | Docker Volume |
-|------|----------|--------------|
-| `.database/` | SQLite database file | `-v ./database:/app/.database` |
-| `uploads/` | Uploaded files (`STORAGE_TYPE=disk` only) | `-v ./uploads:/app/uploads` |
-| `logs/` | Application logs | `-v ./logs:/app/logs` |
-
-> **Tip:** When using PostgreSQL/MySQL, the `.database/` mount is not needed. When using MinIO, the `uploads/` mount is not needed.
-
----
-
-## Build-time Version Injection
-
-Shadmin supports injecting version information at compile time via Go's `-ldflags`:
+Run the health probe from the host or your monitoring service:
 
 ```bash
-go build -ldflags="-s -w \
-  -X cmd.version=v1.0.0 \
-  -X cmd.commit=$(git rev-parse --short HEAD) \
-  -X cmd.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  -o shadmin .
+curl --fail http://127.0.0.1:55667/api/v1/health
 ```
 
-| Variable | Description |
-|----------|-------------|
-| `cmd.version` | Version number (e.g., `v1.0.0`, or output of `git describe --tags`) |
-| `cmd.commit` | Git commit SHA short hash |
-| `cmd.date` | Build date (ISO 8601 format) |
+This endpoint reports that the HTTP service is responding; it does not test database readiness or authorization. The runtime image does not include `curl`, so an in-container probe needs a derived image containing a probe client. Login is a POST endpoint and must not be used as a GET health probe.
 
-On startup it prints: `starting - Version: v1.0.0, Commit: abc1234, Built: 2024-01-01T00:00:00Z`
+## Native binary
 
-In CI/CD pipelines, these values are typically obtained automatically from environment variables or Git tags.
-
----
-
-## Health Checks
-
-Add health checks to the Docker container:
-
-```dockerfile
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD curl -f http://localhost:55667/api/v1/auth/login || exit 1
-```
-
-In Docker Compose:
-
-```yaml
-services:
-  shadmin:
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:55667/api/v1/auth/login"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-```
-
----
-
-## Security Hardening
-
-### Token Secrets
-
-Always replace default token secrets in production:
+Build the frontend and generate Ent as described in the [README](../../README.md#-get-running), then build from the repository root:
 
 ```bash
-# Generate strong keys
-openssl rand -hex 32
-
-# Set environment variables
-ACCESS_TOKEN_SECRET=generated-key-1
-REFRESH_TOKEN_SECRET=generated-key-2
+CGO_ENABLED=1 go build -o shadmin .
 ```
 
-### Least Privilege Execution
-
-Add a non-root user in the Dockerfile:
-
-```dockerfile
-RUN useradd -r -s /bin/false shadmin
-USER shadmin
-```
-
-### Firewall
-
-Only expose necessary ports:
-
-```bash
-# Only allow Nginx to access the app port
-ufw allow 80/tcp
-ufw allow 443/tcp
-# Do not expose port 55667 directly to the public internet
-```
-
-### Swagger Documentation
-
-In production, consider blocking access to `/swagger/` via Nginx, or conditionally registering Swagger routes based on `APP_ENV` in the code.
+On the target host, place `.env` in the working directory, grant the service user write access to the configured data/log directories, run `./shadmin -migrate`, and start `./shadmin` under your process supervisor. The binary embeds the frontend and Swagger; it still needs its runtime libraries and persistent data. Apply the same migration, backup and proxy steps as for Docker.

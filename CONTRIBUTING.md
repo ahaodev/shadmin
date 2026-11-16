@@ -70,6 +70,6 @@ User-facing docs live in `docs/` and are bilingual: if you change documented beh
 
 ## Where to start
 
-- [Quick start](./docs/getting-started/quickstart.en.md) — get it running.
+- [README](./README.md#-get-running) — get it running.
 - [Architecture](./docs/getting-started/architecture.en.md) — the layering and the boundaries.
-- [Development guide](./docs/getting-started/development.en.md) — build a full-stack CRUD module end to end.
+- [Development standards](./.agents/skills/shadmin-dev/SKILL.md) — workflow, backend/frontend patterns and permissions.

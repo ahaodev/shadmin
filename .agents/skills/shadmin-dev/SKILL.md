@@ -90,4 +90,4 @@ Full command list: `../..`.
 
 ## References
 - `references/backend.md`, `references/frontend.md` — patterns and conventions (read the one you need).
-- `docs/getting-started/{architecture,development}.{en,zh}.md` — walkthrough and a full CRUD example.
+- `docs/getting-started/architecture.{en,zh}.md` — architecture overview.

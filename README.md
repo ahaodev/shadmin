@@ -35,32 +35,38 @@
 
 ### Prerequisites
 
-- Go 1.27+
-- Node.js 22+ & pnpm 11+
+- Go: use the version declared in [go.mod](go.mod); SQLite requires a C compiler (`CGO_ENABLED=1`).
+- Node.js and pnpm: see `engines` and the pinned `packageManager` in [frontend/package.json](frontend/package.json).
 
 ### Run
 
 ```bash
-# Clone the repository
 git clone https://github.com/ahaodev/shadmin.git
 cd shadmin
 
-go install github.com/swaggo/swag/cmd/swag@latest
-go install entgo.io/ent/cmd/ent@latest
-
-# Install & build frontend
-cd frontend && pnpm install && pnpm build
-
-# Start backend (from project root)
-# Generates Ent code, embeds frontend/dist/, listens on :55667
-# .env auto‑generated on first run
+# Build the assets embedded in the backend.
+cd frontend
+pnpm install --frozen-lockfile
+pnpm build
 cd ..
-swag init
-go run -mod=mod entgo.io/ent/cmd/ent generate ./ent/schema
+
+# Generate the Ent code, which is not committed.
+go generate ./ent
 go run .
 ```
 
-> **Default login:** `admin` / `123`
+Open <http://localhost:55667> and sign in with `admin` / `123`. On a fresh development setup, the server creates `.env`, the SQLite database, and seed data. Configuration is described in [.env.example](.env.example); change the default credentials before deployment.
+
+For frontend development, keep the backend running and run `pnpm dev` in `frontend/`. Open <http://localhost:5173>; Vite proxies API requests to the backend. If you change the backend port, update the proxy in [vite.config.ts](frontend/vite.config.ts).
+
+Swagger is available at <http://localhost:55667/swagger/index.html>. To regenerate it after changing API annotations, install the version used by the [Dockerfile](Dockerfile), then run `go generate ./...`:
+
+```bash
+go install github.com/swaggo/swag/cmd/swag@v1.16.6
+go generate ./...
+```
+
+For production builds, Docker, migrations and persistence, see the [deployment guide](docs/getting-started/deployment.en.md).
 
 ## 🔐 Auth & Permissions
 
@@ -96,9 +102,8 @@ shadmin/
 
 ## 📚 Documentation
 
+- [Development standards](.agents/skills/shadmin-dev/SKILL.md)
 - [Architecture (EN)](docs/getting-started/architecture.en.md) · [架构 (中文)](docs/getting-started/architecture.zh.md)
-- [Quick Start (EN)](docs/getting-started/quickstart.en.md) · [快速开始 (中文)](docs/getting-started/quickstart.zh.md)
-- [Development (EN)](docs/getting-started/development.en.md) · [开发指南 (中文)](docs/getting-started/development.zh.md)
 - [Deployment (EN)](docs/getting-started/deployment.en.md) · [部署 (中文)](docs/getting-started/deployment.zh.md)
 - [CLI for AI agents](cli/README.md) · [面向 AI Agent 的 CLI(中文)](cli/README.zh.md)
 ## 📄 License

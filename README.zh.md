@@ -8,7 +8,7 @@
 
 ![Shadmin 展示](docs/images/showcase-dark.jpg)
 
-[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -35,32 +35,38 @@
 
 ### 环境要求
 
-- Go 1.27+
-- Node.js 22+ & pnpm 11+
+- Go：使用 [go.mod](go.mod) 声明的版本；SQLite 需要 C 编译器（`CGO_ENABLED=1`）。
+- Node.js 和 pnpm：见 [frontend/package.json](frontend/package.json) 的 `engines` 和固定的 `packageManager` 版本。
 
 ### 运行
 
 ```bash
-# Clone the repository
 git clone https://github.com/ahaodev/shadmin.git
 cd shadmin
 
-go install github.com/swaggo/swag/cmd/swag@latest
-go install entgo.io/ent/cmd/ent@latest
-
-# Install & build frontend
-cd frontend && pnpm install && pnpm build
-
-# Start backend (from project root)
-# Generates Ent code, embeds frontend/dist/, listens on :55667
-# .env auto‑generated on first run
+# 构建嵌入后端的前端资源。
+cd frontend
+pnpm install --frozen-lockfile
+pnpm build
 cd ..
-swag init
-go run -mod=mod entgo.io/ent/cmd/ent generate ./ent/schema
+
+# 生成未提交到版本控制的 Ent 代码。
+go generate ./ent
 go run .
 ```
 
-> **默认账号：** `admin` / `123`
+打开 <http://localhost:55667>，使用 `admin` / `123` 登录。全新开发环境下，服务会创建 `.env`、SQLite 数据库和种子数据。配置说明见 [.env.example](.env.example)；部署前请修改默认凭据。
+
+开发前端时，保持后端运行，在 `frontend/` 中执行 `pnpm dev`，访问 <http://localhost:5173>。Vite 会将 API 请求代理到后端；修改后端端口时，同时调整 [vite.config.ts](frontend/vite.config.ts) 中的代理地址。
+
+Swagger 地址为 <http://localhost:55667/swagger/index.html>。修改 API 注解后，安装与 [Dockerfile](Dockerfile) 一致的工具版本，再执行 `go generate ./...`：
+
+```bash
+go install github.com/swaggo/swag/cmd/swag@v1.16.6
+go generate ./...
+```
+
+生产构建、Docker、迁移和持久化见[部署指南](docs/getting-started/deployment.zh.md)。
 
 ## 🔐 认证与权限
 
@@ -97,8 +103,6 @@ shadmin/
 ## 📚 文档
 
 - [架构 (中文)](docs/getting-started/architecture.zh.md) · [Architecture (EN)](docs/getting-started/architecture.en.md)
-- [快速开始 (中文)](docs/getting-started/quickstart.zh.md) · [Quick Start (EN)](docs/getting-started/quickstart.en.md)
-- [开发指南 (中文)](docs/getting-started/development.zh.md) · [Development (EN)](docs/getting-started/development.en.md)
 - [部署 (中文)](docs/getting-started/deployment.zh.md) · [Deployment (EN)](docs/getting-started/deployment.en.md)
 - [面向 AI Agent 的 CLI(中文)](cli/README.zh.md) · [CLI for AI agents（EN)](cli/README.md)
 ## 📄 许可证

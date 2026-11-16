@@ -1,318 +1,93 @@
 # Architecture Overview
 
-This document helps you understand Shadmin's overall design so you can quickly navigate the codebase, understand the request lifecycle, and extend functionality.
+This overview explains where code lives and how requests, sessions and authorization fit together. For implementation rules, use the [development skill](../../.agents/skills/shadmin-dev/SKILL.md) and its backend/frontend references.
 
-## Tech Stack
+## Boundaries and wiring
 
-| Layer | Technology                                                     |
-|-------|----------------------------------------------------------------|
-| Backend Framework | Go 1.27 + Gin                                                  |
-| Database ORM | Ent (supports SQLite / PostgreSQL / MySQL)                     |
-| Authentication | JWT (access + refresh tokens)                                  |
-| Authorization | Casbin RBAC (path + method based policies)                     |
-| API Documentation | Swagger / OpenAPI (auto-generated via swaggo)                  |
-| Logging | log/slog + lumberjack                                       |
-| Frontend Framework | React 19 + TypeScript                                          |
-| Build Tool | Vite + SWC                                                     |
-| UI Components | Shadcn UI (Radix UI + Tailwind CSS v4)                         |
-| Routing | TanStack Router (file-based routing, automatic code splitting) |
-| Data Layer | TanStack Query + Axios                                         |
-| State Management | Zustand                                                        |
-| Forms | React Hook Form + Zod                                          |
-
-## System Architecture Diagram
+The backend uses Gin for HTTP, Ent for persistence and Casbin for authorization. Domain contracts keep frameworks and infrastructure outside business logic.
 
 ```mermaid
-graph TB
-    User[User] --> FE[Frontend React SPA]
-    FE -->|HTTP /api/v1/*| GW[Gin Router]
-    GW --> MW[Middleware Chain]
-    MW -->|JWT Validation| AUTH[JWT Auth]
-    MW -->|Permission Check| CASBIN[Casbin RBAC]
-    MW --> CTRL[Controller]
-    CTRL --> UC[Usecase Layer]
-    UC --> REPO[Repository Layer]
-    REPO --> ENT[Ent ORM]
-    ENT --> DB[(SQLite / PostgreSQL / MySQL)]
-    UC --> FS[File Storage]
-    FS --> DISK[Local Disk]
-    FS --> MINIO[MinIO / S3]
+flowchart LR
+    Route --> Controller
+    Controller --> Usecase
+    Usecase --> Contracts[Domain interfaces]
+    Repository -. implements .-> Contracts
+    Repository --> Ent --> DB[(Database)]
+    Infrastructure -. implements .-> Contracts
 ```
 
-## Directory Structure
+Arrows show dependencies. At runtime, the usecase calls an injected implementation through its domain interface.
 
-```
-shadmin/
-├── main.go              # Entry point, calls cmd.Run()
-├── cmd/                 # Application startup & version management
-├── bootstrap/           # Bootstrap wiring: DB, Casbin, storage, seed data, usecase wiring (usecases.go)
-├── api/
-│   ├── controller/      # HTTP controllers (request parsing + response, no business logic)
-│   ├── route/           # Route registration + middleware mounting + controller factory
-│   └── middleware/      # JWT auth, Casbin authorization, logging
-├── domain/              # Domain layer: entities, DTOs, interface contracts, error definitions, response wrappers
-├── usecase/             # Usecase layer: business orchestration, validation, timeout control
-├── repository/          # Repository layer: Ent data access + file storage implementations
-├── ent/
-│   └── schema/          # Ent database schema definitions
-├── internal/            # Internal utilities: Casbin manager, token service, login security
-├── pkg/                 # Shared utilities: logging, etc.
-├── docs/                # Swagger generated files + architecture docs
-├── frontend/                 # React frontend
-│   ├── src/
-│   │   ├── routes/      # File-based routing (TanStack Router)
-│   │   ├── features/    # Feature modules (pages + components + hooks + schema)
-│   │   ├── services/    # API call wrappers
-│   │   ├── stores/      # Zustand state management
-│   │   ├── components/  # Shared components + Shadcn UI
-│   │   ├── hooks/       # Custom Hooks
-│   │   ├── types/       # TypeScript type definitions
-│   │   ├── lib/         # Utility functions
-│   │   └── context/     # React Context Providers
-│   └── frontend.go           # Go embed, embeds dist/ into the binary
-└── .env.example         # Environment variable template
-```
+| Location                                                                | Responsibility                                                       |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [domain/](../../domain/)                                                | Entities, DTOs, interfaces, errors, request and response contracts   |
+| [usecase/](../../usecase/)                                              | Business rules, validation and timeouts                              |
+| [repository/](../../repository/)                                        | Data access and domain/Ent conversion                                |
+| [ent/schema/](../../ent/schema/)                                        | Database models; the rest of Ent is generated                        |
+| [api/controller/](../../api/controller/)                                | HTTP parsing, usecase calls and error/status mapping                 |
+| [api/route/](../../api/route/) and [middleware/](../../api/middleware/) | Route registration and independent access gates                      |
+| [bootstrap/usecases.go](../../bootstrap/usecases.go)                    | Repository → usecase wiring                                          |
+| [api/route/factory.go](../../api/route/factory.go)                      | Usecase → controller wiring                                          |
+| [internal/](../../internal/)                                            | Token, authorization, cache and other infrastructure implementations |
 
-## Backend Layers
+Manual constructor injection connects these layers. Usecases depend on interfaces declared in `domain/`; `bootstrap` chooses and injects implementations.
 
-Shadmin's backend follows **Clean Architecture**, with dependencies flowing inward:
+## Request lifecycle
 
-```
-Route → Controller → Usecase → Repository → Ent/DB
-                         ↑
-                      Domain (interface contracts)
-```
-
-| Layer | Directory | Responsibility | Key Rules |
-|-------|-----------|---------------|-----------|
-| Domain | `domain/` | Entities, DTOs, Repository/UseCase interfaces, error definitions | Pure definitions, no implementation dependencies |
-| Schema | `ent/schema/` | Database table structure | Must run `go generate ./ent` after changes |
-| Repository | `repository/` | Ent data read/write + domain↔ent conversion | Data access only, no HTTP or business logic |
-| Usecase | `usecase/` | Business orchestration, validation, timeout control | Every method uses `context.WithTimeout`, wrap errors with `%w`; depends only on domain interfaces |
-| Controller | `api/controller/` | HTTP request parsing + response formatting | Parse and call Usecase only, no business logic |
-| Route | `api/route/` | Route registration, middleware mounting | RESTful style, system routes use Casbin middleware |
-| Wiring | `bootstrap/usecases.go` | Assembles Repo → Usecase (`bootstrap.Usecases`) | The only place repositories are constructed for usecases |
-| Factory | `api/route/factory.go` | Assembles Controller from usecases | Uses `f.uc` / `f.app`; does not import `ent` or `repository` |
-
-### Dependency Injection
-
-Shadmin uses the **Factory Pattern** for manual dependency injection, with no DI framework:
-
-```go
-// bootstrap/usecases.go — the only place repository → usecase wiring happens
-func newUsecases(app *Application) *Usecases {
-    timeout := time.Duration(app.Env.ContextTimeout) * time.Second
-    return &Usecases{
-        User: usecase.NewUserUsecase(repository.NewUserRepository(app.DB), timeout),
-        // ...
-    }
-}
-
-// api/route/factory.go — builds controllers from usecases only
-func (f *ControllerFactory) CreateUserController() *controller.UserController {
-    return &controller.UserController{UserUsecase: f.uc.User}
-}
-```
-
-Usecases depend on domain interfaces (ports). Infrastructure implements them (for example, `TokenIssuer` in `internal/tokenservice`, `AuthorizationSource` and `UnitOfWork` in `repository`), and `bootstrap` injects them.
-
-### Unified Response Format
-
-All APIs use `domain.Response` for consistent responses:
-
-```go
-type Response struct {
-    Code int         `json:"code"`  // 0 = success, 1 = error
-    Msg  string      `json:"msg"`
-    Data interface{} `json:"data"`
-}
-
-// Usage
-c.JSON(http.StatusOK, domain.RespSuccess(result))
-c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
-```
-
-Paginated results use `domain.PagedResult[T]`:
-
-```json
-{
-  "code": 0,
-  "msg": "success",
-  "data": {
-    "list": [...],
-    "total": 100,
-    "page": 1,
-    "page_size": 10,
-    "total_pages": 10
-  }
-}
-```
-
-## Request Lifecycle
-
-Example: `GET /api/v1/system/user`
+A system request such as `GET /api/v1/system/user` passes through independent gates before reaching business logic:
 
 ```mermaid
-sequenceDiagram
-    participant C as Client
-    participant R as Gin Router
-    participant JWT as JWT Middleware
-    participant CAS as Casbin Middleware
-    participant CTRL as UserController
-    participant UC as UserUsecase
-    participant REPO as UserRepository
-    participant DB as Database
-
-    C->>R: GET /api/v1/system/user
-    R->>JWT: Validate Authorization Header
-    JWT->>JWT: Parse Token, inject user context (x-user-*)
-    JWT->>CAS: Pass
-    CAS->>CAS: CheckPermission(userID, path, method)
-    CAS->>CTRL: Pass
-    CTRL->>CTRL: Parse Query params (page, page_size, search...)
-    CTRL->>UC: ListUsers(ctx, filter)
-    UC->>UC: context.WithTimeout + QueryParams.Paginate()
-    UC->>REPO: Query(ctx, filter)
-    REPO->>DB: Ent Query (Where + Offset + Limit)
-    DB-->>REPO: Return data
-    REPO-->>UC: []*domain.User
-    UC-->>CTRL: *PagedResult[*User]
-    CTRL-->>C: JSON { code: 0, data: {...} }
+flowchart TD
+    Request[Bearer request] --> JWT[Validate token and blacklist state]
+    JWT --> Account[Check account state]
+    Account --> Generation[Check shared authorization generation]
+    Generation --> Casbin[Evaluate local Casbin snapshot]
+    Casbin --> Controller --> Usecase --> Repository --> DB[(Database)]
 ```
 
-## Frontend Structure
+The `/system` parent group mounts authorization once. Basic authenticated endpoints such as `/profile` and `/resources` sit outside that group; public routes are registered separately. See [protected.go](../../api/route/protected.go) and [public.go](../../api/route/public.go).
 
-### Route Organization
+Controllers return the shared [response and pagination types](../../domain/response.go). [Controller error rules](../../api/controller/errors.go) map known errors to HTTP statuses and keep unexpected internal errors out of client responses.
 
-The frontend uses TanStack Router's **file-based routing**, where file paths map to URL paths:
+## Authorization and menus
 
-```
-frontend/src/routes/
-├── __root.tsx              # Root layout (DevTools, progress bar)
-├── (auth)/                 # Public route group (login, register)
-│   └── sign-in.tsx
-├── (errors)/               # Error pages (404, 500)
-└── _authenticated/         # Protected route group
-    ├── route.tsx            # Auth guard (beforeLoad checks JWT)
-    └── system/
-        ├── user.tsx         # → features/system/users
-        ├── role.tsx         # → features/system/roles
-        └── menu.tsx         # → features/system/menus
-```
+Ent user/role/menu/API resource relationships are authoritative. Each process builds a local Casbin snapshot from them:
 
-The `beforeLoad` hook in `_authenticated/route.tsx` checks for `accessToken` and redirects to the login page if invalid.
+1. Startup scans Gin routes into API resources with stable `METHOD:/path` IDs.
+2. Menus and buttons bind those resources; roles receive menus and users receive roles.
+3. Authorization changes commit with an increment of the shared generation in the same transaction.
+4. Each system request reads that generation and rebuilds its snapshot if needed before evaluating access. Generation read or rebuild failures return HTTP 503.
 
-### Feature Modules
+Local commit triggers and background polling warm and recover snapshots. Polling does not determine revocation latency; Redis does not distribute Casbin snapshots. Multi-instance requirements are covered in the [deployment guide](deployment.en.md#multiple-instances).
 
-Each feature is encapsulated as an independent module:
+The frontend fetches menus and permission strings from `/api/v1/resources`. The sidebar renders that data, route guards check menu access, and `usePermission()` controls action visibility. API authorization remains enforced by the backend.
 
-```
-features/system/users/
-├── index.tsx            # Page entry component
-├── components/          # Tables, dialogs, forms, buttons
-├── hooks/               # TanStack Query hooks (useUsers, useCreateUser...)
-├── data/schema.ts       # Zod runtime validation
-└── lib/                 # Form schemas, utility functions
+## Frontend and sessions
+
+React uses TanStack Router for file routes, TanStack Query for server state, Axios for HTTP, and Zustand for authentication state. React Hook Form and Zod handle forms.
+
+```text
+routes/ → features/ → query hooks → services/ → apiClient → API
+                           ↕
+                    stores/auth-store
 ```
 
-### Data Flow
+Types live in `types/`, API wrappers in `services/`, and pages, forms, tables and dialogs in `features/`. See the [user feature](../../frontend/src/features/system/users/) for a paginated example.
 
-```
-API Service (Axios) → TanStack Query (cache + auto-refetch) → React Components
-                                                                   ↕
-                                                           Zustand Store (auth state)
-```
+Password login returns an access/refresh token pair. `auth.startSession()` starts the session; token storage currently uses localStorage through [token-storage.ts](../../frontend/src/lib/token-storage.ts). The client sends access tokens as Bearer headers, fetches `/profile` and loads `/resources` before rendering authorized pages.
 
-- **API Calls**: Functions in `services/` use `apiClient` (Axios), which auto-injects the `Bearer` token
-- **Data Caching**: TanStack Query manages request caching, loading states, and automatic retries
-- **Global State**: `auth-store` manages user identity, tokens, and permission info
-- **Response Parsing**: Use `response.data.data` to access business data (outer `.data` is Axios, inner `.data` is `domain.Response.Data`)
+`auth.reset()` and new sign-ins advance a session revision, cancel obsolete requests and clear identity, Query and menu caches. Refresh updates the tokens within the current session. Refresh requests are serialized across same-origin tabs using Web Locks; browsers without that API require a new sign-in. Stale responses cannot restore an old account, and failed menu loads block navigation with a retry action.
 
-## Authentication Flow
+## Infrastructure and startup
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant FE as Frontend
-    participant BE as Backend
-    participant DB as Database
+Database, storage and cache choices are configured in [.env.example](../../.env.example):
 
-    U->>FE: Enter username/password
-    FE->>BE: POST /api/v1/auth/login
-    BE->>DB: Validate credentials (bcrypt)
-    BE->>BE: Generate Access Token (short-lived) + Refresh Token (long-lived)
-    BE-->>FE: { accessToken, refreshToken }
-    FE->>FE: Store tokens (localStorage)
-    FE->>FE: Parse JWT for basic user info
-    FE->>BE: GET /api/v1/profile (with Bearer Token)
-    BE-->>FE: User details
-    FE->>BE: GET /api/v1/resources (with Bearer Token)
-    BE-->>FE: Menus + permission list
-    FE->>FE: Render sidebar + enable permission controls
-```
+- Ent supports SQLite, PostgreSQL and MySQL.
+- File storage implements `domain.FileRepository` for local disk or MinIO/S3.
+- Cache implementations use memory or Redis behind the cache contract.
 
-## Permission Model
+See the [deployment guide](deployment.en.md) for configuration, migrations and persistence.
 
-Shadmin uses **Casbin RBAC** for access control:
+[cmd.Run](../../cmd/main.go) loads the application, registers routes, scans API resources, seeds the administrator and menus, builds the first authorization snapshot, and then starts serving. Startup failures return an error and close initialized resources; SIGINT/SIGTERM trigger graceful shutdown.
 
-```
-User → Role → Permission Policy → API Resource (path + method)
-               ↓
-           Menu Binding → Frontend sidebar + button visibility
-```
-
-**Backend**: Casbin middleware checks whether `(userID, requestPath, requestMethod)` matches a policy.
-**Frontend**: `auth-store` provides `hasPermission()` / `hasRole()` / `canAccessMenu()` methods. UI visibility is controlled by the `usePermission()` hook together with `auth-store` checks.
-
-### Menu and Resource Mechanism
-
-1. On startup, `bootstrap.InitApiResources()` scans all Gin routes and writes them to the database with IDs in `METHOD:/path` format
-2. Admins bind API resources to menu items in Menu Management
-3. Authorization changes increment the generation in the same DB transaction. Every system API request reads that generation before authorization, rebuilding its local snapshot when needed; read/build failures return 503. Local commit triggers and background polling warm/recover snapshots. The `/system` parent group owns the permission middleware.
-4. The frontend fetches menus and permissions through `auth.loadMenus()`. Failed loads block navigation with a retry action. Sign-in/sign-out advances the session revision, aborts old requests and clears Query/menu caches; late responses cannot restore an earlier account. Token refresh updates storage and the auth store without starting a new session.
-
-## Database Abstraction
-
-Switch databases via `DB_TYPE` in `.env` — no code changes required:
-
-| DB_TYPE | Description | DB_DSN Example |
-|---------|-------------|---------------|
-| `sqlite` | Default, zero config | Leave empty (auto uses `.database/data.db`) |
-| `postgres` | Recommended for production | `postgres://user:pass@localhost:5432/shadmin?sslmode=disable` |
-| `mysql` | Optional | `user:pass@tcp(localhost:3306)/shadmin?parseTime=true&loc=Local` |
-
-Development startup applies additive Ent schema changes. Production startup never migrates; see the deployment migration runbook.
-
-## File Storage Abstraction
-
-Switch storage backends via `STORAGE_TYPE`:
-
-| STORAGE_TYPE | Description | Key Config |
-|-------------|-------------|-----------|
-| `disk` | Default, local filesystem | `STORAGE_BASE_PATH` (default `.uploads`) |
-| `minio` | MinIO / S3-compatible storage | `S3_ADDRESS`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` |
-
-A unified `domain.FileRepository` interface allows transparent backend switching.
-
-## Startup Flow
-
-```
-main.go
-  → os.Exit(cmd.Run())             # Run returns an exit code so deferred cleanup always runs
-    → bootstrap.App()              # Load + validate .env, connect DB, init Casbin/storage/Gin (returns error)
-    → api.SetupRoutes(app)         # Register static assets, Swagger, API routes
-    → bootstrap.InitApiResources() # Scan Gin routes and write to DB
-    → bootstrap.InitDefaultAdmin() # Init admin role/user and menus
-    → bootstrap.InitCasbin(app)       # Build initial snapshot and start generation triggers with fallback polling
-    → api.Run(app)                 # Listen on the configured port; SIGINT/SIGTERM trigger graceful shutdown
-```
-
-## Frontend-Backend Collaboration
-
-- **Production Mode**: Frontend build output (`frontend/dist/`) is embedded into the binary via `frontend/frontend.go` using Go embed. The backend serves both the SPA and API.
-- **Development Mode**: Vite dev server runs on `:5173` and proxies `/api` requests to the backend at `:55667` via `vite.config.ts`.
-
-## Next Steps
-
-- [Development Guide](./development.en.md) — Add new feature modules
-- [Deployment Guide](./deployment.en.md) — Production deployment
+In production, `frontend/dist/` is embedded in the Go binary via [frontend.go](../../frontend/frontend.go). During development, Vite serves the frontend and proxies API calls to Go. Build/run instructions live in the [README](../../README.md#-get-running); the [development skill](../../.agents/skills/shadmin-dev/SKILL.md) covers adding a module.
