@@ -39,15 +39,12 @@ export function UsersTable({
   navigate,
   totalCount = 0,
 }: DataTableProps) {
-  // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
 
-  // Use data as-is since filtering is done server-side
   const filteredData = data
 
-  // Synced with URL states (keys/defaults mirror users route search schema)
   const {
     columnFilters,
     onColumnFiltersChange,
@@ -77,9 +74,9 @@ export function UsersTable({
       columnVisibility,
     },
     enableRowSelection: true,
-    manualPagination: true, // Enable server-side pagination
-    manualFiltering: true, // Enable server-side filtering
-    pageCount: Math.ceil(totalCount / (pagination.pageSize || 10)), // Calculate total pages
+    manualPagination: true,
+    manualFiltering: true,
+    pageCount: Math.ceil(totalCount / (pagination.pageSize || 10)),
     onPaginationChange,
     onColumnFiltersChange,
     onRowSelectionChange: setRowSelection,
