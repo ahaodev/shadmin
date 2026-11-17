@@ -29,7 +29,7 @@ export function UsersDeleteDialog({
     try {
       await deleteUser.mutateAsync(currentRow.id)
       onOpenChange(false)
-      setValue('') // Reset input
+      setValue('')
     } catch (error) {
       // Error handling is done in the hook
       console.error('Error deleting user:', error)
@@ -41,7 +41,7 @@ export function UsersDeleteDialog({
       open={open}
       onOpenChange={(open) => {
         onOpenChange(open)
-        if (!open) setValue('') // Reset input when dialog closes
+        if (!open) setValue('')
       }}
       handleConfirm={handleDelete}
       disabled={value.trim() !== currentRow.username || deleteUser.isPending}
