@@ -1,5 +1,57 @@
 # Changelog
 
+## [0.5.7] - 2026-11-17
+
+### Added
+
+- Added `-migrate`, which applies additive schema changes and exits, plus `DB_AUTO_MIGRATE` for non-production startup.
+- Added `S3_SECURE` (default `true`) for TLS MinIO connections.
+- Added a per-request authorization generation check, and unified JSON responses for panics, unknown routes and disallowed methods.
+- Added session-scoped frontend token storage with cross-tab sync, request cancellation and single-flight refresh.
+
+### Changed
+
+- `/system` authorization now mounts once on the route group and no longer skips paths by prefix.
+- Refresh-token rotation is single-winner through an atomic blacklist `Consume`; a losing concurrent refresh gets 401.
+- Menu and permission state moved into the auth store, and menu load failures surface a retry screen instead of an empty sidebar.
+- Sidebar groups expand for the active path and flatten nested links when collapsed.
+- Enforced an 8-character/72-byte password policy on user create/update, password change, invitation acceptance and production admin seeding.
+- Login-log lists default to 10 rows per page, and department updates verify the new parent exists.
+- Upgraded to Go 1.27.3 and refreshed frontend dependencies.
+
+### Fixed
+
+- Role rename and duplicate dictionary labels now return 409 instead of 500.
+- Unique-constraint conflicts map by specific index instead of any constraint error.
+- Credential checks run before hashing, so a missing user or wrong current password no longer returns 500.
+- Concurrent refresh no longer wedges the session: refreshes serialize, stale requests cancel, and logout happens only on 400/401/403.
+- `useCrudMutation` no longer rethrows after its error toast.
+
+### Security
+
+- Production startup rejects default JWT and identity secrets, and requires a policy-compliant admin password when seeding.
+- Tokens are no longer mirrored into readable cookies, and legacy keys and cookies are purged at startup.
+- Removed the path exemption that let listed paths bypass a mounted authorization gate.
+- Removed hardcoded S3 credentials from defaults, stopped logging DSNs, and generalized connection errors.
+- Refresh tokens must carry an unexpired `jti` with an available blacklist.
+
+### Cleanup
+
+- Removed duplicated status and source constants and unused helpers, and added an architecture test enforcing dependency direction.
+
+### Tooling
+
+- CI derives Go from `go.mod`, runs CLI and frontend test suites, verifies Swagger drift, pins `swag` v1.16.6, and gates releases on PostgreSQL/MySQL/Redis integration tests.
+- Added a pre-commit hook running gofmt, Prettier and ESLint on staged files.
+- Pinned Docker toolchains and added `VERSION`/`COMMIT` build args for `linux/amd64` releases.
+
+### Breaking
+
+- Production startup no longer creates or alters the schema, and `WithDropIndex`/`WithDropColumn` were dropped: run `shadmin -migrate` (additive only) or reviewed SQL before deploying.
+- The 8-character/72-byte password policy is enforced on writes, so shorter or longer passwords are rejected.
+- Only the first concurrent refresh succeeds; the loser receives 401 and must sign in again.
+- Token refresh requires Web Locks, that is HTTPS or localhost; insecure contexts and older browsers are asked to sign in again.
+
 ## [0.5.6] - 2026-10-25
 
 ### Changed
