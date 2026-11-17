@@ -36,14 +36,13 @@ export function UsersMultiDeleteDialog<TData>({
     }
 
     try {
-      // Extract user IDs from selected rows
       const userIds = selectedRows.map((row) => (row.original as User).id)
 
       await deleteUsers.mutateAsync(userIds)
 
       table.resetRowSelection()
       onOpenChange(false)
-      setValue('') // Reset input
+      setValue('')
     } catch (error) {
       // Error handling is done in the hook
       console.error('Error deleting users:', error)
@@ -55,7 +54,7 @@ export function UsersMultiDeleteDialog<TData>({
       open={open}
       onOpenChange={(open) => {
         onOpenChange(open)
-        if (!open) setValue('') // Reset input when dialog closes
+        if (!open) setValue('')
       }}
       handleConfirm={handleDelete}
       disabled={value.trim() !== CONFIRM_WORD || deleteUsers.isPending}
