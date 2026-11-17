@@ -49,7 +49,6 @@ export function UsersInviteDialog({
 }: UserInviteDialogProps) {
   const inviteUser = useInviteUser()
 
-  // Fetch roles from API
   const { data: roles = [], isLoading: rolesLoading } = useQuery({
     queryKey: [ROLES_QUERY_KEY],
     queryFn: getRoles,
@@ -61,7 +60,6 @@ export function UsersInviteDialog({
     defaultValues: { email: '', role: '', message: '' },
   })
 
-  // Convert roles data to options format for SelectDropdown
   const roleOptions = roles
     .filter(
       (role) =>
