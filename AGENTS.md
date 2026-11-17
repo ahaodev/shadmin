@@ -1,33 +1,32 @@
 ## Principles
 
-**Dependencies point one way.** Each module declares its contracts first; every layer knows only the layer beneath it, and frameworks stay at the edges. When an inner layer starts reaching outward, the design has broken — that, not a missing feature, is what degrades this template. Change the pattern on purpose, never by accident.
+**Dependencies point one way.** Declare contracts in `domain/`. Usecases depend on those contracts, not concrete repositories or infrastructure; implementations are wired in `bootstrap`. Request flow is not an import graph. Keep frameworks at the edges.
 
-**Authorization is data, not code.** Permissions are facts in a database, resolved once at the boundary — not conditionals scattered through handlers. Adding a protected capability should mean *registering* it, never editing a permission list. The same instinct applies to menus: the backend owns them, the frontend only renders what it is given.
+**Authorization is data, not code.** Register protected capabilities and grants through API resources, menus and roles. Do not hardcode authorization exceptions in handlers. The backend owns menus; the frontend renders what it is given.
 
 **Security composes from independent gates.** Authentication, token validity, account state and authorization each stand alone, so no single mistake is enough to grant access.
 
-**Every answer has one shape.** Requests, responses and pagination follow a single contract, defined once and reused everywhere. Uniformity here is a feature, not a style preference.
+**Every answer has one shape.** Requests, responses and pagination follow a single contract, defined once and reused everywhere.
 
-**Infrastructure is a choice, not an assumption.** Databases, storage and caches sit behind contracts and are selected by configuration, so swapping one out never reaches business logic. New behavior should be configurable by default, not hardcoded.
+**Infrastructure is a choice, not an assumption.** Databases, storage and caches sit behind contracts and are selected by configuration. Add configuration for a concrete deployment need; avoid speculative flags for business behavior.
 
-**Less is more.** The smallest change that fully answers the problem wins. Prefer deleting a branch over adding a flag, one obvious path over a configurable many, fewer files over more. Every line added is a line someone must read, test and maintain, so new code has to earn its place — if it can be simpler without losing behavior, it is not finished.
-
-**Keep it simple (KISS).** Design for the problem in front of you, not the one you imagine later. Code that reads top-to-bottom beats clever indirection, and abstractions arrive when a second concrete caller proves them, never before. When two designs both work, choose the one with fewer moving parts.
+**Keep it simple.** Make the smallest coherent change that fully solves the problem. Prefer direct code and one obvious path. Introduce reusable abstractions when concrete callers justify them; domain contracts define boundaries even when there is only one caller.
 
 ## Working here
 
-- Keep changes minimal and in-scope; follow the idiom already in the file you are touching.
-- Verify before you claim done. The gates are cheap — run them.
-- This file and the skill describe one design. If you change the design, update both.
+- Keep changes in scope and follow the idiom of the files touched.
+- Run the checks for the surfaces changed before claiming completion.
+- If a design changes, update the affected principles and implementation guidance together.
 
-## Specifics live in the skill
+## Where rules live
 
-`.agents` is the authoritative, step-by-step source for how things are actually built — read it before writing feature code. Everything under `.agents` is the single source of truth; each agent's own directory (`.github/`, `.pi/`, `.claude/`) links back to it.
+This file defines stable principles. `.agents/CONTRIBUTING.md` owns workflow and checks; skills and references own task-specific implementation rules. Prompt templates apply only to their matching tasks. Load only what the task needs; agent-specific entry points link back to these sources.
 
-| Need | Read |
-| --- | --- |
-| Workflow, layer responsibilities, boundaries, permissions | `.agents` |
-| Backend patterns — domain, Ent, repository, usecase, controller, routes | `.agents` |
-| Frontend patterns — types, services, features, hooks, forms, routes | `.agents` |
-| Build/test/lint commands, bootstrap, config, conventions | `.agents` |
-| Architecture walkthrough | `docs/getting-started/architecture.en.md` |
+| Need                                       | Read                                                                   |
+| ------------------------------------------ | ---------------------------------------------------------------------- |
+| Workflow, checks, generated files, commits | [.agents/CONTRIBUTING.md](.agents/CONTRIBUTING.md)                     |
+| Feature workflow, wiring, permissions      | [Development skill](.agents/skills/shadmin-dev/SKILL.md)               |
+| Backend implementation                     | [Backend patterns](.agents/skills/shadmin-dev/references/backend.md)   |
+| Frontend implementation                    | [Frontend patterns](.agents/skills/shadmin-dev/references/frontend.md) |
+| Cleanup                                    | [Cleanup skill](.agents/skills/cleanup-specialist/SKILL.md)            |
+| Architecture explanation                   | [Architecture](docs/getting-started/architecture.en.md)                |
