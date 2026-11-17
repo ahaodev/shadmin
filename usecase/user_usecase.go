@@ -49,7 +49,6 @@ func (uu *userUsecase) CreateUser(ctx context.Context, request *domain.CreateUse
 	}
 	user.Password = string(hashedPassword)
 
-	// 创建用户与角色关联在同一授权事务中提交。
 	if err := uu.userRepository.CreateWithRoles(ctx, user, request.RoleIDs); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
