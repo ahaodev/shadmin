@@ -3477,23 +3477,18 @@ const docTemplate = `{
             ],
             "properties": {
                 "color": {
-                    "description": "颜色标识",
                     "type": "string"
                 },
                 "is_default": {
-                    "description": "是否默认项",
                     "type": "boolean"
                 },
                 "label": {
-                    "description": "显示标签",
                     "type": "string"
                 },
                 "remark": {
-                    "description": "备注",
                     "type": "string"
                 },
                 "sort": {
-                    "description": "排序，默认0",
                     "type": "integer"
                 },
                 "status": {
@@ -3501,11 +3496,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type_id": {
-                    "description": "字典类型ID",
                     "type": "string"
                 },
                 "value": {
-                    "description": "实际值",
                     "type": "string"
                 }
             }
@@ -3522,11 +3515,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
-                    "description": "显示名称",
                     "type": "string"
                 },
                 "remark": {
-                    "description": "备注",
                     "type": "string"
                 },
                 "status": {
@@ -3543,7 +3534,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "apiResources": {
-                    "description": "Extended properties",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -3626,7 +3616,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "department_id": {
-                    "description": "所属部门ID",
                     "type": "string"
                 },
                 "email": {
@@ -3639,7 +3628,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "role_ids": {
-                    "description": "用户角色ID列表",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -3767,7 +3755,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "color": {
-                    "description": "颜色标识",
                     "type": "string"
                 },
                 "created_at": {
@@ -3777,19 +3764,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "is_default": {
-                    "description": "是否默认项，默认false",
                     "type": "boolean"
                 },
                 "label": {
-                    "description": "显示标签",
                     "type": "string"
                 },
                 "remark": {
-                    "description": "备注",
                     "type": "string"
                 },
                 "sort": {
-                    "description": "排序，默认0",
                     "type": "integer"
                 },
                 "status": {
@@ -3797,14 +3780,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type_id": {
-                    "description": "字典类型ID",
                     "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
                 },
                 "value": {
-                    "description": "实际值",
                     "type": "string"
                 }
             }
@@ -3846,7 +3827,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
-                    "description": "显示名称",
                     "type": "string"
                 },
                 "remark": {
@@ -3936,7 +3916,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "source": {
-                    "description": "local / oauth",
+                    "description": "shadmin / provider 名",
                     "type": "string"
                 },
                 "status": {
@@ -4011,7 +3991,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "refresh_token": {
-                    "description": "可选的刷新令牌，用于更完整的登出处理",
                     "type": "string"
                 }
             }
@@ -4026,7 +4005,6 @@ const docTemplate = `{
                     }
                 },
                 "children": {
-                    "description": "Related data",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/domain.Menu"
@@ -4447,7 +4425,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "properties": {
-                    "description": "Extended properties",
                     "type": "string"
                 },
                 "query": {
@@ -4524,7 +4501,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "is_active": {
-                    "description": "用户是否活跃",
                     "type": "boolean"
                 },
                 "is_admin": {
@@ -4537,7 +4513,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "role": {
-                    "description": "用户的角色",
                     "type": "array",
                     "items": {
                         "type": "string"
