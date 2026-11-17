@@ -41,8 +41,6 @@ func NewLoginUsecase(
 	}
 }
 
-// Login 执行完整的登录流程：验证码校验 → 锁定检查 → 用户查找 → 状态检查 → 密码校验 → 签发令牌。
-// 返回携带错误类型的哨兵错误，由 controller 映射到 HTTP 状态码。
 func (lu *loginUsecase) Login(ctx context.Context, req *domain.LoginRequest, meta domain.LoginMeta) (*domain.LoginResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, lu.contextTimeout)
 	defer cancel()
@@ -71,13 +69,11 @@ func (lu *loginUsecase) Login(ctx context.Context, req *domain.LoginRequest, met
 		return nil, fmt.Errorf("get user by identifier: %w", err)
 	}
 
-	// 账户状态检查：未启用 / 邀请中 / 已停用 的用户不能登录。
 	if user.Status != domain.UserStatusActive {
 		lu.recordLoginLog(ctx, meta, domain.StatusFailed, "账户未启用或已停用", user.Email)
 		return nil, domain.ErrAccountInactive
 	}
 
-	// 未设置本地密码的账户不能使用密码登录。
 	if user.Password == "" {
 		lu.recordLoginLog(ctx, meta, domain.StatusFailed, "第三方账户不支持密码登录", user.Email)
 		return nil, domain.ErrInvalidCredentials
@@ -105,7 +101,6 @@ func (lu *loginUsecase) Login(ctx context.Context, req *domain.LoginRequest, met
 	return tokens, nil
 }
 
-// Refresh 校验刷新令牌并签发新的访问/刷新令牌。
 func (lu *loginUsecase) Refresh(ctx context.Context, refreshToken string) (*domain.RefreshTokenResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, lu.contextTimeout)
 	defer cancel()
@@ -127,7 +122,7 @@ func (lu *loginUsecase) Refresh(ctx context.Context, refreshToken string) (*doma
 		return nil, fmt.Errorf("get user for refresh: %w", err)
 	}
 
-	// 刷新令牌前再检查一次状态：admin 可能在 access token 签发后禁用该用户。
+	// 签发后用户可能已被禁用，刷新时重新检查状态。
 	if user.Status != domain.UserStatusActive {
 		return nil, domain.ErrAccountInactive
 	}
@@ -149,7 +144,7 @@ func (lu *loginUsecase) Refresh(ctx context.Context, refreshToken string) (*doma
 	return tokens, nil
 }
 
-// Logout 将 access/refresh token 的 jti 加入黑名单，TTL 设为 token 剩余有效期。
+// Logout 吊销 access/refresh token，保留至各自过期。
 func (lu *loginUsecase) Logout(ctx context.Context, accessToken, refreshToken string) error {
 	ctx, cancel := context.WithTimeout(ctx, lu.contextTimeout)
 	defer cancel()
@@ -169,7 +164,6 @@ func (lu *loginUsecase) Logout(ctx context.Context, accessToken, refreshToken st
 	return nil
 }
 
-// revoke 把 jti 加入黑名单直到令牌过期；无 jti、不可解析或已过期的令牌无需处理。
 func (lu *loginUsecase) revoke(ctx context.Context, jti string, exp time.Time, ok bool) error {
 	if !ok || jti == "" || time.Now().After(exp) {
 		return nil
@@ -177,7 +171,6 @@ func (lu *loginUsecase) revoke(ctx context.Context, jti string, exp time.Time, o
 	return lu.tokenBlacklist.Add(ctx, jti, exp)
 }
 
-// accountLockedError 返回锁定错误
 func (lu *loginUsecase) accountLockedError() error {
 	return &domain.AccountLockedError{}
 }

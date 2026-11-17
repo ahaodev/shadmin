@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// UserStateMiddleware 校验用户账户状态。
 func UserStateMiddleware(userStatusCache *auth.Cache) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetString(constants.UserID)

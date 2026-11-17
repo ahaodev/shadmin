@@ -289,7 +289,6 @@ func TestSyncIfChangedFailsClosedWhenGenerationCannotBeRead(t *testing.T) {
 	}
 }
 
-// A request on another instance must observe a committed revocation without a poll/trigger.
 func TestPermissionCheckObservesRemoteRevocation(t *testing.T) {
 	client, firstManager, firstService := newSnapshotTestService(t)
 	userID := addSnapshotTestData(t, client)

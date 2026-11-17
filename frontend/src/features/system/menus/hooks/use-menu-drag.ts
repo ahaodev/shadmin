@@ -141,7 +141,6 @@ export function useMenuDrag(
       ordered: newOrder,
     })
 
-    // Optimistic update
     queryClient.setQueryData([MENUS_QUERY_KEY], (old: unknown) => {
       if (!old || typeof old !== 'object' || !('list' in old)) return old
       const oldData = old as { list: Menu[] }

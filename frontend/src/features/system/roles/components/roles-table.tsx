@@ -66,7 +66,6 @@ export function RolesTable(_props: RolesTableProps) {
   const canEdit = hasPermission(PERMISSIONS.SYSTEM.ROLE.EDIT)
   const canDelete = hasPermission(PERMISSIONS.SYSTEM.ROLE.DELETE)
 
-  // Fetch roles
   const { data: rolesData, isLoading } = useQuery({
     queryKey: [
       ROLES_QUERY_KEY,
@@ -81,7 +80,6 @@ export function RolesTable(_props: RolesTableProps) {
       }),
   })
 
-  // Filter data based on search
   const filteredData = useMemo(() => {
     return (
       rolesData?.list?.filter((role: Role) => {
@@ -92,7 +90,6 @@ export function RolesTable(_props: RolesTableProps) {
     )
   }, [rolesData?.list, searchValue])
 
-  // Delete role mutation
   const deleteRoleMutation = useMutation({
     mutationFn: deleteRole,
     onSuccess: () => {
@@ -170,7 +167,6 @@ export function RolesTable(_props: RolesTableProps) {
         cell: ({ row }) => {
           const role = row.original
 
-          // If no permissions, don't render the dropdown
           if (!canEdit && !canDelete) {
             return null
           }
@@ -239,7 +235,6 @@ export function RolesTable(_props: RolesTableProps) {
         'flex flex-1 flex-col gap-4'
       )}
     >
-      {/* Search Filter */}
       <div className='flex items-center justify-between'>
         <Input
           placeholder='搜索角色...'
@@ -252,7 +247,6 @@ export function RolesTable(_props: RolesTableProps) {
         </div>
       </div>
 
-      {/* Table */}
       <div className='overflow-hidden rounded-md border'>
         <Table>
           <TableHeader>
@@ -327,7 +321,6 @@ export function RolesTable(_props: RolesTableProps) {
         </Table>
       </div>
 
-      {/* Pagination */}
       <DataTablePagination table={table} className='mt-auto' />
     </div>
   )

@@ -25,13 +25,10 @@ func NewDictUsecase(dictRepository domain.DictRepository, timeout time.Duration)
 	}
 }
 
-// 字典类型相关业务逻辑
-
 func (du *dictUsecase) CreateDictType(ctx context.Context, request *domain.CreateDictTypeRequest) (*domain.DictType, error) {
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
 
-	// 设置默认状态
 	if request.Status == "" {
 		request.Status = domain.StatusActive
 	}
@@ -39,7 +36,6 @@ func (du *dictUsecase) CreateDictType(ctx context.Context, request *domain.Creat
 		return nil, err
 	}
 
-	// 创建域模型
 	dictType := &domain.DictType{
 		Code:   request.Code,
 		Name:   request.Name,
@@ -47,7 +43,6 @@ func (du *dictUsecase) CreateDictType(ctx context.Context, request *domain.Creat
 		Remark: request.Remark,
 	}
 
-	// 调用repository创建
 	err := du.dictRepository.CreateType(ctx, dictType)
 	if err != nil {
 		return nil, err
@@ -103,13 +98,10 @@ func (du *dictUsecase) DeleteDictType(ctx context.Context, id string) error {
 	return du.dictRepository.DeleteType(ctx, id)
 }
 
-// 字典项相关业务逻辑
-
 func (du *dictUsecase) CreateDictItem(ctx context.Context, request *domain.CreateDictItemRequest) (*domain.DictItem, error) {
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)
 	defer cancel()
 
-	// 设置默认状态
 	if request.Status == "" {
 		request.Status = domain.StatusActive
 	}
@@ -117,7 +109,6 @@ func (du *dictUsecase) CreateDictItem(ctx context.Context, request *domain.Creat
 		return nil, err
 	}
 
-	// 创建域模型
 	dictItem := &domain.DictItem{
 		TypeID:    request.TypeID,
 		Label:     request.Label,
@@ -129,7 +120,6 @@ func (du *dictUsecase) CreateDictItem(ctx context.Context, request *domain.Creat
 		Remark:    request.Remark,
 	}
 
-	// 调用repository创建
 	if err := du.dictRepository.CreateItem(ctx, dictItem); err != nil {
 		return nil, err
 	}
@@ -176,8 +166,6 @@ func (du *dictUsecase) DeleteDictItem(ctx context.Context, id string) error {
 
 	return du.dictRepository.DeleteItem(ctx, id)
 }
-
-// 便捷查询
 
 func (du *dictUsecase) GetActiveItemsByTypeCode(ctx context.Context, typeCode string) ([]*domain.DictItem, error) {
 	ctx, cancel := context.WithTimeout(ctx, du.contextTimeout)

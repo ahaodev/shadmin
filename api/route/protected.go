@@ -9,75 +9,62 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ProtectedRoutes manages all authenticated routes
 type ProtectedRoutes struct {
 	factory *ControllerFactory
 }
 
-// NewProtectedRoutes creates a new protected routes manager
 func NewProtectedRoutes(factory *ControllerFactory) *ProtectedRoutes {
 	return &ProtectedRoutes{
 		factory: factory,
 	}
 }
 
-// Setup configures all protected routes with authentication middleware
 func (pr *ProtectedRoutes) Setup(router *gin.RouterGroup, app *bootstrap.Application) {
-	// Apply authentication middleware first, then enforce token state checks.
 	protectedRouter := router.Group("")
 	protectedRouter.Use(middleware.JwtAuthMiddleware(app.Tokens, app.TokenBlacklist))
 	protectedRouter.Use(middleware.UserStateMiddleware(app.UserStatusCache))
 
-	// Setup different route groups
 	pr.setupUserRoutes(protectedRouter, app)
 	pr.setupSystemRoutes(protectedRouter, app)
 }
 
-// setupUserRoutes configures basic user functionality routes
 func (pr *ProtectedRoutes) setupUserRoutes(router *gin.RouterGroup, app *bootstrap.Application) {
-	// Profile management
 	profileGroup := router.Group("/profile")
 	pr.setupProfileRoutes(profileGroup)
 
-	// Resource menu access
 	resourcesGroup := router.Group("/resources")
 	pr.setupResourceRoutes(resourcesGroup)
 
-	// Device authorization activation (authenticated, no Casbin menu permission required)
+	// 设备激活仅需认证，无需菜单权限。
 	deviceAuthGroup := router.Group("/auth/device")
 	pr.setupDeviceAuthRoutes(deviceAuthGroup)
 }
 
-// setupProfileRoutes configures profile management routes
 func (pr *ProtectedRoutes) setupProfileRoutes(group *gin.RouterGroup) {
 	profileController := pr.factory.CreateProfileController()
 
-	group.GET("", profileController.GetProfile)              // GET /api/v1/profile
-	group.PUT("", profileController.UpdateProfile)           // PUT /api/v1/profile
-	group.PUT("/password", profileController.UpdatePassword) // PUT /api/v1/profile/password
+	group.GET("", profileController.GetProfile)
+	group.PUT("", profileController.UpdateProfile)
+	group.PUT("/password", profileController.UpdatePassword)
 }
 
-// setupResourceRoutes configures resource access routes
 func (pr *ProtectedRoutes) setupResourceRoutes(group *gin.RouterGroup) {
 	resourceController := pr.factory.CreateResourceController()
 
 	group.GET("", resourceController.GetResources)
 }
 
-// setupDeviceAuthRoutes configures authenticated device authorization routes.
 func (pr *ProtectedRoutes) setupDeviceAuthRoutes(group *gin.RouterGroup) {
 	deviceAuthController := pr.factory.CreateDeviceAuthController()
 
 	group.POST("/activate", middleware.RateLimitByIP(20, time.Minute), deviceAuthController.Activate)
 }
 
-// setupSystemRoutes configures system administration routes
 func (pr *ProtectedRoutes) setupSystemRoutes(router *gin.RouterGroup, app *bootstrap.Application) {
 	casbinMiddleware := middleware.NewCasbinMiddleware(app.CasbinInitializer.GetSyncService())
 	systemGroup := router.Group("/system")
 	systemGroup.Use(casbinMiddleware.CheckAPIPermission())
 
-	// Setup system route groups
 	pr.setupUserManagement(systemGroup)
 	pr.setupRoleManagement(systemGroup)
 	pr.setupMenuManagement(systemGroup)

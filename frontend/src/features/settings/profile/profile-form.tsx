@@ -48,12 +48,10 @@ export function ProfileForm() {
     mode: 'onChange',
   })
 
-  // Fetch profile data and populate form when component loads
   useEffect(() => {
     fetchProfile(true)
   }, [fetchProfile])
 
-  // Update form values when profile data is available
   useEffect(() => {
     if (profile) {
       form.reset({
@@ -68,7 +66,6 @@ export function ProfileForm() {
     try {
       setIsPending(true)
       await updateProfile({ bio: data.bio })
-      // Refresh profile in store to reflect changes
       const updatedProfile = profile ? { ...profile, bio: data.bio } : profile
       setProfile(updatedProfile)
       toast.success('个人资料更新成功！')

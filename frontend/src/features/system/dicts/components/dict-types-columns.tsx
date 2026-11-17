@@ -17,7 +17,6 @@ import {
 import { DataTableColumnHeader } from '@/components/data-table'
 import { useDicts } from './dicts-provider'
 
-// Extract actions cell to a proper React component to follow Hooks rules
 function ActionsCell({ dictType }: { dictType: DictType }) {
   const { setCurrentTypeRow, setTypeOpen, setSelectedType, setItemsListOpen } =
     useDicts()

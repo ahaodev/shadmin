@@ -30,7 +30,7 @@ func respond(t *testing.T, err error) (int, domain.Response) {
 	return w.Code, body
 }
 
-// 每条登记的哨兵错误都映射到声明的状态码；包装后（%w）依然命中。
+// 包装后的哨兵错误仍须匹配。
 func TestRespondError_MapsEveryRegisteredSentinel(t *testing.T) {
 	for _, rule := range errorRules {
 		for name, err := range map[string]error{
@@ -56,7 +56,6 @@ func TestRespondError_MapsEveryRegisteredSentinel(t *testing.T) {
 	}
 }
 
-// 同一个哨兵错误不能登记两次（先登记者会遮蔽后者，行为难以察觉）。
 func TestErrorRules_NoDuplicates(t *testing.T) {
 	seen := map[error]bool{}
 	for _, r := range errorRules {
@@ -67,7 +66,6 @@ func TestErrorRules_NoDuplicates(t *testing.T) {
 	}
 }
 
-// 未登记的错误一律 500，且不回传内部细节（SQL / 驱动信息）。
 func TestRespondError_UnknownErrorIsGeneric500(t *testing.T) {
 	secret := errors.New(`pq: duplicate key value violates unique constraint "users_username_key"`)
 
@@ -81,7 +79,6 @@ func TestRespondError_UnknownErrorIsGeneric500(t *testing.T) {
 	}
 }
 
-// 账户锁定：423，保留面向用户的提示。
 func TestRespondError_AccountLocked(t *testing.T) {
 	code, body := respond(t, fmt.Errorf("login: %w", &domain.AccountLockedError{}))
 
@@ -93,7 +90,6 @@ func TestRespondError_AccountLocked(t *testing.T) {
 	}
 }
 
-// 登录失败带"还可尝试 N 次"的上下文，不能被映射表吞掉。
 func TestRespondError_KeepsWrappedContextWhenNoFixedMessage(t *testing.T) {
 	err := fmt.Errorf("%w，还可尝试 %d 次", domain.ErrInvalidCredentials, 3)
 

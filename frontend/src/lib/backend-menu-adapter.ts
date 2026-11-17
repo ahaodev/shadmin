@@ -1,9 +1,6 @@
 import type { NavGroup, NavItem } from '@/types/layout'
 import { type MenuTreeNode } from '@/types/menu'
 
-/**
- * Shared render guard for backend menus.
- */
 function isRenderableMenu(menu: MenuTreeNode) {
   if (menu.visible === 'hide' || menu.status === 'inactive') {
     return false
@@ -26,9 +23,6 @@ function createSingleNavItem(menu: MenuTreeNode): NavItem {
   }
 }
 
-/**
- * Convert a single MenuTreeNode to NavItem
- */
 function convertMenuNodeToNavItem(menu: MenuTreeNode): NavItem | null {
   if (!isRenderableMenu(menu)) {
     return null
@@ -55,13 +49,7 @@ function convertMenuNodeToNavItem(menu: MenuTreeNode): NavItem | null {
   return createSingleNavItem(menu)
 }
 
-/**
- * BackendMenuAdapter class for converting backend menu data to frontend navigation structure
- */
 export class BackendMenuAdapter {
-  /**
-   * Transform backend MenuTreeNode array to frontend NavGroup array
-   */
   transformToNavGroups(menuNodes: MenuTreeNode[]): NavGroup[] {
     if (!menuNodes || menuNodes.length === 0) {
       return []
@@ -71,9 +59,6 @@ export class BackendMenuAdapter {
       .filter((group): group is NavGroup => group !== null)
   }
 
-  /**
-   * Convert a single MenuTreeNode to NavGroup
-   */
   private convertToNavGroup(menu: MenuTreeNode): NavGroup | null {
     if (!isRenderableMenu(menu)) {
       return null

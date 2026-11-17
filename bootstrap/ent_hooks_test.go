@@ -12,7 +12,6 @@ func TestMutationIDsOnCreate(t *testing.T) {
 	client := newTestEntClient(t)
 	ctx := context.Background()
 
-	// 无显式 ID 的 Create：不得报错，也不得返回空串目标。
 	create := client.User.Create().SetUsername("u1").Mutation()
 	if got := create.Op(); !got.Is(ent.OpCreate) {
 		t.Fatalf("Op() = %v, want OpCreate", got)
@@ -25,7 +24,6 @@ func TestMutationIDsOnCreate(t *testing.T) {
 		t.Fatalf("ids = %v, want empty", ids)
 	}
 
-	// 显式 SetID 的 Create：ID 已知，应原样返回。
 	withID := client.Role.Create().SetID("r1")
 	ids, err = mutationIDs(ctx, withID.Mutation())
 	if err != nil {
@@ -36,7 +34,6 @@ func TestMutationIDsOnCreate(t *testing.T) {
 	}
 }
 
-// Update/Delete 仍须解析出目标 ID：这条路径不受上面 Create 保护的影响。
 func TestIdsFromMutation(t *testing.T) {
 	ctx := context.Background()
 	noID := func() (string, bool) { return "", false }

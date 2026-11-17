@@ -1,6 +1,3 @@
-/**
- * Build URLSearchParams from a flat params object, skipping null/undefined/empty values.
- */
 export function buildSearchParams(params?: object): URLSearchParams {
   const searchParams = new URLSearchParams()
   if (!params) return searchParams

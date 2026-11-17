@@ -19,7 +19,7 @@ const (
 	shutdownTimeout   = 15 * time.Second
 )
 
-// SetupRoutes 注册所有路由；失败意味着服务不可用，必须由调用方终止启动。
+// SetupRoutes 失败时调用方必须终止启动。
 func SetupRoutes(app *bootstrap.Application) error {
 	if err := route.Setup(app, app.ApiEngine); err != nil {
 		return fmt.Errorf("setup routes: %w", err)
@@ -27,14 +27,14 @@ func SetupRoutes(app *bootstrap.Application) error {
 	return nil
 }
 
-// Run 启动 HTTP 服务并阻塞，直到收到 SIGINT/SIGTERM 后优雅停机。
+// Run 阻塞至 SIGINT/SIGTERM，然后优雅停机。
 func Run(app *bootstrap.Application) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	return serve(ctx, app.Env.Port, app.ApiEngine)
 }
 
-// serve 监听 addr 直到 ctx 取消，随后在 shutdownTimeout 内等待在途请求完成。
+// serve 在 ctx 取消后等待在途请求，最长 shutdownTimeout。
 func serve(ctx context.Context, addr string, handler http.Handler) error {
 	srv := &http.Server{
 		Addr:              addr,
@@ -47,7 +47,7 @@ func serve(ctx context.Context, addr string, handler http.Handler) error {
 
 	select {
 	case err := <-serveErr:
-		return err // 启动失败（如端口被占用）
+		return err
 	case <-ctx.Done():
 	}
 

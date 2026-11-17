@@ -27,7 +27,6 @@ func generation(t *testing.T, repo *entMenuRepository) int64 {
 	return g
 }
 
-// 菜单的创建 / 更新 / 删除各自与 generation 推进同事务提交，且只推进一次。
 func TestMenuWritesBumpAuthorizationGenerationOnce(t *testing.T) {
 	client := newAuthorizationStateTestClient(t)
 	ctx := context.Background()
@@ -58,7 +57,6 @@ func TestMenuWritesBumpAuthorizationGenerationOnce(t *testing.T) {
 	if err := repo.DeleteMenuTree(ctx, created.ID); err != nil {
 		t.Fatalf("DeleteMenuTree: %v", err)
 	}
-	// 创建子菜单 +1，递归删除父子两个节点合计只 +1。
 	if got := generation(t, repo); got != 4 {
 		t.Fatalf("generation after tree delete = %d, want 4", got)
 	}
@@ -67,7 +65,6 @@ func TestMenuWritesBumpAuthorizationGenerationOnce(t *testing.T) {
 	}
 }
 
-// 更新不存在的菜单：返回 ErrMenuNotFound，且 generation 不推进（事务回滚）。
 func TestUpdateMissingMenuRollsBackGeneration(t *testing.T) {
 	client := newAuthorizationStateTestClient(t)
 	repo := NewMenuRepository(client).(*entMenuRepository)
@@ -84,7 +81,6 @@ func TestUpdateMissingMenuRollsBackGeneration(t *testing.T) {
 	}
 }
 
-// 角色删除：仍被用户使用时回滚，不推进 generation；删除成功只推进一次。
 func TestDeleteRoleIfUnusedBumpsGenerationOnlyOnSuccess(t *testing.T) {
 	client := newAuthorizationStateTestClient(t)
 	ctx := context.Background()
@@ -115,7 +111,6 @@ func TestDeleteRoleIfUnusedBumpsGenerationOnlyOnSuccess(t *testing.T) {
 	}
 }
 
-// 菜单列表不分页：超过默认页大小也全部返回，并按 keyword 过滤。
 func TestGetMenusReturnsAllMatchesWithoutPaging(t *testing.T) {
 	client := newAuthorizationStateTestClient(t)
 	ctx := context.Background()

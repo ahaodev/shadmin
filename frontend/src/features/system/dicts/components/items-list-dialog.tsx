@@ -45,7 +45,6 @@ export function ItemsListDialog() {
           )}
         </div>
         <div className='max-h-[60vh] overflow-auto'>
-          {/* 字典项列表 */}
           <ItemsTable />
         </div>
       </DialogContent>

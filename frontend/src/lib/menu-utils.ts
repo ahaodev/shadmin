@@ -4,11 +4,6 @@ export interface MenuWithChildren extends Menu {
   children?: MenuWithChildren[]
 }
 
-/**
- * 构建菜单层级结构（支持无限嵌套层级）
- * @param menus 扁平化的菜单数组
- * @returns 构建好的层级菜单数组
- */
 export function buildMenuHierarchy(menus: Menu[]): MenuWithChildren[] {
   const cloned = menus.map((m) => ({
     ...m,
@@ -16,16 +11,13 @@ export function buildMenuHierarchy(menus: Menu[]): MenuWithChildren[] {
   }))
   const menuMap = new Map<string, MenuWithChildren>()
 
-  // 创建菜单映射
   cloned.forEach((menu) => {
     menuMap.set(menu.id, menu)
   })
 
-  // 同级仅依据 sequence 递增排序
   const sortMenus = (arr: MenuWithChildren[]) =>
     arr.slice().sort((a, b) => a.sequence - b.sequence)
 
-  // 递归构建层级结构
   const buildChildren = (parentId: string | undefined): MenuWithChildren[] => {
     const children = cloned.filter((m) => m.parent_id === parentId)
     const sortedChildren = sortMenus(children)
@@ -40,13 +32,9 @@ export function buildMenuHierarchy(menus: Menu[]): MenuWithChildren[] {
     return sortedChildren
   }
 
-  // 构建根级菜单
   return buildChildren(undefined)
 }
 
-/**
- * 扁平化层级菜单结构用于表格显示
- */
 export interface TableMenuItem extends Menu {
   level: number
   parentIndex?: string
@@ -71,13 +59,11 @@ export function flattenMenus(
       parentIndex: parentIndex || undefined,
       isExpanded: expanded[currentIndex] || false,
       hierarchyIndex: currentIndex,
-      // Add computed display fields
       hidden: item.visible === 'hide' || item.status === 'inactive',
     }
 
     result.push(tableItem)
 
-    // Add children if expanded
     if (item.children && item.children.length > 0 && expanded[currentIndex]) {
       result.push(
         ...flattenMenus(item.children, expanded, level + 1, currentIndex)
@@ -88,9 +74,6 @@ export function flattenMenus(
   return result
 }
 
-/**
- * 菜单选项接口（用于角色权限选择树）
- */
 export interface RoleMenuOption {
   id: string
   label: string
@@ -98,9 +81,6 @@ export interface RoleMenuOption {
   children?: RoleMenuOption[]
 }
 
-/**
- * 将菜单数据转换为角色权限选择所需的格式
- */
 export function transformMenusForRoleSelection(
   menus: MenuWithChildren[]
 ): RoleMenuOption[] {

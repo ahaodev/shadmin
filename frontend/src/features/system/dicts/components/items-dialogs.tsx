@@ -318,7 +318,6 @@ export function ItemsDialogs() {
 
   return (
     <>
-      {/* 创建对话框 */}
       <Dialog open={itemOpen === 'add'} onOpenChange={handleCreateDialogChange}>
         <DialogContent>
           <DialogHeader>
@@ -353,7 +352,6 @@ export function ItemsDialogs() {
         </DialogContent>
       </Dialog>
 
-      {/* 编辑对话框 */}
       <Dialog open={itemOpen === 'edit'} onOpenChange={handleEditDialogChange}>
         <DialogContent>
           <DialogHeader>
@@ -386,7 +384,6 @@ export function ItemsDialogs() {
         </DialogContent>
       </Dialog>
 
-      {/* 删除确认对话框 */}
       <AlertDialog
         open={itemOpen === 'delete'}
         onOpenChange={(open) => {

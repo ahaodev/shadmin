@@ -38,10 +38,8 @@ type LoginLogController struct {
 //	@Failure		500			{object}	domain.Response										"Internal server error"
 //	@Router			/system/login-logs [get]
 func (llc *LoginLogController) GetLoginLogs(c *gin.Context) {
-	// 构建查询过滤器
 	var filter domain.LoginLogQueryFilter
 
-	// 解析分页参数
 	if p := c.Query("page"); p != "" {
 		if v, err := strconv.Atoi(p); err == nil && v > 0 {
 			filter.Page = v
@@ -62,14 +60,12 @@ func (llc *LoginLogController) GetLoginLogs(c *gin.Context) {
 		filter.PageSize = 10
 	}
 
-	// 解析过滤参数
 	filter.Email = c.Query("email")
 	filter.LoginIP = c.Query("login_ip")
 	filter.Status = c.Query("status")
 	filter.Browser = c.Query("browser")
 	filter.OS = c.Query("os")
 
-	// 解析时间范围参数
 	if startTime := c.Query("start_time"); startTime != "" {
 		if t, err := time.Parse(time.RFC3339, startTime); err == nil {
 			filter.StartTime = &t
@@ -88,14 +84,12 @@ func (llc *LoginLogController) GetLoginLogs(c *gin.Context) {
 		}
 	}
 
-	// 解析排序参数
 	filter.SortBy = c.Query("sort_by")
 	filter.Order = c.Query("order")
 	if filter.Order == "" {
 		filter.Order = "desc"
 	}
 
-	// 调用用例获取登录日志
 	result, err := llc.LoginLogUsecase.ListLoginLogs(c.Request.Context(), filter)
 	if err != nil {
 		RespondError(c, err)

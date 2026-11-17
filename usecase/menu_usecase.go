@@ -21,7 +21,6 @@ func NewMenuUsecase(menuRepository domain.MenuRepository, timeout time.Duration)
 	}
 }
 
-// GetMenuTree Query operations
 func (mu *menuUsecase) GetMenuTree(ctx context.Context) ([]domain.MenuTreeNode, error) {
 	ctx, cancel := context.WithTimeout(ctx, mu.contextTimeout)
 	defer cancel()
@@ -42,29 +41,24 @@ func (mu *menuUsecase) GetMenuByID(ctx context.Context, id string) (*domain.Menu
 	return mu.menuRepository.GetMenuByID(ctx, id)
 }
 
-// CRUD operations
 func (mu *menuUsecase) CreateMenu(ctx context.Context, req *domain.CreateMenuRequest) (*domain.Menu, error) {
 	ctx, cancel := context.WithTimeout(ctx, mu.contextTimeout)
 	defer cancel()
 
-	// Validate menu type
 	validTypes := []string{domain.MenuTypeMenu, domain.MenuTypeButton}
 	isValidType := slices.Contains(validTypes, req.Type)
 	if !isValidType {
 		return nil, domain.ErrInvalidMenuType
 	}
 
-	// Set default status if not provided
 	if req.Status == "" {
 		req.Status = domain.MenuStatusActive
 	}
 
-	// Validate status
 	if req.Status != domain.MenuStatusActive && req.Status != domain.MenuStatusInactive {
 		return nil, domain.ErrInvalidMenuStatus
 	}
 
-	// Create menu in repository
 	createdMenu, err := mu.menuRepository.CreateMenu(ctx, req)
 	if err != nil {
 		return nil, err
@@ -77,19 +71,16 @@ func (mu *menuUsecase) UpdateMenu(ctx context.Context, id string, req *domain.Up
 	ctx, cancel := context.WithTimeout(ctx, mu.contextTimeout)
 	defer cancel()
 
-	// Validate menu type
 	validTypes := []string{domain.MenuTypeMenu, domain.MenuTypeButton}
 	isValidType := slices.Contains(validTypes, req.Type)
 	if !isValidType {
 		return nil, domain.ErrInvalidMenuType
 	}
 
-	// Validate status
 	if req.Status != domain.MenuStatusActive && req.Status != domain.MenuStatusInactive {
 		return nil, domain.ErrInvalidMenuStatus
 	}
 
-	// Update menu in repository
 	updatedMenu, err := mu.menuRepository.UpdateMenu(ctx, id, req)
 	if err != nil {
 		return nil, err
@@ -102,7 +93,6 @@ func (mu *menuUsecase) DeleteMenu(ctx context.Context, id string) error {
 	ctx, cancel := context.WithTimeout(ctx, mu.contextTimeout)
 	defer cancel()
 
-	// 先确认菜单存在，再递归删除菜单及其所有子菜单；事务由 repository 处理
 	if _, err := mu.menuRepository.GetMenuByID(ctx, id); err != nil {
 		return fmt.Errorf("get menu: %w", err)
 	}

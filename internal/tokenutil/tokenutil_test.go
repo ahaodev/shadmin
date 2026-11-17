@@ -61,7 +61,6 @@ func TestParseAccessClaims_AllFields(t *testing.T) {
 	if claims.Issuer != "shadmin" {
 		t.Errorf("Issuer = %q, want %q", claims.Issuer, "shadmin")
 	}
-	// jti 是登出黑名单的键，必须存在且不能等同于用户 ID
 	if claims.JTI() == "" {
 		t.Error("jti is empty, but the logout blacklist depends on it")
 	}
@@ -146,7 +145,6 @@ func TestParseClaims_RejectsInvalidTokens(t *testing.T) {
 	}
 }
 
-// 签发端只用 HS256，因此三个解析入口都只接受 HS256。
 func TestParseClaims_OnlyAcceptsHS256(t *testing.T) {
 	claims := &AccessClaims{
 		ID:    "u-1",
@@ -212,8 +210,7 @@ func TestExtractJTIAndExpiry(t *testing.T) {
 	}
 }
 
-// access token 解析必须校验 iss：refresh token 不带 iss，
-// 不校验时会被当作 access token 接受，弱化两类令牌的隔离。
+// refresh token 不含 iss，须拒绝作为 access token 使用。
 func TestParseAccessClaims_RejectsRefreshTokenAndForeignIssuer(t *testing.T) {
 	user := newTestUser()
 	refreshToken, err := CreateRefreshToken(user, testSecret, 60)
@@ -224,7 +221,6 @@ func TestParseAccessClaims_RejectsRefreshTokenAndForeignIssuer(t *testing.T) {
 	if _, err := ParseAccessClaims(refreshToken, testSecret); err == nil {
 		t.Fatal("ParseAccessClaims accepted a refresh token, want rejection")
 	}
-	// 刷新与登出流程仍依赖 refresh 解析器接受 refresh token
 	if _, err := ParseRefreshClaims(refreshToken, testSecret); err != nil {
 		t.Fatalf("ParseRefreshClaims rejected refresh token: %v", err)
 	}

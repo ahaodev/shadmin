@@ -24,17 +24,14 @@ func (u *departmentUsecase) Create(ctx context.Context, req *domain.CreateDepart
 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
 
-	// Set default status
 	if req.Status == "" {
 		req.Status = domain.StatusActive
 	}
 
-	// Normalize an empty parent ID to the root-level representation.
 	if req.ParentID != nil && *req.ParentID == "" {
 		req.ParentID = nil
 	}
 
-	// If parent_id is provided, verify parent exists
 	if req.ParentID != nil {
 		_, err := u.departmentRepo.GetByID(ctx, *req.ParentID)
 		if err != nil {
@@ -72,7 +69,6 @@ func (u *departmentUsecase) FetchTree(ctx context.Context) ([]domain.Department,
 	return u.departmentRepo.FetchTree(ctx)
 }
 
-// FetchList 按过滤条件（name / status / keyword）返回扁平部门列表。
 func (u *departmentUsecase) FetchList(ctx context.Context, filter domain.DepartmentQueryFilter) ([]domain.Department, error) {
 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
@@ -89,7 +85,6 @@ func (u *departmentUsecase) Update(ctx context.Context, id string, req *domain.U
 		return nil, err
 	}
 
-	// Apply partial updates
 	if req.Name != nil {
 		dept.Name = *req.Name
 	}
@@ -106,7 +101,6 @@ func (u *departmentUsecase) Update(ctx context.Context, id string, req *domain.U
 		dept.Email = *req.Email
 	}
 	if req.Status != nil {
-		// If disabling, ensure no active descendants exist
 		if *req.Status == domain.StatusInactive && dept.Status == domain.StatusActive {
 			hasActive, err := u.departmentRepo.HasActiveChildren(ctx, id)
 			if err != nil {
@@ -119,20 +113,17 @@ func (u *departmentUsecase) Update(ctx context.Context, id string, req *domain.U
 		dept.Status = *req.Status
 	}
 
-	// Handle parent_id change — check circular reference
 	if req.ParentID != nil {
 		newParentID := req.ParentID
 		if *newParentID == "" {
 			dept.ParentID = nil
 		} else {
-			// Cannot set parent to self
 			if *newParentID == id {
 				return nil, domain.ErrCircularDepartment
 			}
 			if _, err := u.departmentRepo.GetByID(ctx, *newParentID); err != nil {
 				return nil, fmt.Errorf("parent department not found: %w", err)
 			}
-			// Cannot set parent to own descendant
 			childIDs, err := u.departmentRepo.GetAllChildrenIDs(ctx, id)
 			if err != nil {
 				return nil, fmt.Errorf("check children: %w", err)
@@ -154,13 +145,11 @@ func (u *departmentUsecase) Delete(ctx context.Context, id string) error {
 	ctx, cancel := context.WithTimeout(ctx, u.contextTimeout)
 	defer cancel()
 
-	// Check existence
 	_, err := u.departmentRepo.GetByID(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	// Check children
 	has, err := u.departmentRepo.HasChildren(ctx, id)
 	if err != nil {
 		return fmt.Errorf("check children: %w", err)
@@ -169,7 +158,6 @@ func (u *departmentUsecase) Delete(ctx context.Context, id string) error {
 		return domain.ErrDepartmentHasChildren
 	}
 
-	// Check users
 	has, err = u.departmentRepo.HasUsers(ctx, id)
 	if err != nil {
 		return fmt.Errorf("check users: %w", err)

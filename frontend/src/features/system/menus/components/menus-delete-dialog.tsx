@@ -40,10 +40,8 @@ export function MenusDeleteDialog({
     mutationFn: deleteMenu,
     onSuccess: () => {
       toast.success('菜单删除成功')
-      // Invalidate all menu-related queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: [MENUS_QUERY_KEY] })
       queryClient.invalidateQueries({ queryKey: [PARENT_MENUS_QUERY_KEY] })
-      // Clear sidebar menu cache to refresh navigation menu
       queryClient.invalidateQueries({ queryKey: [MENUS_FOR_ROLE_QUERY_KEY] })
       queryClient.invalidateQueries({ queryKey: [ROLE_MENUS_QUERY_KEY] })
       queryClient.invalidateQueries({ queryKey: [ROLES_QUERY_KEY] })

@@ -38,15 +38,12 @@ export function LoginLogsTable({
   navigate,
   totalCount = 0,
 }: DataTableProps) {
-  // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
 
-  // Use data as-is since filtering is done server-side
   const filteredData = data
 
-  // Synced with URL states (keys/defaults mirror logs route search schema)
   const {
     columnFilters,
     onColumnFiltersChange,
@@ -59,7 +56,6 @@ export function LoginLogsTable({
     pagination: { defaultPage: 1, defaultPageSize: 10 },
     globalFilter: { enabled: false },
     columnFilters: [
-      // email per-column text filter
       { columnId: 'email', searchKey: 'email', type: 'string' },
       { columnId: 'status', searchKey: 'status', type: 'array' },
     ],
@@ -76,9 +72,9 @@ export function LoginLogsTable({
       columnVisibility,
     },
     enableRowSelection: false,
-    manualPagination: true, // Enable server-side pagination
-    manualFiltering: true, // Enable server-side filtering
-    pageCount: Math.ceil(totalCount / (pagination.pageSize || 10)), // Calculate total pages
+    manualPagination: true,
+    manualFiltering: true,
+    pageCount: Math.ceil(totalCount / (pagination.pageSize || 10)),
     onPaginationChange,
     onColumnFiltersChange,
     onRowSelectionChange: setRowSelection,

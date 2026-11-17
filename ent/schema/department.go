@@ -11,12 +11,10 @@ import (
 	"github.com/rs/xid"
 )
 
-// Department holds the schema definition for the Department entity.
 type Department struct {
 	ent.Schema
 }
 
-// Fields of the Department.
 func (Department) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -54,26 +52,20 @@ func (Department) Fields() []ent.Field {
 	}
 }
 
-// Edges of the Department.
 func (Department) Edges() []ent.Edge {
 	return []ent.Edge{
-		// Self-referential: parent
 		edge.From("parent", Department.Type).
 			Ref("children").
 			Field("parent_id").
 			Unique(),
-		// Self-referential: children
 		edge.To("children", Department.Type).
 			Annotations(entsql.OnDelete(entsql.Restrict)),
-		// One-to-many: department has many users
 		edge.To("users", User.Type),
 	}
 }
 
-// Indexes of the Department.
 func (Department) Indexes() []ent.Index {
 	return []ent.Index{
-		// Same-level name uniqueness
 		index.Fields("name", "parent_id").
 			Unique(),
 		index.Fields("status"),

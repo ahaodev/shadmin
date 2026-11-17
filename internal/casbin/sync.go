@@ -16,7 +16,6 @@ const snapshotBuildAttempts = 3
 
 var errAuthorizationChanged = errors.New("authorization data changed while building casbin snapshot")
 
-// SyncService projects the authoritative authorization facts into an in-memory Casbin snapshot.
 type SyncService struct {
 	source  domain.AuthorizationSource
 	manager Manager
@@ -27,8 +26,7 @@ func NewSyncService(source domain.AuthorizationSource, manager Manager) *SyncSer
 	return &SyncService{source: source, manager: manager, rebuild: make(chan struct{}, 1)}
 }
 
-// CheckPermission checks the shared generation on every protected request. A remote
-// commit is therefore observed without waiting for the background recovery poll.
+// CheckPermission 每次请求检查共享代数，及时感知远端提交。
 func (s *SyncService) CheckPermission(ctx context.Context, userID, object, action string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -38,7 +36,6 @@ func (s *SyncService) CheckPermission(ctx context.Context, userID, object, actio
 	return s.manager.CheckPermission(userID, object, action)
 }
 
-// SyncFromDatabase rebuilds the complete snapshot from the authoritative data source.
 func (s *SyncService) SyncFromDatabase(ctx context.Context) error {
 	if err := s.lock(ctx); err != nil {
 		return err
@@ -47,7 +44,6 @@ func (s *SyncService) SyncFromDatabase(ctx context.Context) error {
 	return s.rebuildLocked(ctx)
 }
 
-// SyncIfChanged checks the shared generation and rebuilds only when this process is stale.
 func (s *SyncService) SyncIfChanged(ctx context.Context) error {
 	generation, err := s.currentGeneration(ctx)
 	if err != nil {
@@ -170,14 +166,12 @@ func (s *SyncService) buildEnforcer(ctx context.Context) (*casbin.SyncedEnforcer
 	return enforcer, snapshotCounts{users: len(bindings), roles: len(roles), policies: policyCount}, nil
 }
 
-// policyRule is the object/action portion of a Casbin p rule.
 type policyRule struct {
 	obj string
 	act string
 }
 
-// desiredRolePolicies computes the p rules for one role. Keep existing semantics:
-// the admin role receives the wildcard policy, and public API resources are omitted.
+// desiredRolePolicies 为 admin 授予通配权限，并排除公开 API。
 func desiredRolePolicies(roleName string, resources []domain.AuthorizedResource) []policyRule {
 	if roleName == "admin" {
 		return []policyRule{{obj: "*", act: "*"}}

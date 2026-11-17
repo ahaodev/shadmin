@@ -7,7 +7,6 @@ import (
 	"github.com/casbin/casbin/v3"
 )
 
-// Concurrent requests must keep evaluating complete snapshots while the sync worker publishes replacements.
 func TestManagerConcurrentSnapshotPublication(t *testing.T) {
 	manager, first := testManagerWithEnforcer(t, func(enforcer *casbin.SyncedEnforcer) {
 		mustAddRoleForUser(t, enforcer, "u1", "r1")

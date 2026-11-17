@@ -12,7 +12,6 @@ import (
 	"strings"
 )
 
-// Helper function to convert domain status string to ent status enum
 func domainStatusToEntStatus(status string) user.Status {
 	switch status {
 	case constants.StatusActive:
@@ -24,17 +23,15 @@ func domainStatusToEntStatus(status string) user.Status {
 	case constants.UserStatusSuspended:
 		return user.StatusSuspended
 	default:
-		// 未知/非法状态：返回空串使其不匹配任何行，避免静默回退 active 掩盖错误
+		// 非法状态不匹配任何行，避免回退为 active。
 		return ""
 	}
 }
 
-// Helper function to convert ent status enum to domain status string
 func entStatusToDomainStatus(status user.Status) string {
 	return string(status)
 }
 
-// derefString 安全解引用可空字符串指针，nil 返回空串。
 func derefString(s *string) string {
 	if s == nil {
 		return ""
@@ -42,7 +39,6 @@ func derefString(s *string) string {
 	return *s
 }
 
-// entUserToDomainUser converts an ent.User to domain.User and extracts role IDs from edges.
 func entUserToDomainUser(u *ent.User, withPassword bool) *domain.User {
 	domainUser := &domain.User{
 		ID:           u.ID,
@@ -62,7 +58,6 @@ func entUserToDomainUser(u *ent.User, withPassword bool) *domain.User {
 		domainUser.Password = derefString(u.Password)
 	}
 
-	// Extract role IDs from database relationship
 	if u.Edges.Roles != nil {
 		var roleIDs []string
 		for _, role := range u.Edges.Roles {
@@ -74,7 +69,6 @@ func entUserToDomainUser(u *ent.User, withPassword bool) *domain.User {
 		}
 	}
 
-	// Extract department name from edge
 	if u.Edges.Department != nil {
 		domainUser.DepartmentName = u.Edges.Department.Name
 	}
@@ -146,10 +140,9 @@ func (ur *entUserRepository) create(ctx context.Context, u *domain.User, roleIDs
 }
 
 func (ur *entUserRepository) Query(ctx context.Context, filter domain.UserQueryFilter) (*domain.UserPagedResult, error) {
-	// 构建查询条件
 	var predicates []predicate.User
 	if filter.Status != "" {
-		// status 支持逗号多值（web 多选拼接，如 active,suspended）
+		// 支持逗号分隔的多个状态。
 		var entStatuses []user.Status
 		for s := range strings.SplitSeq(filter.Status, ",") {
 			if s = strings.TrimSpace(s); s != "" {
@@ -175,7 +168,7 @@ func (ur *entUserRepository) Query(ctx context.Context, filter domain.UserQueryF
 		}
 	}
 	if filter.Role != "" {
-		// role 过滤：逗号分隔的角色 ID，匹配拥有任一角色的用户
+		// 匹配拥有任一指定角色的用户。
 		var roleIDs []string
 		for id := range strings.SplitSeq(filter.Role, ",") {
 			if id = strings.TrimSpace(id); id != "" {
@@ -194,13 +187,11 @@ func (ur *entUserRepository) Query(ctx context.Context, filter domain.UserQueryF
 	}
 	baseQuery := clientFromContext(ctx, ur.client).User.Query().Where(predicates...)
 
-	// 获取总数
 	total, err := baseQuery.Clone().Count(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("count users: %w", err)
 	}
 
-	// 应用排序（在Select之前）
 	if filter.SortBy != "" {
 		baseQuery = baseQuery.Order(ApplySorting(filter.SortBy, filter.Order, map[string]string{
 			"username": user.FieldUsername,
@@ -208,10 +199,9 @@ func (ur *entUserRepository) Query(ctx context.Context, filter domain.UserQueryF
 		}, user.FieldCreatedAt))
 	}
 
-	// 构建数据查询 (移除租户信息预加载)
 	query := baseQuery
 
-	// 需要角色时在基础查询上一次性预加载，避免逐行回查（N+1）
+	// 预加载角色，避免 N+1 查询。
 	if filter.IncludeRoles {
 		query = query.WithRoles()
 	}
@@ -224,7 +214,6 @@ func (ur *entUserRepository) Query(ctx context.Context, filter domain.UserQueryF
 		return nil, fmt.Errorf("query users: %w", err)
 	}
 
-	// 列表响应不携带密码哈希，与单条查询共用同一转换函数
 	var result []*domain.User
 	for _, u := range users {
 		result = append(result, entUserToDomainUser(u, false))
@@ -242,8 +231,7 @@ func (ur *entUserRepository) GetByIdentifier(ctx context.Context, identifier str
 				user.Email(identifier),
 				user.Phone(identifier),
 			),
-			// 密码登录只匹配本地用户：oidc 用户无密码且 email 允许与本地用户重复，
-			// 限定 source=shadmin 避免同 email 双行解析歧义，也与“provider 不使用密码登录”一致。
+			// 跨来源允许同邮箱；密码登录仅查询本地用户。
 			user.SourceEQ(user.Source(constants.UserSourceLocal)),
 		)).
 		WithRoles().
@@ -278,15 +266,14 @@ func (ur *entUserRepository) GetByID(ctx context.Context, id string) (*domain.Us
 	return entUserToDomainUser(u, true), nil
 }
 
-// Update updates user fields that do not affect authorization.
+// Update 仅更新不影响授权的字段。
 // Status and role changes must use UpdateWithAuthorization or UpdateWithRoles.
-// 🔒 IsAdmin is intentionally excluded and can only be set during creation.
+// IsAdmin 仅允许在创建时设置。
 func (ur *entUserRepository) Update(ctx context.Context, u *domain.User) error {
 	return ur.update(ctx, u, nil, false)
 }
 
-// UpdateWithAuthorization updates user fields and advances the authorization
-// generation for changes such as an account status transition.
+// UpdateWithAuthorization 在同一事务内更新用户并推进授权代数。
 func (ur *entUserRepository) UpdateWithAuthorization(ctx context.Context, u *domain.User) error {
 	return ur.update(ctx, u, nil, true)
 }
@@ -319,7 +306,7 @@ func (ur *entUserRepository) update(ctx context.Context, u *domain.User, roleIDs
 			}
 		}
 
-		// email 唯一且可空：空值写 NULL（第三方来源用户可能无邮箱），非空则更新
+		// 空邮箱写 NULL。
 		if u.Email == "" {
 			updateQuery = updateQuery.ClearEmail()
 		} else {
@@ -367,7 +354,7 @@ func (ur *entUserRepository) update(ctx context.Context, u *domain.User, roleIDs
 	return nil
 }
 
-// UpdateIdentityProfile refreshes OIDC presentation fields without changing authorization state.
+// UpdateIdentityProfile 不推进授权代数。
 func (ur *entUserRepository) UpdateIdentityProfile(ctx context.Context, userID, nickname, avatar string) error {
 	_, err := clientFromContext(ctx, ur.client).User.UpdateOneID(userID).
 		SetNickname(nickname).
@@ -388,8 +375,6 @@ func (ur *entUserRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// GetStatusByID 只查询用户状态字段，避免加载整条记录。
-// 用在登录/刷新/中间件等高频路径上。
 func (ur *entUserRepository) GetStatusByID(ctx context.Context, id string) (string, error) {
 	status, err := clientFromContext(ctx, ur.client).User.
 		Query().

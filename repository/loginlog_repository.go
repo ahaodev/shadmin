@@ -9,7 +9,6 @@ import (
 	"shadmin/internal/constants"
 )
 
-// Helper function to convert domain status string to ent status enum
 func domainStatusToEntLoginLogStatus(status string) loginlog.Status {
 	switch status {
 	case constants.StatusSuccess:
@@ -21,7 +20,6 @@ func domainStatusToEntLoginLogStatus(status string) loginlog.Status {
 	}
 }
 
-// Helper function to convert ent status enum to domain status string
 func entLoginLogStatusToDomainStatus(status loginlog.Status) string {
 	return string(status)
 }
@@ -64,8 +62,6 @@ func (lr *entLoginLogRepository) Create(ctx context.Context, log *domain.LoginLo
 }
 
 func (lr *entLoginLogRepository) Query(ctx context.Context, filter domain.LoginLogQueryFilter) (*domain.LoginLogPagedResult, error) {
-	// 构建基础查询
-	// 构建查询条件
 	var predicates []predicate.LoginLog
 	if filter.Email != "" {
 		predicates = append(predicates, loginlog.EmailContains(filter.Email))
@@ -93,13 +89,11 @@ func (lr *entLoginLogRepository) Query(ctx context.Context, filter domain.LoginL
 	}
 	baseQuery := clientFromContext(ctx, lr.client).LoginLog.Query().Where(predicates...)
 
-	// 获取总数
 	total, err := baseQuery.Clone().Count(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// 应用排序（默认按登录时间倒序）
 	if filter.SortBy != "" {
 		baseQuery = baseQuery.Order(ApplySorting(filter.SortBy, filter.Order, map[string]string{
 			"email":    loginlog.FieldEmail,
@@ -107,7 +101,6 @@ func (lr *entLoginLogRepository) Query(ctx context.Context, filter domain.LoginL
 			"status":   loginlog.FieldStatus,
 		}, loginlog.FieldLoginTime))
 	} else {
-		// 默认按登录时间倒序
 		baseQuery = baseQuery.Order(ent.Desc(loginlog.FieldLoginTime))
 	}
 
@@ -118,7 +111,6 @@ func (lr *entLoginLogRepository) Query(ctx context.Context, filter domain.LoginL
 		return nil, err
 	}
 
-	// 转换为 domain.LoginLog
 	var result []*domain.LoginLog
 	for _, log := range logs {
 		domainLog := &domain.LoginLog{

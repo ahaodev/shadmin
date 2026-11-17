@@ -18,11 +18,9 @@ import { session } from '@/lib/session'
 import { useCrudMutation } from '@/hooks/use-crud-mutation'
 import { USER_ROLES_QUERY_KEY } from '@/features/system/users/constants/query-keys'
 
-// Query keys for React Query
 export const USERS_QUERY_KEY = 'users'
 const USER_QUERY_KEY = 'user'
 
-// Custom hook for fetching users with pagination and filters
 export function useUsers(params?: QueryParams) {
   return useQuery({
     queryKey: [USERS_QUERY_KEY, params],
@@ -30,10 +28,8 @@ export function useUsers(params?: QueryParams) {
       const usersResult = await getUsers(params)
       const [rolesData] = await Promise.all([getRoles()])
 
-      // Create a map of role ID to role name for efficient lookups
       const roleMap = new Map(rolesData.map((role) => [role.id, role.name]))
 
-      // Fetch roles for each user and map role IDs to names
       const usersWithRoles = await Promise.all(
         usersResult.list.map(async (user) => {
           try {
@@ -54,11 +50,10 @@ export function useUsers(params?: QueryParams) {
         list: usersWithRoles,
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   })
 }
 
-// Custom hook for creating user
 export function useCreateUser() {
   return useCrudMutation({
     mutationFn: createUser,
@@ -68,7 +63,6 @@ export function useCreateUser() {
   })
 }
 
-// Custom hook for updating user
 export function useUpdateUser() {
   return useCrudMutation({
     mutationFn: async ({
@@ -99,7 +93,6 @@ export function useUpdateUser() {
   })
 }
 
-// Custom hook for deleting user
 export function useDeleteUser() {
   return useCrudMutation({
     mutationFn: deleteUser,
@@ -109,7 +102,6 @@ export function useDeleteUser() {
   })
 }
 
-// Custom hook for batch deleting users
 export function useDeleteUsers() {
   return useCrudMutation({
     mutationFn: (userIds: string[]) =>
@@ -120,7 +112,6 @@ export function useDeleteUsers() {
   })
 }
 
-// Custom hook for inviting user
 export function useInviteUser() {
   return useCrudMutation({
     mutationFn: inviteUser,
@@ -130,7 +121,6 @@ export function useInviteUser() {
   })
 }
 
-// Custom hook for bulk status updates
 export function useBulkUpdateUsers() {
   const queryClient = useQueryClient()
 

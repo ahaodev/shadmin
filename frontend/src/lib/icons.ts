@@ -1,4 +1,3 @@
-// Centralized icon definitions for the entire application
 import {
   FileX,
   Command,
@@ -285,7 +284,6 @@ import {
   ZoomOut,
 } from 'lucide-react'
 
-// Available icons mapping
 export const availableIcons = {
   // Basic Navigation & Actions
   FileX,
@@ -620,12 +618,10 @@ export const availableIcons = {
   WifiLow,
 } as const
 
-// Get all icon names as array
 export const availableIconNames = Object.keys(availableIcons) as Array<
   keyof typeof availableIcons
 >
 
-// Function to get icon component by name - unified Lucide icon names only
 export function getIconByName(iconName: string): LucideIcon | undefined {
   if (iconName in availableIcons) {
     return availableIcons[iconName as keyof typeof availableIcons]

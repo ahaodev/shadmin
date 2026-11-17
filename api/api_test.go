@@ -19,7 +19,6 @@ func freeAddr(t *testing.T) string {
 	return l.Addr().String()
 }
 
-// ctx 取消后：等待在途请求完成再返回 nil，而不是直接断开连接。
 func TestServe_GracefulShutdownWaitsForInflightRequests(t *testing.T) {
 	addr := freeAddr(t)
 	started := make(chan struct{})
@@ -62,7 +61,6 @@ func TestServe_GracefulShutdownWaitsForInflightRequests(t *testing.T) {
 	}
 }
 
-// 端口被占用：把监听错误返回给调用方，而不是静默退出或 Fatal。
 func TestServe_ReturnsListenError(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

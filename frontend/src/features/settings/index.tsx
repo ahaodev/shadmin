@@ -26,7 +26,6 @@ const sidebarNavItems = [
 export function Settings() {
   return (
     <>
-      {/* ===== Top Heading ===== */}
       <PageHeader />
 
       <Main fixed>

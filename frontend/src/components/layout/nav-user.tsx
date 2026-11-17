@@ -33,7 +33,6 @@ export function NavUser({ user: propUser }: NavUserProps) {
   const [open, setOpen] = useDialogState()
   const { auth } = useAuthStore()
 
-  // Use profile data from auth store, fallback to user, then prop user
   const user = auth.profile
     ? {
         name: auth.profile.username,

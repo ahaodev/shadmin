@@ -9,14 +9,14 @@
 ```mermaid
 flowchart LR
     Route --> Controller
-    Controller --> Usecase
+    Controller --> Contracts
     Usecase --> Contracts[Domain 接口]
     Repository -. 实现 .-> Contracts
     Repository --> Ent --> DB[(数据库)]
     Infrastructure -. 实现 .-> Contracts
 ```
 
-箭头表示依赖关系。运行时，用例通过领域接口调用注入的实现。
+箭头表示主要代码依赖。控制器通过领域接口调用用例，用例通过领域接口调用仓储，由 `bootstrap` 注入实现。运行时的请求链路见下节。
 
 | 位置                                                                   | 职责                                    |
 | ---------------------------------------------------------------------- | --------------------------------------- |

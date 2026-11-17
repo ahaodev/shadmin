@@ -9,7 +9,6 @@ import (
 	"shadmin/ent"
 )
 
-// createDictTypeForTest 建一个字典类型，作为字典项的归属。
 func createDictTypeForTest(t *testing.T, repo domain.DictRepository, code string) *domain.DictType {
 	t.Helper()
 	dictType := &domain.DictType{Code: code, Name: code, Status: domain.StatusActive}
@@ -80,7 +79,7 @@ func TestDictRepositoryMapsWriteTimeConflicts(t *testing.T) {
 	}
 }
 
-// 同一类型下 label 唯一：重复 label 必须映射为领域哨兵（→409），而不是落成数据库约束错误（→500）。
+// 重复 label 映射为领域错误（409）。
 func TestDictRepositoryRejectsDuplicateLabel(t *testing.T) {
 	client := newAuthorizationStateTestClient(t)
 	repo := NewDictRepository(client)
@@ -114,7 +113,6 @@ func TestDictRepositoryRejectsDuplicateLabel(t *testing.T) {
 		t.Fatalf("update to duplicate label = %v; want ErrDictItemLabelExists", err)
 	}
 
-	// 改成自身当前 label 不应被自己挡住。
 	sameLabel := "未支付"
 	if err := repo.UpdateItem(ctx, second.ID, domain.UpdateDictItemRequest{Label: &sameLabel}); err != nil {
 		t.Fatalf("update to same label: %v", err)

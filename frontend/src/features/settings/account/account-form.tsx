@@ -41,7 +41,6 @@ export function AccountForm() {
 
   async function onSubmit(data: AccountFormValues) {
     try {
-      // Map form data to API request format
       await updatePassword({
         current_password: data.oldPassword,
         new_password: data.newPassword,
@@ -49,7 +48,6 @@ export function AccountForm() {
 
       toast.success('密码修改成功！')
 
-      // Reset form after successful password change
       form.reset()
     } catch (error) {
       const errorMessage =

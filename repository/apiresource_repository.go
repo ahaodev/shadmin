@@ -18,7 +18,6 @@ func NewApiResourceRepository(client *ent.Client) domain.ApiResourceRepository {
 	}
 }
 
-// convertEntApiResourceToDomain converts an ent ApiResource to domain ApiResource
 func (arr *entApiResourceRepository) convertEntApiResourceToDomain(entApiResource *ent.ApiResource) *domain.ApiResource {
 	if entApiResource == nil {
 		return nil
@@ -39,7 +38,6 @@ func (arr *entApiResourceRepository) convertEntApiResourceToDomain(entApiResourc
 func (arr *entApiResourceRepository) FetchPaged(ctx context.Context, params domain.ApiResourceQueryParams) (*domain.ApiResourcePagedResult, error) {
 	query := clientFromContext(ctx, arr.client).ApiResource.Query()
 
-	// Apply filters
 	apiParams := params
 	if apiParams.Method != "" {
 		query = query.Where(apiresource.Method(apiParams.Method))
@@ -62,7 +60,6 @@ func (arr *entApiResourceRepository) FetchPaged(ctx context.Context, params doma
 		query = query.Where(apiresource.PathContains(apiParams.Path))
 	}
 
-	// Get total count
 	total, err := query.Clone().Count(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count API resources: %w", err)

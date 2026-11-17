@@ -14,7 +14,6 @@ func TestMemoryCacheIncr(t *testing.T) {
 	if n, err := c.Incr(ctx, "ns", "k", time.Minute); err != nil || n != 1 {
 		t.Fatalf("first Incr = %d, %v; want 1, nil", n, err)
 	}
-	// 与 Set/Get 共用一套字符串表示，读取路径不需要区分两种写入。
 	if n, err := c.Incr(ctx, "ns", "k", time.Minute); err != nil || n != 2 {
 		t.Fatalf("second Incr = %d, %v; want 2, nil", n, err)
 	}
@@ -23,7 +22,6 @@ func TestMemoryCacheIncr(t *testing.T) {
 	}
 }
 
-// 并发自增不得丢计数：登录失败上限依赖这一点，否则可用并发请求绕过锁定。
 func TestMemoryCacheIncrIsAtomic(t *testing.T) {
 	ctx := context.Background()
 	c := NewMemoryCache(MemoryConfig{})

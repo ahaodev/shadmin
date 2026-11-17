@@ -32,7 +32,7 @@ func (pr *entProfileRepository) GetByID(ctx context.Context, id, _ string) (*dom
 		return nil, fmt.Errorf("get profile by id: %w", err)
 	}
 
-	// 头像统一取自 users.avatar：oidc 用户资料已由登录流程同步到 users 表。
+	// OIDC 资料已在登录时同步到 users。
 	profile := &domain.Profile{
 		ID:        u.ID,
 		Username:  u.Username,

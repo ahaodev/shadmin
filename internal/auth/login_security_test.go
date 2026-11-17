@@ -10,7 +10,6 @@ import (
 	"shadmin/internal/cacher"
 )
 
-// newTestManager 用内存版 cacher 构造管理器。计数过期由 cacher 的 TTL 负责。
 func newTestManager() *LoginSecurityManager {
 	return NewLoginSecurityManager(
 		cacher.NewMemoryCache(cacher.MemoryConfig{CleanupInterval: time.Minute}),
@@ -49,7 +48,6 @@ func TestLoginSecurityManager_SuccessfulLoginClearsRecord(t *testing.T) {
 	}
 }
 
-// 计数靠 TTL 归零：窗口内不再失败，锁定自动解除，且新的一轮从 1 重新计数， 不会把上一轮的失败累加进来。
 func TestLoginSecurityManager_LockExpiresWithTTL(t *testing.T) {
 	ctx := context.Background()
 	m := newTestManager()
@@ -74,8 +72,7 @@ func TestLoginSecurityManager_LockExpiresWithTTL(t *testing.T) {
 
 var errCacheDown = errors.New("cache unavailable")
 
-// brokenCacher 模拟缓存不可用，用于固定 fail-open 行为：
-// 缓存故障时登录必须放行，不能把所有用户挡在门外。
+// brokenCacher 模拟缓存故障，验证登录计数失败时放行。
 type brokenCacher struct{}
 
 func (brokenCacher) SetIfAbsent(context.Context, string, string, string, time.Duration) (bool, error) {
@@ -116,8 +113,7 @@ func TestLoginSecurityManager_CacheFailureFailsOpen(t *testing.T) {
 	}
 }
 
-// 并发失败必须逐一计入：读改写会让多个 goroutine 读到同一个旧值互相覆盖，
-// 使攻击者用并发请求绕过失败上限。
+// 并发失败不得丢计数，否则可绕过失败上限。
 func TestLoginSecurityManager_ConcurrentFailuresAreCounted(t *testing.T) {
 	ctx := context.Background()
 	m := newTestManager()

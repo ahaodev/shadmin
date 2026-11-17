@@ -19,10 +19,6 @@ const defaultSidebarData = {
   ],
 }
 
-/**
- * Build sidebar user info from auth-store, falling back to defaults when no
- * user is signed in.
- */
 function resolveUserInfo() {
   const auth = useAuthStore.getState().auth
 
@@ -46,10 +42,7 @@ function resolveUserInfo() {
   return defaultSidebarData.user
 }
 
-/**
- * Get sidebar data synchronously from cached state.
- * Used by command-menu and as initial hook state.
- */
+/** Reads cached sidebar data without fetching. */
 export function getSidebarData(): SidebarData {
   return {
     user: resolveUserInfo(),
@@ -58,19 +51,13 @@ export function getSidebarData(): SidebarData {
   }
 }
 
-// ---------------------------------------------------------------------------
-// React hook
-// ---------------------------------------------------------------------------
-
 export function useSidebarData() {
   const [sidebarData, setSidebarData] = useState<SidebarData>(getSidebarData())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // 监听用户状态变化
   const { auth } = useAuthStore()
-  // 创建更稳定的用户标识符，避免每次渲染重复 JSON.stringify。
-  // 包含 permissions 以便仅权限变更（setPermissions）时也能刷新侧边栏。
+  // 权限单独变更时也需刷新侧边栏。
   const userKey = useMemo(
     () =>
       JSON.stringify({
@@ -99,7 +86,6 @@ export function useSidebarData() {
     let mounted = true
 
     const loadData = async () => {
-      // Skip loading if user is not authenticated (e.g. during logout)
       if (!useAuthStore.getState().auth.accessToken) {
         return
       }
@@ -124,7 +110,6 @@ export function useSidebarData() {
             err instanceof Error ? err.message : 'Failed to load menu data'
           )
           console.error('Failed to load sidebar data:', err)
-          // Keep the current/fallback data on error
         }
       } finally {
         if (mounted) {
@@ -138,10 +123,9 @@ export function useSidebarData() {
     return () => {
       mounted = false
     }
-  }, [userKey]) // 当用户关键信息改变时重新加载数据
+  }, [userKey])
 
   const reloadData = async () => {
-    // Skip reloading if user is not authenticated (e.g. after logout)
     if (!useAuthStore.getState().auth.accessToken) {
       return
     }

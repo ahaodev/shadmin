@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// ApiResource represents an API resource entity
 type ApiResource struct {
 	ID        string    `json:"id"` // format: "method:path"
 	Method    string    `json:"method"`
@@ -18,18 +17,16 @@ type ApiResource struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// ApiResourceKey represents the composite key for API resource
 type ApiResourceKey struct {
 	Method string `json:"method"`
 	Path   string `json:"path"`
 }
 
-// GenerateApiResourceID creates a stable ID from method and path
+// GenerateApiResourceID 返回稳定的 METHOD:path 标识。
 func GenerateApiResourceID(method, path string) string {
 	return method + ":" + path
 }
 
-// ParseApiResourceID extracts method and path from ID
 func ParseApiResourceID(id string) (method, path string) {
 	parts := strings.SplitN(id, ":", 2)
 	if len(parts) == 2 {
@@ -38,10 +35,8 @@ func ParseApiResourceID(id string) (method, path string) {
 	return "", ""
 }
 
-// ApiResourcePagedResult represents paged API resource results
 type ApiResourcePagedResult = PagedResult[*ApiResource]
 
-// ApiResourceQueryParams represents query parameters for API resource
 type ApiResourceQueryParams struct {
 	QueryParams
 	Method   string `json:"method"`
@@ -56,7 +51,6 @@ type ApiResourceUseCase interface {
 	FetchPaged(ctx context.Context, params ApiResourceQueryParams) (*ApiResourcePagedResult, error)
 }
 
-// ApiResourceRepository defines the interface for API resource repository
 type ApiResourceRepository interface {
 	FetchPaged(ctx context.Context, params ApiResourceQueryParams) (*ApiResourcePagedResult, error)
 }

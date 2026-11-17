@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// Menu represents a menu item in the system
 type Menu struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
@@ -26,12 +25,10 @@ type Menu struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 
-	// Related data
 	Children     []Menu   `json:"children,omitempty"`
 	ApiResources []string `json:"apiResources,omitempty"`
 }
 
-// CreateMenuRequest represents the request to create a new menu
 type CreateMenuRequest struct {
 	Name         string   `json:"name" binding:"required"`
 	Sequence     int      `json:"sequence"`
@@ -44,12 +41,11 @@ type CreateMenuRequest struct {
 	IsFrame      bool     `json:"is_frame"`
 	Visible      string   `json:"visible"` // show/hide
 	Permissions  *string  `json:"permissions"`
-	ApiResources []string `json:"apiResources"` // Extended properties
-	Status       string   `json:"status"`       // active/inactive
+	ApiResources []string `json:"apiResources"`
+	Status       string   `json:"status"` // active/inactive
 	ParentID     *string  `json:"parent_id"`
 }
 
-// UpdateMenuRequest represents the request to update a menu
 type UpdateMenuRequest struct {
 	Code         string   `json:"code"`
 	Name         string   `json:"name"`
@@ -65,12 +61,11 @@ type UpdateMenuRequest struct {
 	Permissions  *string  `json:"permissions"`
 	ParentID     *string  `json:"parent_id"`
 	Remark       *string  `json:"remark"`
-	Properties   *string  `json:"properties"` // Extended properties
-	Status       string   `json:"status"`     // active/inactive
+	Properties   *string  `json:"properties"`
+	Status       string   `json:"status"` // active/inactive
 	ApiResources []string `json:"apiResources"`
 }
 
-// MenuTreeNode represents a menu in tree structure
 type MenuTreeNode struct {
 	ID           string         `json:"id"`
 	Name         string         `json:"name"`
@@ -92,25 +87,21 @@ type MenuTreeNode struct {
 	Children     []MenuTreeNode `json:"children,omitempty"`
 }
 
-// AssignMenuRoleRequest represents the request to assign roles to a menu
 type AssignMenuRoleRequest struct {
 	MenuID string   `json:"menu_id" binding:"required"`
 	Roles  []string `json:"roles" binding:"required"`
 }
 
-// RemoveMenuRoleRequest represents the request to remove roles from a menu
 type RemoveMenuRoleRequest struct {
 	MenuID string   `json:"menu_id" binding:"required"`
 	Roles  []string `json:"roles" binding:"required"`
 }
 
-// MenuQueryParams represents query parameters for menu filtering.
-// 菜单是有限的完整集合，不分页：返回全部匹配项。
+// MenuQueryParams 不分页，返回全部匹配项。
 type MenuQueryParams struct {
 	Keyword string `form:"keyword"` // 模糊匹配 name/path
 }
 
-// MenuItem 固定菜单定义
 type MenuItem struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
@@ -123,19 +114,16 @@ type MenuItem struct {
 	RequiresAdmin bool   `json:"requiresAdmin"`
 }
 
-// Menu status constants
 const (
 	MenuStatusActive   = StatusActive
 	MenuStatusInactive = StatusInactive
 )
 
-// Menu type constants
 const (
 	MenuTypeMenu   = "menu"
 	MenuTypeButton = "button"
 )
 
-// Menu error constants
 var (
 	ErrInvalidMenuType   = errors.New("invalid menu type")
 	ErrInvalidMenuStatus = errors.New("invalid menu status")
@@ -144,7 +132,6 @@ var (
 	ErrMenuHasChildren   = errors.New("cannot delete menu with children")
 )
 
-// MenuRepository defines the interface for menu data operations
 type MenuRepository interface {
 	GetMenuTree(ctx context.Context) ([]MenuTreeNode, error)
 	GetMenus(ctx context.Context, params MenuQueryParams) (*PagedResult[Menu], error)
@@ -158,7 +145,6 @@ type MenuRepository interface {
 	DeleteMenuTree(ctx context.Context, id string) error
 }
 
-// MenuUseCase defines the interface for menu business logic
 type MenuUseCase interface {
 	GetMenuTree(ctx context.Context) ([]MenuTreeNode, error)
 	GetMenus(ctx context.Context, params MenuQueryParams) (*PagedResult[Menu], error)

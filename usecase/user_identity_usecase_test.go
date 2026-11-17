@@ -9,7 +9,6 @@ import (
 	"shadmin/domain"
 )
 
-// fakeUnitOfWork 依次返回 failures 中的错误（不执行 fn）；失败用尽后真正执行 fn。
 type fakeUnitOfWork struct {
 	failures []error
 	calls    int

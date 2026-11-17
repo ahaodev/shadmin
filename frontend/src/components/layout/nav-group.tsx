@@ -46,7 +46,6 @@ export function NavGroup({
   const href = useLocation({ select: (location) => location.pathname })
   const { setOpenMobile } = useSidebar()
 
-  // 当侧边栏折叠时，显示为下拉菜单
   if (state === 'collapsed' && !isMobile) {
     return (
       <NavGroupCollapsedDropdown
@@ -61,8 +60,6 @@ export function NavGroup({
     )
   }
 
-  // If NavGroup has a direct URL (no items), render as a direct menu item
-  //// 如果 NavGroup 直接提供了 URL（没有子项），则渲染为单个菜单项
   if (url && !items) {
     const groupAsItem = { title, url, icon, badge }
     const linkUrl = String(url)
@@ -98,13 +95,10 @@ export function NavGroup({
     )
   }
 
-  // If no items, skip rendering
   if (!items || items.length === 0) {
     return null
   }
 
-  // For single-item groups, render as a direct menu item without collapsible
-  //对于单项组，呈现为直接菜单项，无需可折叠
   if (items.length === 1 && !items[0].items) {
     const singleItem = items[0]
     const isFrame = getIsFrame(singleItem)
@@ -195,7 +189,6 @@ function NavGroupCollapsedDropdown({
   is_frame?: boolean
 }) {
   const { setOpenMobile } = useSidebar()
-  // If this is a direct URL NavGroup, render as a single menu button in collapsed state
   if (url && !items) {
     const groupAsItem = { title, url, icon, badge }
     const linkUrl = String(url)
@@ -233,7 +226,6 @@ function NavGroupCollapsedDropdown({
     )
   }
 
-  // Handle single-item groups in collapsed state
   if (items && items.length === 1 && !items[0].items) {
     const singleItem = items[0]
     const isFrame = getIsFrame(singleItem)
@@ -289,7 +281,6 @@ function NavGroupCollapsedDropdown({
                     className: 'h-4 w-4 shrink-0',
                   })
                 ) : (
-                  /* Fallback to first letter of title */
                   <div className='flex h-4 w-4 shrink-0 items-center justify-center'>
                     <span className='text-xs font-semibold'>
                       {title.charAt(0).toUpperCase()}
@@ -308,7 +299,6 @@ function NavGroupCollapsedDropdown({
               <DropdownMenuSeparator />
               {items.map((item) => {
                 if (!item.items) {
-                  // Simple menu item
                   return (
                     <DropdownMenuItem key={`${item.title}-${item.url}`} asChild>
                       <NavLinkRenderer
@@ -333,7 +323,6 @@ function NavGroupCollapsedDropdown({
                     </DropdownMenuItem>
                   )
                 } else {
-                  // Nested menu item with submenu - flatten for simplicity in collapsed mode
                   return getNavLinks(item.items).map((subItem) => (
                     <DropdownMenuItem
                       key={`${item.title}-${subItem.title}`}
@@ -376,10 +365,6 @@ function NavBadge({ children }: { children: ReactNode }) {
   return <Badge className='rounded-full px-1 py-0 text-xs'>{children}</Badge>
 }
 
-/**
- * Safely reads the `is_frame` flag from any NavItem (or undefined),
- * defaulting to `false` for NavCollapsible items that don't carry it.
- */
 function getIsFrame(item: NavItem | undefined | null): boolean {
   if (!item) return false
   return 'is_frame' in item ? Boolean(item.is_frame) : false
@@ -393,10 +378,6 @@ type NavLinkRendererProps = {
   children: ReactNode
 }
 
-/**
- * Renders either a TanStack Link (internal route) or an <a> tag
- * (external link) depending on the is_frame flag.
- */
 function NavLinkRenderer({
   url,
   isFrame,
@@ -453,7 +434,6 @@ function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
   )
 }
 
-// 可折叠的侧边栏
 function SidebarMenuCollapsible({
   item,
   href,
@@ -484,7 +464,6 @@ function SidebarMenuCollapsible({
         <CollapsibleContent className='CollapsibleContent'>
           <SidebarMenuSub>
             {item.items.map((subItem) => {
-              // Handle nested submenus (like 日志管理 with children)
               if (
                 'items' in subItem &&
                 subItem.items &&
@@ -551,7 +530,6 @@ function SidebarMenuCollapsible({
                   </Collapsible>
                 )
               } else {
-                // Regular submenu item
                 return (
                   <SidebarMenuSubItem key={subItem.title}>
                     <SidebarMenuSubButton

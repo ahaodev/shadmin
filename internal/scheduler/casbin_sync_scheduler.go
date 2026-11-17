@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// CasbinSyncScheduler runs generation-triggered syncs with a periodic fallback.
 type CasbinSyncScheduler struct {
 	syncService *casbin.SyncService
 	interval    time.Duration
@@ -19,7 +18,6 @@ type CasbinSyncScheduler struct {
 	mutex       sync.RWMutex
 }
 
-// NewCasbinSyncScheduler creates a Casbin sync scheduler.
 func NewCasbinSyncScheduler(syncService *casbin.SyncService, interval time.Duration) *CasbinSyncScheduler {
 	if interval <= 0 {
 		interval = time.Hour
@@ -27,15 +25,12 @@ func NewCasbinSyncScheduler(syncService *casbin.SyncService, interval time.Durat
 	return &CasbinSyncScheduler{
 		syncService: syncService,
 		interval:    interval,
-		// A buffered, coalescing trigger avoids blocking the Ent commit hook and
-		// collapses bursts of authorization writes into one sync attempt.
+		// 合并触发通知，避免阻塞提交 hook。
 		triggerChan: make(chan struct{}, 1),
 	}
 }
 
-// TriggerSync requests an authorization snapshot refresh after a committed
-// generation change. The request is best-effort and coalesced; the periodic
-// poll remains the recovery path for missed triggers and other instances.
+// TriggerSync 合并提交后的同步请求；轮询兜底遗漏通知与远端变更。
 func (s *CasbinSyncScheduler) TriggerSync() {
 	select {
 	case s.triggerChan <- struct{}{}:
@@ -43,7 +38,6 @@ func (s *CasbinSyncScheduler) TriggerSync() {
 	}
 }
 
-// Start 启动定时同步任务
 func (s *CasbinSyncScheduler) Start(ctx context.Context) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -53,7 +47,6 @@ func (s *CasbinSyncScheduler) Start(ctx context.Context) {
 		return
 	}
 
-	// stopChan/doneChan 每次启动重建，Stop 之后可以再次 Start。
 	stopChan := make(chan struct{})
 	doneChan := make(chan struct{})
 	s.stopChan = stopChan
@@ -63,7 +56,7 @@ func (s *CasbinSyncScheduler) Start(ctx context.Context) {
 	go s.run(ctx, s.interval, stopChan, doneChan)
 }
 
-// Stop 停止定时同步任务。可重复调用（含并发调用）：重复调用是安全的空操作。
+// Stop 可重复或并发调用。
 func (s *CasbinSyncScheduler) Stop() {
 	s.mutex.Lock()
 	if !s.running {
@@ -73,7 +66,6 @@ func (s *CasbinSyncScheduler) Stop() {
 
 	stopChan := s.stopChan
 	doneChan := s.doneChan
-	// 先置 running=false 再释放锁：并发/重复的 Stop 会直接返回，不会重复 close。
 	s.running = false
 	s.mutex.Unlock()
 
@@ -83,7 +75,7 @@ func (s *CasbinSyncScheduler) Stop() {
 	slog.Info("Casbin同步调度器已停止")
 }
 
-// run 执行定时同步任务的主循环。interval 与通道由 Start 快照传入，不读取可变字段。
+// run 使用 Start 传入的通道快照，避免读取可变字段。
 func (s *CasbinSyncScheduler) run(ctx context.Context, interval time.Duration, stop <-chan struct{}, done chan<- struct{}) {
 	defer close(done)
 
@@ -113,7 +105,6 @@ func (s *CasbinSyncScheduler) run(ctx context.Context, interval time.Duration, s
 	}
 }
 
-// performSync 执行一次同步操作
 func (s *CasbinSyncScheduler) performSync(ctx context.Context) error {
 	syncCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

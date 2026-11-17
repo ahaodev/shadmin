@@ -31,7 +31,6 @@ export function useDepartmentForm({
     },
   })
 
-  // Backfill form with existing data when editing
   useEffect(() => {
     if (currentRow) {
       form.reset({

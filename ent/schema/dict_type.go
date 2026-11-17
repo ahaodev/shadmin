@@ -10,12 +10,10 @@ import (
 	"github.com/rs/xid"
 )
 
-// DictType holds the schema definition for the DictType entity.
 type DictType struct {
 	ent.Schema
 }
 
-// Fields of the DictType.
 func (DictType) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -55,22 +53,17 @@ func (DictType) Fields() []ent.Field {
 	}
 }
 
-// Edges of the DictType.
 func (DictType) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("items", DictItem.Type).Comment("字典类型下的字典项"),
 	}
 }
 
-// Indexes of the DictType.
 func (DictType) Indexes() []ent.Index {
 	return []ent.Index{
-		// 编码唯一索引
 		index.Fields("code").
 			Unique(),
-		// 状态索引
 		index.Fields("status"),
-		// 名称索引（用于搜索）
 		index.Fields("name"),
 	}
 }

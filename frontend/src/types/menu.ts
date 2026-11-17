@@ -83,7 +83,6 @@ export interface MenuPagedResult {
 export interface MenuQueryParams {
   keyword?: string
 }
-// Resources response structure
 export interface ResourcesResponse {
   menus: MenuTreeNode[]
   permissions: string[] | null
@@ -91,6 +90,5 @@ export interface ResourcesResponse {
   is_admin: boolean
 }
 
-// Type definitions
 export type MenuType = 'menu' | 'button'
 export type MenuStatus = 'active' | 'inactive'

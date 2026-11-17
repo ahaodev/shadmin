@@ -3,19 +3,16 @@ import { clearAllLoginLogs, getLoginLogs } from '@/services/loginLogApi'
 import type { LoginLogFilter } from '@/types/login-log'
 import { useCrudMutation } from '@/hooks/use-crud-mutation'
 
-// Query keys for React Query
 const LOGIN_LOGS_QUERY_KEY = 'login-logs'
 
-// Custom hook for fetching login logs with pagination and filters
 export function useLoginLogs(params?: LoginLogFilter) {
   return useQuery({
     queryKey: [LOGIN_LOGS_QUERY_KEY, params],
     queryFn: () => getLoginLogs(params),
-    staleTime: 30 * 1000, // 30 seconds - logs change frequently
+    staleTime: 30 * 1000,
   })
 }
 
-// Custom hook for clearing all login logs
 export function useClearAllLoginLogs() {
   return useCrudMutation({
     mutationFn: clearAllLoginLogs,
@@ -25,7 +22,6 @@ export function useClearAllLoginLogs() {
   })
 }
 
-// Custom hook for refreshing login logs data
 export function useRefreshLoginLogs() {
   const queryClient = useQueryClient()
 

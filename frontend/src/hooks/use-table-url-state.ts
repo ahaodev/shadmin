@@ -34,7 +34,6 @@ type UseTableUrlStateParams = {
         columnId: string
         searchKey: string
         type?: 'string'
-        // Optional transformers for custom types
         serialize?: (value: unknown) => unknown
         deserialize?: (value: unknown) => unknown
       }
@@ -49,16 +48,12 @@ type UseTableUrlStateParams = {
 }
 
 type UseTableUrlStateReturn = {
-  // Global filter
   globalFilter?: string
   onGlobalFilterChange?: OnChangeFn<string>
-  // Column filters
   columnFilters: ColumnFiltersState
   onColumnFiltersChange: OnChangeFn<ColumnFiltersState>
-  // Pagination
   pagination: PaginationState
   onPaginationChange: OnChangeFn<PaginationState>
-  // Helpers
   ensurePageInRange: (
     pageCount: number,
     opts?: { resetTo?: 'first' | 'last' }
@@ -85,7 +80,6 @@ export function useTableUrlState(
   const globalFilterEnabled = globalFilterCfg?.enabled ?? true
   const trimGlobal = globalFilterCfg?.trim ?? true
 
-  // Build initial column filters from the current search params
   const initialColumnFilters: ColumnFiltersState = useMemo(() => {
     const collected: ColumnFiltersState = []
     for (const cfg of columnFiltersCfg) {
@@ -97,7 +91,6 @@ export function useTableUrlState(
           collected.push({ id: cfg.columnId, value })
         }
       } else {
-        // default to array type
         const value = (deserialize(raw) as unknown[]) ?? []
         if (Array.isArray(value) && value.length > 0) {
           collected.push({ id: cfg.columnId, value })
@@ -127,7 +120,7 @@ export function useTableUrlState(
       const nextPage = next.pageIndex + 1
       const nextPageSize = next.pageSize
       navigate({
-        replace: true, // Use replace for pagination to reduce history pollution
+        replace: true, // Replace history to avoid an entry per table change.
         search: (prev) => ({
           ...(prev as SearchRecord),
           [pageKey]: nextPage <= defaultPage ? undefined : nextPage,
@@ -192,13 +185,10 @@ export function useTableUrlState(
         }
       }
 
-      // Use replace: true for filter changes to reduce history pollution
       navigate({
         replace: true,
         search: (prev) => ({
           ...(prev as SearchRecord),
-          // Don't reset page when only updating filters
-          // [pageKey]: undefined,
           ...patch,
         }),
       })

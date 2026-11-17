@@ -18,15 +18,12 @@ import (
 )
 
 const (
-	// DefaultTTL 默认验证码过期时间
 	DefaultTTL = 15 * time.Second
-	// DefaultPadding Slide 校验坐标容忍度（像素）
-	DefaultPadding = 5
-	// DefaultMaxAttempts 单个 challenge 最多校验尝试次数
+	// DefaultPadding 为坐标容差，单位为像素。
+	DefaultPadding     = 5
 	DefaultMaxAttempts = 3
 )
 
-// challengeRecord 单次滑块挑战的服务端状态。JSON 序列化用于底层 cacher.Cacher 持久化。
 type challengeRecord struct {
 	X         int       `json:"x"`
 	Y         int       `json:"y"`
@@ -36,8 +33,6 @@ type challengeRecord struct {
 
 const captchaNS = "captcha"
 
-// SlideManager 进程内 Slide 验证码生成与挑战存储，封装 go-captcha v2 与 challenge 生命周期。
-// 它是基础设施组件，与 internal/login_security.go 同级，由 usecase 层包装后供 controller 使用。
 type SlideManager struct {
 	captcha    slide.Captcha
 	cacher     cacher.Cacher
@@ -83,7 +78,7 @@ func NewSlideManager(cacher cacher.Cacher) (*SlideManager, error) {
 	}, nil
 }
 
-// Generate 生成新的 Slide 验证码挑战；oldID 非空时会主动失效旧 challenge。
+// Generate 在 oldID 非空时失效旧挑战。
 func (m *SlideManager) Generate(ctx context.Context, oldID string) (*domain.SlideCaptchaChallenge, error) {
 	if oldID != "" {
 		_ = m.cacher.Delete(ctx, captchaNS, oldID)
@@ -135,7 +130,7 @@ func (m *SlideManager) Generate(ctx context.Context, oldID string) (*domain.Slid
 	}, nil
 }
 
-// Verify 校验用户提交的滑块坐标，校验成功或失败次数耗尽后会消费掉该 challenge。
+// Verify 在成功或尝试次数耗尽时消费挑战。
 func (m *SlideManager) Verify(ctx context.Context, id string, x, y int) error {
 	if id == "" {
 		return domain.ErrCaptchaRequired
@@ -159,7 +154,6 @@ func (m *SlideManager) Verify(ctx context.Context, id string, x, y int) error {
 
 	rec.Attempts++
 	if !slide.Validate(x, y, rec.X, rec.Y, m.padding) {
-		// 仍有剩余次数则写回自增后的计数；否则保持已删除（次数耗尽即失效）。
 		if rec.Attempts < m.maxAttempt {
 			if err := m.saveChallenge(ctx, id, rec, time.Until(rec.ExpiresAt)); err != nil {
 				return domain.ErrCaptchaInvalid
@@ -168,7 +162,6 @@ func (m *SlideManager) Verify(ctx context.Context, id string, x, y int) error {
 		return domain.ErrCaptchaInvalid
 	}
 
-	// 一次性消费：认领时已删除，校验成功直接返回。
 	return nil
 }
 
@@ -189,7 +182,6 @@ func (m *SlideManager) saveChallenge(ctx context.Context, id string, rec challen
 	return nil
 }
 
-// Invalidate 主动失效一个 challenge
 func (m *SlideManager) Invalidate(ctx context.Context, id string) {
 	if id == "" {
 		return

@@ -1,6 +1,5 @@
 package constants
 
-// Authorization 是 HTTP 标准 Authorization 请求头名称。
 const Authorization = "Authorization"
 
 const UserID = "x-user-id"

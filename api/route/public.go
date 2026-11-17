@@ -10,40 +10,33 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// PublicRoutes manages all public (unauthenticated) routes
 type PublicRoutes struct {
 	factory *ControllerFactory
 }
 
-// NewPublicRoutes creates a new public routes manager
 func NewPublicRoutes(factory *ControllerFactory) *PublicRoutes {
 	return &PublicRoutes{
 		factory: factory,
 	}
 }
 
-// Setup configures all public routes
 func (pr *PublicRoutes) Setup(router *gin.RouterGroup, app *bootstrap.Application) {
 	if app.Env.AppEnv == conf.AppEnvDev {
 		router.Use(middleware.LogMiddleware())
 	}
 
-	// Health check
 	healthGroup := router.Group("/health")
 	pr.setupHealthRoutes(healthGroup)
 
-	// Authentication routes
 	authGroup := router.Group("/auth")
 	pr.setupAuthRoutes(authGroup)
 }
 
-// setupHealthRoutes configures health check routes
 func (pr *PublicRoutes) setupHealthRoutes(group *gin.RouterGroup) {
 	hc := pr.factory.CreateHealthController()
 	group.GET("", hc.Health)
 }
 
-// setupAuthRoutes configures authentication-related routes
 func (pr *PublicRoutes) setupAuthRoutes(group *gin.RouterGroup) {
 	authController := pr.factory.CreateAuthController()
 	captchaController := pr.factory.CreateCaptchaController()
@@ -59,8 +52,6 @@ func (pr *PublicRoutes) setupAuthRoutes(group *gin.RouterGroup) {
 	group.POST("/device/token", middleware.RateLimitByIP(60, time.Minute), deviceAuthController.PollToken)
 	group.POST("/invitations/accept", middleware.RateLimitByIP(10, time.Minute), userInvitationController.Accept)
 
-	// 第三方登录：先注册 /providers，再注册 /:provider 与 /:provider/callback，
-	// 避免 gin 路由树把 /providers 当作 :provider 匹配。
 	identity := group.Group("/identity")
 	identity.GET("/providers", userIdentityController.ListProviders)
 	identity.POST("/exchange", userIdentityController.Exchange)

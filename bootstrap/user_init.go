@@ -43,7 +43,7 @@ var defaultMenus = []seedMenu{
 	{key: "dict", parentKey: "system", name: "字典管理", sequence: 7, typ: "menu", path: "/system/dict", icon: "BookMarked", resources: []string{"GET:/api/v1/system/dict/types", "GET:/api/v1/system/dict/items", "GET:/api/v1/system/dict/types/code/:code/items"}},
 }
 
-// viewerMenuKeys is the explicit read-only menu allowlist for OAuth users.
+// viewerMenuKeys 限定 OAuth 用户可访问的只读菜单。
 var viewerMenuKeys = map[string]struct{}{
 	"dashboard":    {},
 	"system":       {},
@@ -124,8 +124,7 @@ func createSeedMenu(ctx context.Context, client *ent.Client, item seedMenu, pare
 	return builder.Save(ctx)
 }
 
-// viewerReadOnlyMenus returns only explicitly allowlisted menus whose APIs are read-only.
-// Button menus are intentionally excluded because they may bundle read and write APIs.
+// viewerReadOnlyMenus 排除可能混合读写 API 的按钮菜单。
 func viewerReadOnlyMenus(ctx context.Context, client *ent.Client) ([]*ent.Menu, error) {
 	var result []*ent.Menu
 	for _, item := range defaultMenus {
@@ -229,8 +228,7 @@ func ensureViewerRole(ctx context.Context, client *ent.Client) error {
 	return nil
 }
 
-// InitDefaultAdmin initializes or repairs the default admin, viewer role, and menus in one
-// transaction, including the authorization generation change.
+// InitDefaultAdmin 同事务修复默认管理员、viewer 角色和菜单，并推进授权代数。
 func InitDefaultAdmin(app *Application) error {
 	ctx := context.Background()
 	const maxAttempts = 3
@@ -273,8 +271,7 @@ func needsDefaultAdminInitialization(ctx context.Context, client *ent.Client) (b
 	}).First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			// initDefaultAdmin repairs the missing system role and rebinds the
-			// existing administrator instead of creating a second admin user.
+			// 修复缺失角色并重新绑定已有管理员，避免重复创建用户。
 			return true, nil
 		}
 		return true, fmt.Errorf("get admin role: %w", err)

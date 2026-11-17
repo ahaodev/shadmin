@@ -13,7 +13,7 @@ function getSnapshot() {
   return window.innerWidth < MOBILE_BREAKPOINT
 }
 
-// SSR-safe default — assume desktop on the server, hydrate with real value on the client.
+// Use desktop as the server snapshot for hydration.
 function getServerSnapshot() {
   return false
 }

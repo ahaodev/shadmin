@@ -31,7 +31,6 @@ export function DataTableToolbar<TData>({
   filters = [],
   onReset,
 }: DataTableToolbarProps<TData>) {
-  // Local state for search input
   const [searchValue, setSearchValue] = useState(() => {
     if (searchKey) {
       return (table.getColumn(searchKey)?.getFilterValue() as string) ?? ''
@@ -39,10 +38,8 @@ export function DataTableToolbar<TData>({
     return table.getState().globalFilter ?? ''
   })
 
-  // Debounce search value
   const debouncedSearchValue = useDebounce(searchValue, 300)
 
-  // Apply debounced search value to table
   useEffect(() => {
     startTransition(() => {
       if (searchKey) {

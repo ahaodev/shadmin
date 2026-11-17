@@ -13,7 +13,6 @@ import (
 	"shadmin/internal/cacher"
 )
 
-// newTestEntClient 返回一个隔离的内存 SQLite 客户端（每个用例一个库）。
 func newTestEntClient(t *testing.T) *ent.Client {
 	t.Helper()
 
@@ -30,7 +29,6 @@ func newTestEntClient(t *testing.T) *ent.Client {
 	return client
 }
 
-// countingLoader 记录回源次数：次数不变即缓存未被失效。
 type countingLoader struct {
 	calls  atomic.Int32
 	status string
@@ -70,7 +68,6 @@ func (f *cacheFixture) createUser(t *testing.T, id string) {
 	}
 }
 
-// prime 预热缓存并断言只回源一次。
 func (f *cacheFixture) prime(t *testing.T, id string) {
 	t.Helper()
 	before := f.loader.callCount()
@@ -87,7 +84,7 @@ func TestUserStatusCacheHook_InvalidatesAfterCommit(t *testing.T) {
 	f.createUser(t, "u1")
 	f.prime(t, "u1")
 
-	// 事务内变更：提交前不得失效，否则并发请求会用旧值回填缓存。
+	// 提交前不得失效，避免并发请求用旧值回填。
 	tx, err := f.client.Tx(f.ctx)
 	if err != nil {
 		t.Fatalf("begin tx: %v", err)
@@ -102,7 +99,6 @@ func TestUserStatusCacheHook_InvalidatesAfterCommit(t *testing.T) {
 		t.Fatalf("cache invalidated before commit: loader calls = %d, want 1", got)
 	}
 
-	// 提交后必须失效：下一次读取回源拿到新状态。
 	f.loader.status = "inactive"
 	if err := tx.Commit(); err != nil {
 		t.Fatalf("commit: %v", err)

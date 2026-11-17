@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// HealthController handles health check requests
 type HealthController struct{}
 
 // Health GoDoc

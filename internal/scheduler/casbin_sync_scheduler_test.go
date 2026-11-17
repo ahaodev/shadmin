@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// The scheduler tests exercise lifecycle behavior only; the interval is long enough that no tick runs.
+// 使用长轮询间隔，仅验证生命周期。
 const testInterval = time.Hour
 
 func TestCasbinSyncSchedulerTriggerCoalesces(t *testing.T) {

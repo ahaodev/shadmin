@@ -26,7 +26,7 @@ globalThis.localStorage = {
 const storageListeners = []
 globalThis.window = { addEventListener: (_, fn) => storageListeners.push(fn), location: { protocol: 'http:', host: 'localhost', pathname: '/sign-in', search: '', hash: '', replace: () => {}, reload: () => {} } }
 Object.defineProperty(globalThis.navigator, 'locks', { configurable: true, value: { request: async (_name, _options, fn) => fn() } })
-// The refresh client captures the default adapter when the module is loaded.
+// The refresh client captures the adapter at import time.
 let refreshAdapter = async () => { throw new Error('Unexpected refresh') }
 const originalAdapter = axios.defaults.adapter
 axios.defaults.adapter = (config) => refreshAdapter(config)
@@ -150,7 +150,6 @@ test('concurrent 401s share one refresh and synchronize store and persisted toke
   assert.equal(refreshes, 1)
   assert.equal(auth().accessToken, token('alice-refreshed'))
   assert.equal(auth().refreshToken, 'rotated')
-  // 令牌只落在 localStorage 一处：不再写同名 cookie。
   assert.equal(cookies.has('accessToken'), false)
   assert.equal(cookies.has('refreshToken'), false)
   for (const result of responses) assert.equal(result.data.data, `Bearer ${auth().accessToken}`)
@@ -174,7 +173,6 @@ test('a refresh from an old session cannot overwrite or sign out the new account
   assert.equal(auth().refreshToken, 'refresh-bob')
 })
 
-
 test('profile refresh replaces cached data and ignores older in-flight results', async () => {
   apiClient.defaults.adapter = async (config) => response(config, { id: 'alice', email: 'old@example.com' })
   await auth().fetchProfile()
@@ -194,7 +192,6 @@ test('profile refresh replaces cached data and ignores older in-flight results',
   assert.equal(auth().profile.email, 'new@example.com')
   assert.equal(auth().isLoadingProfile, false)
 })
-
 
 test('authorization writes refresh cached menus and current button permissions', async () => {
   const { refreshPermissions } = await server.ssrLoadModule('/src/lib/refresh-permissions.ts')
@@ -223,7 +220,7 @@ test('a remote account change cancels late work and clears identity caches befor
     localStorage.setItem('accessToken:remote-bob', token('bob'))
     localStorage.setItem('refreshToken:remote-bob', 'bob-refresh')
     localStorage.setItem('shadmin-session', 'remote-bob')
-    // A refresh writer in another process can finish after the identity check.
+    // Another tab can finish refresh after the identity check.
     tokens.setAccessToken(token('obsolete-alice'), oldIdentity)
     assert.equal(tokens.getAccessToken(), token('bob'))
     const newRequest = await apiClient.get('/private').catch((e) => e)

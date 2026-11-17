@@ -18,7 +18,6 @@ const (
 	defaultRedisMinIdleConns = 2
 )
 
-// RedisConfig 用于在无现成客户端时由本包自行构造 Redis 客户端。
 type RedisConfig struct {
 	Addr     string
 	Username string
@@ -40,7 +39,7 @@ func (cfg RedisConfig) options() *redis.Options {
 	}
 }
 
-// NewRedisClient 根据配置构造一个共享的 *redis.Client，并执行一次 Ping 校验。
+// NewRedisClient 创建客户端并通过 Ping 校验连接。
 func NewRedisClient(cfg RedisConfig) (*redis.Client, error) {
 	cli := redis.NewClient(cfg.options())
 
@@ -53,8 +52,7 @@ func NewRedisClient(cfg RedisConfig) (*redis.Client, error) {
 	return cli, nil
 }
 
-// NewClient 依据已校验的环境配置构造 Redis 客户端。
-// 调用方负责在关闭时执行 Close()。
+// NewClient 返回的客户端由调用方关闭。
 func NewClient(addr, password string, db int) (*redis.Client, error) {
 	return NewRedisClient(RedisConfig{
 		Addr:     addr,
@@ -63,8 +61,7 @@ func NewClient(addr, password string, db int) (*redis.Client, error) {
 	})
 }
 
-// NewRedisCacheWithClient 复用已有 *redis.Client，适合共享连接池的场景；
-// 客户端生命周期由调用方负责，Close 不会关闭它。
+// NewRedisCacheWithClient 不接管客户端生命周期，Close 不关闭客户端。
 func NewRedisCacheWithClient(cli *redis.Client, opts ...Option) Cacher {
 	return newRedisCache(cli, false, opts...)
 }
@@ -74,7 +71,6 @@ func NewRedisCacheWithClusterClient(cli *redis.ClusterClient, opts ...Option) Ca
 	return newRedisCache(cli, false, opts...)
 }
 
-// redisClienter 抽象出需要的命令子集，使单机与集群客户端均可注入。
 type redisClienter interface {
 	SetNX(ctx context.Context, key string, value any, expiration time.Duration) *redis.BoolCmd
 	Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd
@@ -95,14 +91,14 @@ func newRedisCache(cli redisClienter, ownClient bool, opts ...Option) Cacher {
 type redisCache struct {
 	o         *options
 	cli       redisClienter
-	ownClient bool // true 表示客户端由本实例创建，Close 时需关闭
+	ownClient bool // Close 时关闭客户端
 }
 
 func (r *redisCache) tl(exp []time.Duration) time.Duration {
 	if len(exp) > 0 {
 		return exp[0]
 	}
-	return 0 // Redis Set 传 0 表示无 TTL，等价于永不过期
+	return 0 // 无过期时间
 }
 
 func (r *redisCache) SetIfAbsent(ctx context.Context, ns, key, value string, expiration time.Duration) (bool, error) {
@@ -113,14 +109,13 @@ func (r *redisCache) Set(ctx context.Context, ns, key, value string, expiration 
 	return r.cli.Set(ctx, r.o.joinKey(ns, key), value, r.tl(expiration)).Err()
 }
 
-// incrWithTTLScript 原子地自增并刷新 TTL。两条命令放在同一脚本里，
-// 避免 INCR 与 PEXPIRE 之间中断而留下没有 TTL 的永久计数。
+// incrWithTTLScript 原子自增并刷新 TTL，避免中断后留下永久计数。
 const incrWithTTLScript = `
 local n = redis.call('INCR', KEYS[1])
 redis.call('PEXPIRE', KEYS[1], ARGV[1])
 return n`
 
-// Incr 用 INCR 保证多实例并发下计数不丢失；未配置 TTL 时不刷新过期时间。
+// Incr 未配置 TTL 时保留原过期时间。
 func (r *redisCache) Incr(ctx context.Context, ns, key string, expiration ...time.Duration) (int64, error) {
 	full := r.o.joinKey(ns, key)
 	if ttl := r.tl(expiration); ttl > 0 {
@@ -140,7 +135,7 @@ func (r *redisCache) Get(ctx context.Context, ns, key string) (string, bool, err
 	return v, true, nil
 }
 
-// GetAndDelete 使用 GETDEL（Redis 6.2+）原子取删，满足 nonce/黑名单的一次性语义。
+// GetAndDelete 依赖 Redis 6.2+ 的原子 GETDEL。
 func (r *redisCache) GetAndDelete(ctx context.Context, ns, key string) (string, bool, error) {
 	v, err := r.cli.GetDel(ctx, r.o.joinKey(ns, key)).Result()
 	if err != nil {
@@ -160,7 +155,6 @@ func (r *redisCache) Exists(ctx context.Context, ns, key string) (bool, error) {
 	return n > 0, nil
 }
 
-// Delete 直接 DEL，幂等无需先 Exists，省一次 RTT。
 func (r *redisCache) Delete(ctx context.Context, ns, key string) error {
 	return r.cli.Del(ctx, r.o.joinKey(ns, key)).Err()
 }
@@ -170,7 +164,7 @@ func (r *redisCache) Iterator(ctx context.Context, ns string, fn func(ctx contex
 	prefix := r.o.nsPrefix(ns)
 	const scanCount = 100
 	var cursor uint64
-	// SCAN 无锁遍历，期间键可能被并发修改；SCAN 可能重复返回同一键，由调用方按需幂等处理。
+	// SCAN 可能重复返回键，也可能遇到并发修改。
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -200,7 +194,6 @@ func (r *redisCache) Iterator(ctx context.Context, ns string, fn func(ctx contex
 
 func (r *redisCache) Close(_ context.Context) error {
 	if !r.ownClient {
-		// 客户端由调用方持有，不在此关闭，避免与共享方的关闭逻辑重复。
 		return nil
 	}
 	return r.cli.Close()

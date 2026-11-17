@@ -14,8 +14,6 @@ import (
 
 const identityCodeNamespace = "auth:identity:code"
 
-// UserIdentityCodeStore 保存 OAuth 回调后的短期一次性 code。
-// 底层复用统一 cacher，自动支持 memory/redis 两种后端。
 type UserIdentityCodeStore struct {
 	cacher cacher.Cacher
 	ttl    time.Duration

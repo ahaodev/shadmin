@@ -19,11 +19,8 @@ func Register(r *gin.Engine) {
 	}
 	r.Use(static.Serve("/", fs))
 
-	// SPA fallback - 处理前端路由，所有非API路由都返回index.html
+	// 非后端路由交由 SPA 处理。
 	r.NoRoute(func(c *gin.Context) {
-		// 如果请求路径以/api开头，返回404（API路由）
-		// 如果请求路径以/share开头，返回404（分享路由）
-		// 如果请求路径以/swagger开头，返回404（文档路由）
 		path := c.Request.URL.Path
 		if strings.HasPrefix(path, "/api") ||
 			strings.HasPrefix(path, "/share/") ||
@@ -33,7 +30,6 @@ func Register(r *gin.Engine) {
 			return
 		}
 
-		// 其他路径返回index.html，让前端路由处理
 		c.Header("Content-Type", "text/html")
 		indexHTML, err := Static.ReadFile("dist/index.html")
 		if err != nil {

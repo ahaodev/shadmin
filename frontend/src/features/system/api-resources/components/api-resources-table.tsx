@@ -39,7 +39,6 @@ type DataTableProps = {
   onReset?: () => void
 }
 
-// Memoized table content component to prevent unnecessary re-renders
 const TableContent = memo(({ table }: { table: ReactTable<ApiResource> }) => (
   <div className='overflow-hidden rounded-md border'>
     <Table>
@@ -116,15 +115,12 @@ export function ApiResourcesTable({
   totalCount = 0,
   onReset,
 }: DataTableProps) {
-  // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
 
-  // Use data as-is since filtering is done server-side
   const filteredData = data
 
-  // Synced with URL states (keys/defaults mirror api-resources route search schema)
   const {
     columnFilters,
     onColumnFiltersChange,
@@ -142,7 +138,6 @@ export function ApiResourcesTable({
     },
     globalFilter: { enabled: false },
     columnFilters: [
-      // module per-column filter
       { columnId: 'module', searchKey: 'module', type: 'array' },
       { columnId: 'method', searchKey: 'method', type: 'string' },
       { columnId: 'path', searchKey: 'path', type: 'string' },
@@ -160,9 +155,9 @@ export function ApiResourcesTable({
       columnVisibility,
     },
     enableRowSelection: true,
-    manualPagination: true, // Enable server-side pagination
-    manualFiltering: true, // Enable server-side filtering
-    pageCount: Math.ceil(totalCount / (pagination.pageSize || 10)), // Calculate total pages
+    manualPagination: true,
+    manualFiltering: true,
+    pageCount: Math.ceil(totalCount / (pagination.pageSize || 10)),
     onPaginationChange,
     onColumnFiltersChange,
     onRowSelectionChange: setRowSelection,
@@ -177,8 +172,7 @@ export function ApiResourcesTable({
   })
 
   useEffect(() => {
-    // Only run ensurePageInRange if we have data (totalCount > 0)
-    // This prevents resetting to page 1 during data loading
+    // Avoid resetting the page while data is loading.
     if (totalCount > 0) {
       ensurePageInRange(table.getPageCount())
     }

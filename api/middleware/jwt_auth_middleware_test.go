@@ -57,7 +57,6 @@ func newToken(t *testing.T) string {
 	return token
 }
 
-// 合法令牌必须带 jti 透传到下游
 func TestJwtAuthMiddleware_AcceptsValidToken(t *testing.T) {
 	w := probe(t, newProbeRouter(testSecret, newBlacklist(t)), "Bearer "+newToken(t))
 
@@ -75,7 +74,6 @@ func TestJwtAuthMiddleware_AcceptsValidToken(t *testing.T) {
 	}
 }
 
-// 未配置黑名单时不校验 jti
 func TestJwtAuthMiddleware_AcceptsValidTokenWithoutBlacklist(t *testing.T) {
 	w := probe(t, newProbeRouter(testSecret, nil), "Bearer "+newToken(t))
 
@@ -84,7 +82,6 @@ func TestJwtAuthMiddleware_AcceptsValidTokenWithoutBlacklist(t *testing.T) {
 	}
 }
 
-// 无 jti 的令牌无法吊销，配置了黑名单时必须拒绝
 func TestJwtAuthMiddleware_RejectsTokenWithoutJTI(t *testing.T) {
 	claims := &tokenutil.AccessClaims{
 		ID:        "u-1",
@@ -124,8 +121,7 @@ func TestJwtAuthMiddleware_RejectsRevokedToken(t *testing.T) {
 	}
 }
 
-// 黑名单必须以 jti 为键。曾因字段遮蔽把用户 ID 误当成 jti，
-// 导致写入键与查询键不一致、登出完全失效。
+// 曾因字段遮蔽误用用户 ID，导致登出黑名单失效。
 func TestJwtAuthMiddleware_BlacklistIsKeyedByJTI(t *testing.T) {
 	blacklist := newBlacklist(t)
 	token := newToken(t)

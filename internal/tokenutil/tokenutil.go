@@ -109,7 +109,6 @@ func ParseRefreshClaims(requestToken string, secret string) (*RefreshClaims, err
 	return claims, nil
 }
 
-// ExtractJTIAndExpiry 解析出 jti 与过期时间，供登出黑名单使用；ok=false 表示令牌不可用或无 exp。
 func ExtractJTIAndExpiry(requestToken string, secret string) (jti string, expiresAt time.Time, ok bool) {
 	token, err := jwt.Parse(requestToken, hmacKeyFunc(secret))
 	if err != nil || !token.Valid {

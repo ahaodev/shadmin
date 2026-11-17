@@ -160,12 +160,10 @@ export function createMenusColumns({
       cell: ({ row }) => {
         const menu = row.original
 
-        // Check if user has any permissions for these actions
         const canEdit = hasPermission(PERMISSIONS.SYSTEM.MENU.EDIT)
         const canAdd = hasPermission(PERMISSIONS.SYSTEM.MENU.ADD)
         const canDelete = hasPermission(PERMISSIONS.SYSTEM.MENU.DELETE)
 
-        // If no permissions, don't show dropdown
         if (!canEdit && !canAdd && !canDelete) {
           return null
         }

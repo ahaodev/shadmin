@@ -11,12 +11,10 @@ import (
 	"entgo.io/ent/schema/index"
 )
 
-// ApiResource holds the schema definition for the ApiResource entity.
 type ApiResource struct {
 	ent.Schema
 }
 
-// Fields of the ApiResource.
 func (ApiResource) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -56,7 +54,6 @@ func (ApiResource) Fields() []ent.Field {
 	}
 }
 
-// Edges of the ApiResource.
 func (ApiResource) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("permissions", Menu.Type).
@@ -64,7 +61,6 @@ func (ApiResource) Edges() []ent.Edge {
 	}
 }
 
-// Indexes of the ApiResource.
 func (ApiResource) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("method", "path").

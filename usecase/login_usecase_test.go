@@ -38,7 +38,7 @@ func newLoginTestUsecase(repo domain.UserRepository, security domain.LoginSecuri
 	return NewLoginUsecase(repo, loginTestCaptcha{}, nil, security, nil, nil, time.Second)
 }
 
-// 用户不存在：算作凭证错误并累计失败次数（避免账号枚举）。
+// 未知用户也累计失败次数，避免账号枚举。
 func TestLogin_UserNotFoundIsInvalidCredentials(t *testing.T) {
 	security := &loginTestSecurity{}
 	uc := newLoginTestUsecase(&loginTestRepository{getByIdentifierErr: domain.ErrUserNotFound}, security)
@@ -53,7 +53,7 @@ func TestLogin_UserNotFoundIsInvalidCredentials(t *testing.T) {
 	}
 }
 
-// 数据库故障不能被当作"用户名或密码错误"，也不能给真实用户累计失败次数而被锁定。
+// 数据库故障不应累计凭证失败次数。
 func TestLogin_RepositoryFailureIsNotCredentialError(t *testing.T) {
 	security := &loginTestSecurity{}
 	dbErr := errors.New("connection refused")

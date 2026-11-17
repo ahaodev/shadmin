@@ -25,26 +25,22 @@ func NewResourceUsecase(menuRepository domain.MenuRepository, userRepository dom
 	}
 }
 
-// GetUserResources 获取用户可访问的系统资源（菜单树与按钮权限，基于 RBAC 权限过滤）
 func (ru *resourceUsecase) GetUserResources(ctx context.Context, userID string, isAdmin bool) (*domain.UserResources, error) {
 	ctx, cancel := context.WithTimeout(ctx, ru.contextTimeout)
 	defer cancel()
 
-	// 获取所有菜单
 	menuTree, err := ru.menuRepository.GetMenuTree(ctx)
 	if err != nil {
 		slog.Error("Failed to retrieve menu tree", "user_id", userID, "error", err)
 		return nil, fmt.Errorf("failed to retrieve menu tree: %w", err)
 	}
 
-	// 获取用户信息（用于解析角色名称）
 	user, err := ru.userRepository.GetByID(ctx, userID)
 	if err != nil {
 		slog.Error("Failed to get user information", "user_id", userID, "error", err)
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	// 管理员直接返回所有菜单和权限
 	if isAdmin {
 		adminRoleObjects, _ := ru.getUserRoles(ctx, user.Roles)
 		adminRoleNames := make([]string, 0, len(adminRoleObjects))
@@ -60,7 +56,6 @@ func (ru *resourceUsecase) GetUserResources(ctx context.Context, userID string, 
 		}, nil
 	}
 
-	// 非管理员：按角色过滤菜单与权限
 	roles, err := ru.getUserRoles(ctx, user.Roles)
 	if err != nil {
 		return nil, err
@@ -71,7 +66,6 @@ func (ru *resourceUsecase) GetUserResources(ctx context.Context, userID string, 
 		return nil, err
 	}
 
-	// 提取角色名称列表
 	roleNames := make([]string, 0, len(roles))
 	for _, r := range roles {
 		roleNames = append(roleNames, r.Name)
@@ -85,7 +79,6 @@ func (ru *resourceUsecase) GetUserResources(ctx context.Context, userID string, 
 	}, nil
 }
 
-// collectAllPermissions 收集所有按钮权限
 func (ru *resourceUsecase) collectAllPermissions(menuTree []domain.MenuTreeNode) []string {
 	var permissions []string
 	permissionMap := make(map[string]bool)
@@ -106,7 +99,6 @@ func (ru *resourceUsecase) collectAllPermissions(menuTree []domain.MenuTreeNode)
 	return permissions
 }
 
-// getUserRoles 批量获取用户角色信息。
 func (ru *resourceUsecase) getUserRoles(ctx context.Context, roleIDs []string) ([]*domain.Role, error) {
 	if len(roleIDs) == 0 {
 		return nil, nil
@@ -125,7 +117,6 @@ func (ru *resourceUsecase) getUserRoles(ctx context.Context, roleIDs []string) (
 	return roles, nil
 }
 
-// collectUserPermissions 收集用户菜单 ID 与按钮权限；菜单按 ID 批量查询。
 func (ru *resourceUsecase) collectUserPermissions(ctx context.Context, roles []*domain.Role) ([]string, []string, error) {
 	var userMenuIDs []string
 	for _, role := range roles {
@@ -155,7 +146,6 @@ func (ru *resourceUsecase) collectUserPermissions(ctx context.Context, roles []*
 	return userMenuIDs, userPermissions, nil
 }
 
-// filterMenuTree 过滤菜单树
 func (ru *resourceUsecase) filterMenuTree(menuTree []domain.MenuTreeNode, userMenuIDs []string) []domain.MenuTreeNode {
 	allowedIDsMap := make(map[string]bool)
 	for _, id := range userMenuIDs {
@@ -171,9 +161,7 @@ func (ru *resourceUsecase) filterMenuTree(menuTree []domain.MenuTreeNode, userMe
 	return filteredMenus
 }
 
-// filterMenuNodeByIDs 递归过滤单个菜单节点及其子节点
 func (ru *resourceUsecase) filterMenuNodeByIDs(menu domain.MenuTreeNode, allowedIDsMap map[string]bool) *domain.MenuTreeNode {
-	// 递归过滤子菜单
 	var filteredChildren []domain.MenuTreeNode
 	for _, child := range menu.Children {
 		if filteredChild := ru.filterMenuNodeByIDs(child, allowedIDsMap); filteredChild != nil {
@@ -181,7 +169,6 @@ func (ru *resourceUsecase) filterMenuNodeByIDs(menu domain.MenuTreeNode, allowed
 		}
 	}
 
-	// 如果当前菜单有权限或者有有权限的子菜单，则保留
 	hasPermission := allowedIDsMap[menu.ID]
 	hasAccessibleChildren := len(filteredChildren) > 0
 

@@ -14,12 +14,10 @@ type entUserIdentityRepository struct {
 	client *ent.Client
 }
 
-// NewUserIdentityRepository 构造第三方身份关联的 ent 仓储实现
 func NewUserIdentityRepository(client *ent.Client) domain.UserIdentityRepository {
 	return &entUserIdentityRepository{client: client}
 }
 
-// entUserIdentityToDomain 把 ent.UserIdentity 转成 domain.UserIdentity
 func entUserIdentityToDomain(a *ent.UserIdentity) *domain.UserIdentity {
 	if a == nil {
 		return nil
@@ -34,9 +32,7 @@ func entUserIdentityToDomain(a *ent.UserIdentity) *domain.UserIdentity {
 	}
 }
 
-// FindByProviderAndSubject 通过 provider + 第三方用户ID 查找关联记录。
-// 未找到时返回 (nil, nil)，调用方据此走"新建独立用户 + 建关联"分支；
-// 注意：不存在按 email 匹配已有用户的分支，这是刻意的隔离策略。
+// FindByProviderAndSubject 未找到时返回 (nil, nil)。
 func (r *entUserIdentityRepository) FindByProviderAndSubject(ctx context.Context, provider, subject string) (*domain.UserIdentity, error) {
 	if provider == "" || subject == "" {
 		return nil, nil
@@ -57,8 +53,7 @@ func (r *entUserIdentityRepository) FindByProviderAndSubject(ctx context.Context
 	return entUserIdentityToDomain(a), nil
 }
 
-// Upsert 以 (provider, provider_subject) 为唯一键写入关联记录：
-// 不存在则新建；已存在则只更新 user_id（该表无 email/name/avatar 等资料列）。
+// Upsert 按 (provider, provider_subject) 写入；已存在时只更新 user_id。
 func (r *entUserIdentityRepository) Upsert(ctx context.Context, account *domain.UserIdentity) error {
 	if account == nil {
 		return fmt.Errorf("user identity is nil")
@@ -98,9 +93,7 @@ func (r *entUserIdentityRepository) Upsert(ctx context.Context, account *domain.
 	return r.updateOne(ctx, existing.ID, account)
 }
 
-// isUniqueConstraintError recognizes the portable unique-constraint messages
-// emitted by the SQLite, PostgreSQL, and MySQL drivers. Other constraint
-// failures must not trigger the identity-race retry in the use case.
+// isUniqueConstraintError 仅识别唯一约束冲突，避免其他约束错误触发登录重试。
 func isUniqueConstraintError(err error) bool {
 	if !ent.IsConstraintError(err) {
 		return false

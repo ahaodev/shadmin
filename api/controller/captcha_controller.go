@@ -8,7 +8,6 @@ import (
 	"shadmin/domain"
 )
 
-// CaptchaController 公开的验证码控制器
 type CaptchaController struct {
 	CaptchaUsecase domain.CaptchaUsecase
 }

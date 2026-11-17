@@ -1,6 +1,6 @@
 ## Principles
 
-**Dependencies point one way.** Declare contracts in `domain/`. Usecases depend on those contracts, not concrete repositories or infrastructure; implementations are wired in `bootstrap`. Request flow is not an import graph. Keep frameworks at the edges.
+**Dependencies point one way.** Declare business contracts in `domain/`. Usecases depend on those contracts, not concrete repositories or infrastructure; implementations are wired in `bootstrap`. Request flow is not an import graph. Keep frameworks at the edges.
 
 **Authorization is data, not code.** Register protected capabilities and grants through API resources, menus and roles. Do not hardcode authorization exceptions in handlers. The backend owns menus; the frontend renders what it is given.
 

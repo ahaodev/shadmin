@@ -22,7 +22,7 @@ func InitStorage(env *conf.Env) (*StorageConfig, error) {
 	switch strings.ToLower(env.StorageType) {
 	case "minio":
 		return initMinioStorage(env)
-	default: // "disk" 以及未指定
+	default:
 		return initDiskStorage(env)
 	}
 }

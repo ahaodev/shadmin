@@ -19,7 +19,6 @@ func NewMenuRepository(client *ent.Client) domain.MenuRepository {
 	}
 }
 
-// entMenuToDomain 把 ent.Menu 映射为 domain.Menu。
 func entMenuToDomain(m *ent.Menu) *domain.Menu {
 	var apiResourceIDs []string
 	for _, apiResource := range m.Edges.APIResources {
@@ -47,9 +46,7 @@ func entMenuToDomain(m *ent.Menu) *domain.Menu {
 	}
 }
 
-// GetMenuTree retrieves menu tree structure
 func (mr *entMenuRepository) GetMenuTree(ctx context.Context) ([]domain.MenuTreeNode, error) {
-	// Query all active menus, ordered by sequence, include API resources
 	menus, err := clientFromContext(ctx, mr.client).Menu.
 		Query().
 		Where(menu.Status(domain.MenuStatusActive)).
@@ -61,7 +58,6 @@ func (mr *entMenuRepository) GetMenuTree(ctx context.Context) ([]domain.MenuTree
 		return nil, err
 	}
 
-	// Convert ent.Menu to domain.MenuTreeNode
 	var allNodes []domain.MenuTreeNode
 	for _, m := range menus {
 		node := domain.MenuTreeNode{
@@ -84,7 +80,6 @@ func (mr *entMenuRepository) GetMenuTree(ctx context.Context) ([]domain.MenuTree
 		allNodes = append(allNodes, node)
 	}
 
-	// Build tree structure
 	return buildTree(allNodes,
 		func(n domain.MenuTreeNode) string { return n.ID },
 		func(n domain.MenuTreeNode) *string { return n.ParentID },
@@ -92,11 +87,10 @@ func (mr *entMenuRepository) GetMenuTree(ctx context.Context) ([]domain.MenuTree
 	), nil
 }
 
-// GetMenus 返回匹配的全部菜单（菜单是有限集合，不分页），响应仍使用 PagedResult 以保持契约。
+// GetMenus 返回全部匹配项，不分页。
 func (mr *entMenuRepository) GetMenus(ctx context.Context, params domain.MenuQueryParams) (*domain.PagedResult[domain.Menu], error) {
 	query := clientFromContext(ctx, mr.client).Menu.Query()
 
-	// keyword：模糊匹配 name / path
 	kw := strings.TrimSpace(params.Keyword)
 	if kw != "" {
 		query = query.Where(menu.Or(
@@ -113,7 +107,6 @@ func (mr *entMenuRepository) GetMenus(ctx context.Context, params domain.MenuQue
 		return nil, err
 	}
 
-	// Convert to domain menus
 	result := make([]domain.Menu, 0, len(menus))
 	for _, m := range menus {
 		result = append(result, *entMenuToDomain(m))
@@ -122,7 +115,6 @@ func (mr *entMenuRepository) GetMenus(ctx context.Context, params domain.MenuQue
 	return domain.NewPagedResult(result, len(result), 1, max(len(result), 1)), nil
 }
 
-// GetMenuByID retrieves a menu by its ID
 func (mr *entMenuRepository) GetMenuByID(ctx context.Context, id string) (*domain.Menu, error) {
 	m, err := clientFromContext(ctx, mr.client).Menu.
 		Query().
@@ -139,7 +131,6 @@ func (mr *entMenuRepository) GetMenuByID(ctx context.Context, id string) (*domai
 	return entMenuToDomain(m), nil
 }
 
-// GetMenuPermissionsByIDs 批量按 ID 查询菜单，只取"是否按钮 + 权限标识"判断所需字段。
 func (mr *entMenuRepository) GetMenuPermissionsByIDs(ctx context.Context, ids []string) ([]*domain.Menu, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -165,7 +156,6 @@ func (mr *entMenuRepository) GetMenuPermissionsByIDs(ctx context.Context, ids []
 	return result, nil
 }
 
-// CreateMenu creates a new menu
 func (mr *entMenuRepository) CreateMenu(ctx context.Context, req *domain.CreateMenuRequest) (*domain.Menu, error) {
 	var createdID string
 	err := WithAuthorizationTx(ctx, mr.client, func(txCtx context.Context, tx *ent.Tx) error {
@@ -185,7 +175,6 @@ func (mr *entMenuRepository) CreateMenu(ctx context.Context, req *domain.CreateM
 			SetStatus(req.Status).
 			SetNillableParentID(req.ParentID)
 
-		// Handle API resource associations
 		if len(req.ApiResources) > 0 {
 			createQuery = createQuery.AddAPIResourceIDs(req.ApiResources...)
 		}
@@ -201,11 +190,9 @@ func (mr *entMenuRepository) CreateMenu(ctx context.Context, req *domain.CreateM
 		return nil, err
 	}
 
-	// Fetch created menu with API resources
 	return mr.GetMenuByID(ctx, createdID)
 }
 
-// UpdateMenu updates an existing menu
 func (mr *entMenuRepository) UpdateMenu(ctx context.Context, id string, req *domain.UpdateMenuRequest) (*domain.Menu, error) {
 	err := WithAuthorizationTx(ctx, mr.client, func(txCtx context.Context, tx *ent.Tx) error {
 		updateQuery := tx.Menu.
@@ -223,7 +210,7 @@ func (mr *entMenuRepository) UpdateMenu(ctx context.Context, id string, req *dom
 			SetNillablePermissions(req.Permissions).
 			SetStatus(req.Status).
 			SetNillableParentID(req.ParentID).
-			// 先清空再按请求重建 API 资源关联；请求为空即清除全部关联。
+			// 空数组清除全部 API 资源关联。
 			ClearAPIResources()
 		if len(req.ApiResources) > 0 {
 			updateQuery = updateQuery.AddAPIResourceIDs(req.ApiResources...)
@@ -239,11 +226,9 @@ func (mr *entMenuRepository) UpdateMenu(ctx context.Context, id string, req *dom
 		return nil, err
 	}
 
-	// Fetch updated menu with API resources
 	return mr.GetMenuByID(ctx, id)
 }
 
-// GetChildrenMenus retrieves all direct children of a menu
 func (mr *entMenuRepository) GetChildrenMenus(ctx context.Context, parentID string) ([]*domain.Menu, error) {
 	menus, err := clientFromContext(ctx, mr.client).Menu.
 		Query().
@@ -262,9 +247,8 @@ func (mr *entMenuRepository) GetChildrenMenus(ctx context.Context, parentID stri
 	return result, nil
 }
 
-// DeleteMenu deletes a menu (only the specified menu, not children)
+// DeleteMenu 仅删除指定菜单，子菜单由调用方处理。
 func (mr *entMenuRepository) DeleteMenu(ctx context.Context, id string) error {
-	// Delete the menu directly without checking children.
 	return WithAuthorizationTx(ctx, mr.client, func(txCtx context.Context, tx *ent.Tx) error {
 		return tx.Menu.DeleteOneID(id).Exec(txCtx)
 	})

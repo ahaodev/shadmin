@@ -35,7 +35,6 @@ export function MenuApiResources({
     })
   }, [currentRow, isEditMode, form])
 
-  // Fetch API resources from backend
   const { data: apiResourcesResult, isLoading } = useApiResources({
     page: 1,
     page_size: 1000,
@@ -59,7 +58,7 @@ export function MenuApiResources({
   }
 
   const handleResourceSelect = (resource: ApiResource, checked: boolean) => {
-    // Use method:path format to match backend expectations
+    // The backend expects method:path identifiers.
     const resourceIdentifier = `${resource.method}:${resource.path}`
     handlePermissionToggle(resourceIdentifier, checked)
   }
@@ -92,17 +91,12 @@ export function MenuApiResources({
         />
       </div>
 
-      {/* Selected permissions display */}
       {selectedPermissions.length > 0 && (
         <div className='flex flex-wrap gap-2'>
           {selectedPermissions.map((resourceId) => {
-            // Find the corresponding API resource for this ID
-            // Support both direct ID matching and method:path format matching
             const matchingResource = apiResources.find((resource) => {
-              // Direct ID match
               if (resource.id === resourceId) return true
 
-              // Method:path format match (e.g., "POST:/api/v1/system/menu")
               const methodPathFormat = `${resource.method}:${resource.path}`
               if (methodPathFormat === resourceId) return true
 

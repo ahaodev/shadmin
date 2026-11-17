@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 
-// Use centralized available icons
 const allIcons = availableIconNames
 
 interface IconPickerProps {
@@ -31,7 +30,6 @@ export function IconPicker({
   const [open, setOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Filter icons based on search term - add safety check
   const filteredIcons = (allIcons || []).filter(
     (iconName) =>
       iconName && iconName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -50,7 +48,6 @@ export function IconPicker({
     }
   }
 
-  // Get the selected icon component - add safety check
   const SelectedIcon =
     value && availableIcons[value as keyof typeof availableIcons]
       ? availableIcons[value as keyof typeof availableIcons]
@@ -85,9 +82,7 @@ export function IconPicker({
           </DialogHeader>
 
           <div className='flex min-h-0 flex-1 flex-col'>
-            {/* Fixed search area */}
             <div className='flex-shrink-0 space-y-4 pb-4'>
-              {/* Search input */}
               <div className='relative'>
                 <Search className='text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 transform' />
                 <Input
@@ -98,7 +93,6 @@ export function IconPicker({
                 />
               </div>
 
-              {/* Selected icon display and clear button - fixed height */}
               <div className='h-16'>
                 {value && (
                   <div className='bg-muted flex h-full items-center justify-between rounded-lg p-3'>
@@ -119,7 +113,6 @@ export function IconPicker({
               </div>
             </div>
 
-            {/* Scrollable icons grid - takes remaining space */}
             <div className='flex-1 overflow-y-auto'>
               <div className='grid grid-cols-10 gap-2'>
                 {filteredIcons.map((iconName) => {

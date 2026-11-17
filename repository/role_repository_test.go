@@ -9,8 +9,6 @@ import (
 	"shadmin/ent"
 )
 
-// 角色改名撞上已存在的名称时，唯一索引冲突必须映射为 ErrRoleNameExists（→409），
-// 而不是作为原始数据库错误冒泡成 500。
 func TestRoleRepositoryUpdateMapsDuplicateName(t *testing.T) {
 	client := newAuthorizationStateTestClient(t)
 	repo := NewRoleRepository(client)

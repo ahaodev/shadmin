@@ -9,10 +9,9 @@ import (
 	"github.com/casbin/casbin/v3/model"
 )
 
-// Manager exposes authorization checks and snapshot publication. Published
-// Enforcers are read-only; SyncService builds replacements off to the side.
 var ErrSnapshotStale = errors.New("casbin authorization snapshot is stale")
 
+// Manager 发布只读快照；SyncService 独立构建替代快照。
 type Manager interface {
 	CheckPermission(userID, object, action string) (bool, error)
 	ReplaceSnapshot(enforcer *casbin.SyncedEnforcer, generation int64) error
@@ -27,23 +26,18 @@ type authorizationSnapshot struct {
 	generation int64
 }
 
-// CasManager evaluates requests against an immutable published snapshot. A short
-// RWMutex protects pointer publication; the Enforcer itself protects concurrent
-// evaluation calls.
+// CasManager 的锁保护快照发布，Enforcer 自行保护并发求值。
 type CasManager struct {
 	mu       sync.RWMutex
 	snapshot *authorizationSnapshot
 	stale    bool
 }
 
-// NewCasManager creates an in-memory Casbin manager. Shadmin's relational
-// authorization data is authoritative; the runtime snapshot is rebuilt from it.
 func NewCasManager() Manager {
 	return &CasManager{stale: true}
 }
 
-// newEnforcer builds an independent Enforcer. Runtime policy snapshots deliberately
-// disable AutoSave: the complete policy set is derived from the application database.
+// newEnforcer 禁用 AutoSave，策略完全从应用数据库重建。
 func newEnforcer() (*casbin.SyncedEnforcer, error) {
 	m, err := model.NewModelFromString(ModelConf)
 	if err != nil {
@@ -66,7 +60,6 @@ func (m *CasManager) currentSnapshot() *authorizationSnapshot {
 	return snapshot
 }
 
-// ReplaceSnapshot atomically publishes a fully built Enforcer and its source generation.
 func (m *CasManager) ReplaceSnapshot(enforcer *casbin.SyncedEnforcer, generation int64) error {
 	if enforcer == nil {
 		return fmt.Errorf("cannot publish a nil casbin enforcer")
@@ -109,9 +102,6 @@ func (m *CasManager) CurrentGeneration() (int64, bool) {
 	return snapshot.generation, true
 }
 
-// CheckPermission evaluates the user against the role-aware Casbin matcher.
-// Snapshot construction only creates policies for roles, so Casbin resolves the
-// user-to-role relationship directly through the g matcher.
 func (m *CasManager) CheckPermission(userID, object, action string) (bool, error) {
 	m.mu.RLock()
 	snapshot := m.snapshot

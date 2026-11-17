@@ -55,7 +55,7 @@ interface AuthState {
 const sessionKey = 'shadmin-session'
 let sharedSession = localStorage.getItem(sessionKey)
 function publishSession(accessToken?: string, refreshToken?: string) {
-  // This is a cache identity, not a credential. getRandomValues also works on HTTP.
+  // Cache identity; getRandomValues also works on HTTP.
   sharedSession = Array.from(
     crypto.getRandomValues(new Uint8Array(16)),
     (byte) => byte.toString(16).padStart(2, '0')
@@ -85,7 +85,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
       fetchProfile: async (force = false) => {
         const currentState = get()
 
-        // Reuse cached data unless a caller explicitly requests a refresh.
         if (
           (!force &&
             (currentState.auth.isLoadingProfile ||
@@ -123,7 +122,6 @@ export const useAuthStore = create<AuthState>()((set, get) => {
             auth: { ...state.auth, isLoadingProfile: false },
           }))
 
-          // Sign out if user not found (404)
           if (error && typeof error === 'object' && 'response' in error) {
             const axiosErr = error as { response?: { status?: number } }
             if (axiosErr.response?.status === 404) {

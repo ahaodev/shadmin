@@ -95,11 +95,9 @@ export function DataTableFacetedFilter<TData, TValue>({
                     key={option.value}
                     onSelect={() => {
                       if (singleSelect) {
-                        // 单选模式：点击已选择的项则取消选择，点击其他项则选择该项
                         const newValue = isSelected ? undefined : option.value
                         column?.setFilterValue(newValue)
                       } else {
-                        // 多选模式：原有逻辑
                         if (isSelected) {
                           selectedValues.delete(option.value)
                         } else {

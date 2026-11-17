@@ -163,7 +163,6 @@ function RadioGroupItem({
   )
 }
 
-// 主题配置
 function ThemeConfig() {
   const { defaultTheme, theme, setTheme } = useTheme()
   return (
@@ -207,7 +206,6 @@ function ThemeConfig() {
   )
 }
 
-// Sidebar配置
 function SidebarConfig() {
   const { defaultVariant, variant, setVariant } = useLayout()
   return (
@@ -251,7 +249,6 @@ function SidebarConfig() {
   )
 }
 
-// 布局配置
 function LayoutConfig() {
   const { open, setOpen } = useSidebar()
   const { defaultCollapsible, collapsible, setCollapsible } = useLayout()

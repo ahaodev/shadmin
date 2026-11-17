@@ -23,7 +23,6 @@ type ipRateLimiter struct {
 	lastCleanup time.Time
 }
 
-// RateLimitByIP limits requests from each client IP for the configured window.
 func RateLimitByIP(limit int, window time.Duration) gin.HandlerFunc {
 	limiter := &ipRateLimiter{
 		limit:       limit,

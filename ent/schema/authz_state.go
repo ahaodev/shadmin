@@ -7,7 +7,6 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-// AuthzState stores the generation of the authorization data projection.
 type AuthzState struct {
 	ent.Schema
 }

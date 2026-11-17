@@ -22,8 +22,8 @@ import { MenuStatusSettings } from './form-sections/menu-status-settings'
 interface MenusCreateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  menu?: Menu | null // Optional menu for edit mode
-  mode?: 'create' | 'edit' // Dialog mode
+  menu?: Menu | null
+  mode?: 'create' | 'edit'
 }
 
 export function MenusCreateDialog({

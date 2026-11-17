@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// JwtAuthMiddleware 校验 access token 的合法性、黑名单状态，并把 claims 注入 gin context。
 func JwtAuthMiddleware(tokens domain.TokenIssuer, tokenBlacklist domain.TokenBlacklist) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authToken, ok := contextutil.BearerToken(c.Request.Header.Get(constants.Authorization))
@@ -28,7 +27,6 @@ func JwtAuthMiddleware(tokens domain.TokenIssuer, tokenBlacklist domain.TokenBla
 		}
 
 		if tokenBlacklist != nil {
-			// 黑名单以 jti 为键：无 jti 的令牌无法吊销，直接拒绝
 			if claims.JTI == "" {
 				c.JSON(http.StatusUnauthorized, domain.RespError("令牌无效"))
 				c.Abort()

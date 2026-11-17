@@ -168,7 +168,6 @@ export function TypesDialogs() {
     })
   }
 
-  // 当 currentTypeRow 改变时，更新编辑表单的值
   useEffect(() => {
     if (currentTypeRow && typeOpen === 'edit') {
       editForm.reset({
@@ -310,7 +309,6 @@ export function TypesDialogs() {
         </DialogContent>
       </Dialog>
 
-      {/* 删除确认对话框 */}
       <AlertDialog
         open={typeOpen === 'delete'}
         onOpenChange={(open) => {

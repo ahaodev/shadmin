@@ -39,15 +39,12 @@ export function DictTypesTable({
   navigate,
   totalCount = 0,
 }: DataTableProps) {
-  // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [sorting, setSorting] = useState<SortingState>([])
 
-  // Use data as-is since filtering is done server-side
   const filteredData = data
 
-  // Synced with URL states (keys/defaults mirror dict route search schema)
   const {
     columnFilters,
     onColumnFiltersChange,
@@ -68,7 +65,6 @@ export function DictTypesTable({
     ],
   })
 
-  // Ensure page is within valid range when data changes
   useEffect(() => {
     ensurePageInRange(totalCount)
   }, [totalCount, ensurePageInRange])

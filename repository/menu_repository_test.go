@@ -17,8 +17,6 @@ func assertStrPtrEq(t *testing.T, field string, got *string, want string) {
 	}
 }
 
-// converter 被 GetMenus / GetMenuByID / GetChildrenMenus 共用，字段级断言防止
-// 后续增删字段时静默漏映射。
 func TestEntMenuToDomain_MapsEveryField(t *testing.T) {
 	parentID := "parent-1"
 	created := time.Now().Add(-time.Hour).Truncate(time.Second)
@@ -83,7 +81,6 @@ func TestEntMenuToDomain_MapsEveryField(t *testing.T) {
 	}
 }
 
-// 空字符串的可空字段必须映射为 nil（写库时表示 NULL），而不是指向空串。
 func TestEntMenuToDomain_EmptyNullableFieldsBecomeNil(t *testing.T) {
 	got := entMenuToDomain(&ent.Menu{ID: "menu-1"})
 
@@ -94,7 +91,7 @@ func TestEntMenuToDomain_EmptyNullableFieldsBecomeNil(t *testing.T) {
 	if got.ParentID != nil {
 		t.Fatalf("ParentID = %v, want nil", *got.ParentID)
 	}
-	// 未预加载 API 资源边时必须是 nil 切片，与旧实现一致。
+	// 未预加载的关联保留 nil。
 	if got.ApiResources != nil {
 		t.Fatalf("ApiResources = %v, want nil when edge not loaded", got.ApiResources)
 	}

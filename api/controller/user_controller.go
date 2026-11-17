@@ -31,20 +31,16 @@ type UserController struct {
 //	@Failure		500			{object}	domain.Response	"Internal server error"
 //	@Router			/system/user [get]
 func (uc *UserController) GetUsers(c *gin.Context) {
-	// 构建查询过滤器
 	var filter domain.UserQueryFilter
 	filter.QueryParams = BindQueryParams(c)
 
-	// 解析过滤参数
 	filter.Status = c.Query("status")
 	filter.Role = c.Query("role")
 	filter.Username = c.Query("username")
 	filter.Email = c.Query("email")
-	// 统一过滤参数：keyword（CLI 与 web 通用）
 	filter.Keyword = c.Query("keyword")
 	filter.IncludeRoles = c.Query("include_roles") == "true"
 
-	// 使用统一查询接口
 	result, err := uc.UserUsecase.ListUsers(c.Request.Context(), filter)
 	if err != nil {
 		RespondError(c, err)
@@ -125,13 +121,11 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	// 执行用户更新
 	if err := uc.UserUsecase.UpdateUserPartial(c.Request.Context(), id, updateReq); err != nil {
 		RespondError(c, err)
 		return
 	}
 
-	// 获取更新后的用户信息
 	user, err := uc.UserUsecase.GetUserByID(c.Request.Context(), id)
 	if err != nil {
 		RespondError(c, err)
@@ -220,14 +214,12 @@ func (uc *UserController) GetUserRoles(c *gin.Context) {
 func (uc *UserController) DeleteUser(c *gin.Context) {
 	userID := c.Param("id")
 
-	// 获取当前操作用户ID
 	currentUserID := contextutil.GetUserID(c)
 	if currentUserID == "" {
 		c.JSON(http.StatusUnauthorized, domain.RespError("用户未认证"))
 		return
 	}
 
-	// 执行删除用户逻辑（含权限校验）
 	if err := uc.UserUsecase.DeleteUser(c.Request.Context(), userID, currentUserID); err != nil {
 		RespondError(c, err)
 		return

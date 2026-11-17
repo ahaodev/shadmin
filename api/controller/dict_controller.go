@@ -11,8 +11,6 @@ type DictController struct {
 	DictUseCase domain.DictUseCase
 }
 
-// 字典类型相关接口
-
 // GetDictTypes godoc
 //
 //	@Summary		Get dictionary types with pagination
@@ -36,7 +34,6 @@ func (dc *DictController) GetDictTypes(c *gin.Context) {
 	var params domain.DictTypeQueryParams
 	params.QueryParams = BindQueryParams(c)
 
-	// 解析过滤参数
 	params.Code = c.Query("code")
 	params.Name = c.Query("name")
 	params.Status = c.Query("status")
@@ -163,8 +160,6 @@ func (dc *DictController) DeleteDictType(c *gin.Context) {
 	c.JSON(http.StatusOK, domain.RespSuccess("Dictionary type deleted successfully"))
 }
 
-// 字典项相关接口
-
 // GetDictItems godoc
 //
 //	@Summary		Get dictionary items with pagination
@@ -190,7 +185,6 @@ func (dc *DictController) GetDictItems(c *gin.Context) {
 	var params domain.DictItemQueryParams
 	params.QueryParams = BindQueryParams(c)
 
-	// 解析过滤参数
 	params.TypeID = c.Query("type_id")
 	params.TypeCode = c.Query("type_code")
 	params.Label = c.Query("label")
@@ -317,8 +311,6 @@ func (dc *DictController) DeleteDictItem(c *gin.Context) {
 
 	c.JSON(http.StatusOK, domain.RespSuccess("Dictionary item deleted successfully"))
 }
-
-// 便捷查询接口
 
 // GetDictItemsByTypeCode godoc
 //

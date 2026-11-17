@@ -16,7 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// InitApiResources rebuilds route resources and restores menu associations in one transaction.
+// InitApiResources 同事务重建路由资源并恢复菜单关联。
 func InitApiResources(app *Application) error {
 	ctx := context.Background()
 	discoveredResources := scanGinRoutes(app.ApiEngine)
@@ -27,8 +27,7 @@ func InitApiResources(app *Application) error {
 	}
 	defer tx.Rollback()
 
-	// Lock the singleton generation row before comparing/rebuilding the route inventory.
-	// Concurrent application instances then serialize this startup operation.
+	// 锁定代数行，串行化多实例启动时的路由重建。
 	if err := repository.BumpAuthorizationGeneration(ctx, tx); err != nil {
 		return err
 	}
@@ -89,26 +88,20 @@ func apiResourceInventoryMatches(existing []*ent.ApiResource, discovered []*doma
 	return true
 }
 
-// scanGinRoutes 扫描Gin路由获取API资源
 func scanGinRoutes(ginEngine *gin.Engine) []*domain.ApiResource {
 	var resources []*domain.ApiResource
 
-	// 获取所有路由
 	routes := ginEngine.Routes()
 
 	for _, route := range routes {
-		// 跳过不需要存储的路由
 		if shouldSkipRoute(route.Path) {
 			continue
 		}
 
-		// 从路径提取模块名
 		module := extractModuleFromPath(route.Path)
 
-		// 提取处理器名称
 		handlerName := route.Handler
 
-		// 判断是否为公开端点
 		isPublic := isPublicEndpoint(route.Path)
 
 		resource := &domain.ApiResource{
@@ -125,7 +118,6 @@ func scanGinRoutes(ginEngine *gin.Engine) []*domain.ApiResource {
 	return resources
 }
 
-// bulkCreateApiResources 批量创建API资源
 func bulkCreateApiResources(ctx context.Context, tx *ent.Tx, apiResources []*domain.ApiResource) (int, error) {
 	if len(apiResources) == 0 {
 		return 0, nil
@@ -135,7 +127,6 @@ func bulkCreateApiResources(ctx context.Context, tx *ent.Tx, apiResources []*dom
 	createdCount := 0
 
 	for _, apiResource := range apiResources {
-		// 验证必要字段
 		if apiResource.Method == "" {
 			slog.Warn("Skipping API resource with empty method", "path", apiResource.Path)
 			continue
@@ -145,7 +136,6 @@ func bulkCreateApiResources(ctx context.Context, tx *ent.Tx, apiResources []*dom
 			continue
 		}
 
-		// 生成稳定的ID（method:path组合）
 		apiResource.ID = domain.GenerateApiResourceID(apiResource.Method, apiResource.Path)
 		apiResource.CreatedAt = now
 		apiResource.UpdatedAt = now
@@ -169,7 +159,6 @@ func bulkCreateApiResources(ctx context.Context, tx *ent.Tx, apiResources []*dom
 	return createdCount, nil
 }
 
-// shouldSkipRoute 判断是否应该跳过该路由
 func shouldSkipRoute(path string) bool {
 	allSkipPaths := constants.GetAPIPathsToSkip()
 
@@ -182,13 +171,10 @@ func shouldSkipRoute(path string) bool {
 	return false
 }
 
-// extractModuleFromPath 从API路径中提取模块名
 func extractModuleFromPath(path string) string {
-	// 移除前导斜杠并按斜杠分割
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 
 	if len(parts) >= 3 && parts[0] == "api" && parts[1] == "v1" {
-		// 从 /api/v1/module/... 提取模块名
 		return parts[2]
 	}
 
@@ -199,9 +185,7 @@ func extractModuleFromPath(path string) string {
 	return "unknown"
 }
 
-// isPublicEndpoint 判断端点是否为公开端点
 func isPublicEndpoint(path string) bool {
-	// 合并公开API路径和Swagger路径
 	publicPaths := append(constants.PublicAPIPaths, constants.SwaggerAPIPaths...)
 
 	for _, publicPath := range publicPaths {
@@ -213,17 +197,14 @@ func isPublicEndpoint(path string) bool {
 	return false
 }
 
-// MenuApiResourceAssociation 菜单-API资源关联关系
 type MenuApiResourceAssociation struct {
 	MenuID        string
 	ApiResourceID string
 }
 
-// getMenuApiResourceAssociations 获取所有菜单-API资源关联关系
 func getMenuApiResourceAssociations(ctx context.Context, client *ent.Client) ([]MenuApiResourceAssociation, error) {
 	var associations []MenuApiResourceAssociation
 
-	// 查询所有菜单及其关联的API资源
 	menus, err := client.Menu.Query().
 		WithAPIResources().
 		All(ctx)
@@ -243,7 +224,6 @@ func getMenuApiResourceAssociations(ctx context.Context, client *ent.Client) ([]
 	return associations, nil
 }
 
-// restoreMenuApiResourceAssociations 恢复菜单-API资源关联关系
 func restoreMenuApiResourceAssociations(ctx context.Context, tx *ent.Tx, associations []MenuApiResourceAssociation) (int, error) {
 	if len(associations) == 0 {
 		return 0, nil

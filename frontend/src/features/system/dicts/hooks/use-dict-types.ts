@@ -8,7 +8,6 @@ import type { DictTypeQueryParams } from '@/types/dict'
 import { useCrudMutation } from '@/hooks/use-crud-mutation'
 import { DICT_QUERY_KEYS } from './dict-query-keys'
 
-// Custom hook for fetching dict types with pagination and filters
 export function useDictTypes(params?: DictTypeQueryParams) {
   return useQuery({
     queryKey: [DICT_QUERY_KEYS.types, params],
@@ -17,7 +16,6 @@ export function useDictTypes(params?: DictTypeQueryParams) {
   })
 }
 
-// Custom hook for batch deleting dict types
 export function useDeleteDictTypes() {
   return useCrudMutation({
     mutationFn: (typeIds: string[]) =>
@@ -28,7 +26,6 @@ export function useDeleteDictTypes() {
   })
 }
 
-// Custom hook for bulk status updates
 export function useBulkUpdateDictTypes() {
   return useCrudMutation({
     mutationFn: ({

@@ -2,38 +2,34 @@ package route
 
 import "github.com/gin-gonic/gin"
 
-// setupUserManagement configures user management routes with unified API permission check
 func (pr *ProtectedRoutes) setupUserManagement(systemGroup *gin.RouterGroup) {
 	userGroup := systemGroup.Group("/user")
 	userController := pr.factory.CreateUserController()
 
-	userGroup.GET("", userController.GetUsers)    // GET /api/v1/system/user
-	userGroup.POST("", userController.CreateUser) // POST /api/v1/system/user
+	userGroup.GET("", userController.GetUsers)
+	userGroup.POST("", userController.CreateUser)
 
-	userGroup.GET("/:id", userController.GetUser)       // GET /api/v1/system/user/:id
-	userGroup.PUT("/:id", userController.UpdateUser)    // PUT /api/v1/system/user/:id
-	userGroup.DELETE("/:id", userController.DeleteUser) // DELETE /api/v1/system/user/:id
+	userGroup.GET("/:id", userController.GetUser)
+	userGroup.PUT("/:id", userController.UpdateUser)
+	userGroup.DELETE("/:id", userController.DeleteUser)
 
-	userGroup.POST("/invite", userController.InviteUser)     // POST /api/v1/system/user/invite
-	userGroup.GET("/:id/roles", userController.GetUserRoles) // GET /api/v1/system/user/:id/roles
+	userGroup.POST("/invite", userController.InviteUser)
+	userGroup.GET("/:id/roles", userController.GetUserRoles)
 }
 
-// setupRoleManagement configures role management routes with unified API permission check
 func (pr *ProtectedRoutes) setupRoleManagement(systemGroup *gin.RouterGroup) {
 	roleGroup := systemGroup.Group("/role")
 	roleController := pr.factory.CreateRoleController()
 
-	// CRUD operations
-	roleGroup.GET("", roleController.GetRoles)          // GET /api/v1/system/role
-	roleGroup.POST("", roleController.CreateRole)       // POST /api/v1/system/role
-	roleGroup.GET("/:id", roleController.GetRole)       // GET /api/v1/system/role/:id
-	roleGroup.PUT("/:id", roleController.UpdateRole)    // PUT /api/v1/system/role/:id
-	roleGroup.DELETE("/:id", roleController.DeleteRole) // DELETE /api/v1/system/role/:id
+	roleGroup.GET("", roleController.GetRoles)
+	roleGroup.POST("", roleController.CreateRole)
+	roleGroup.GET("/:id", roleController.GetRole)
+	roleGroup.PUT("/:id", roleController.UpdateRole)
+	roleGroup.DELETE("/:id", roleController.DeleteRole)
 
-	roleGroup.GET("/:id/menus", roleController.GetRoleMenus) // GET /api/v1/system/role/:id/menus
+	roleGroup.GET("/:id/menus", roleController.GetRoleMenus)
 }
 
-// setupMenuManagement configures menu management routes with unified API permission check
 func (pr *ProtectedRoutes) setupMenuManagement(systemGroup *gin.RouterGroup) {
 	menuGroup := systemGroup.Group("/menu")
 	menuController := pr.factory.CreateMenuController()
@@ -47,7 +43,6 @@ func (pr *ProtectedRoutes) setupMenuManagement(systemGroup *gin.RouterGroup) {
 	menuGroup.GET("/tree", menuController.GetMenuTree)
 }
 
-// setupApiResourceManagement configures API resource management routes with unified API permission check
 func (pr *ProtectedRoutes) setupApiResourceManagement(systemGroup *gin.RouterGroup) {
 	apiGroup := systemGroup.Group("/api-resources")
 	apiResourceController := pr.factory.CreateApiResourceController()
@@ -55,47 +50,41 @@ func (pr *ProtectedRoutes) setupApiResourceManagement(systemGroup *gin.RouterGro
 	apiGroup.GET("", apiResourceController.GetApiResources)
 }
 
-// setupLoginLogManagement configures login log management routes with unified API permission check
 func (pr *ProtectedRoutes) setupLoginLogManagement(systemGroup *gin.RouterGroup) {
 	loginLogGroup := systemGroup.Group("/login-logs")
 	loginLogController := pr.factory.CreateLoginLogController()
 
-	loginLogGroup.GET("", loginLogController.GetLoginLogs)      // GET /api/v1/system/login-logs
-	loginLogGroup.DELETE("", loginLogController.ClearLoginLogs) // DELETE /api/v1/system/login-logs
+	loginLogGroup.GET("", loginLogController.GetLoginLogs)
+	loginLogGroup.DELETE("", loginLogController.ClearLoginLogs)
 }
 
-// setupDictionaryManagement configures dictionary management routes with unified API permission check
 func (pr *ProtectedRoutes) setupDictionaryManagement(systemGroup *gin.RouterGroup) {
 	dictGroup := systemGroup.Group("/dict")
 	dictController := pr.factory.CreateDictController()
 
-	// Dictionary type CRUD operations
-	dictGroup.GET("/types", dictController.GetDictTypes)          // GET /api/v1/system/dict/types
-	dictGroup.POST("/types", dictController.CreateDictType)       // POST /api/v1/system/dict/types
-	dictGroup.GET("/types/:id", dictController.GetDictType)       // GET /api/v1/system/dict/types/:id
-	dictGroup.PUT("/types/:id", dictController.UpdateDictType)    // PUT /api/v1/system/dict/types/:id
-	dictGroup.DELETE("/types/:id", dictController.DeleteDictType) // DELETE /api/v1/system/dict/types/:id
+	dictGroup.GET("/types", dictController.GetDictTypes)
+	dictGroup.POST("/types", dictController.CreateDictType)
+	dictGroup.GET("/types/:id", dictController.GetDictType)
+	dictGroup.PUT("/types/:id", dictController.UpdateDictType)
+	dictGroup.DELETE("/types/:id", dictController.DeleteDictType)
 
-	// Dictionary item CRUD operations
-	dictGroup.GET("/items", dictController.GetDictItems)          // GET /api/v1/system/dict/items
-	dictGroup.POST("/items", dictController.CreateDictItem)       // POST /api/v1/system/dict/items
-	dictGroup.GET("/items/:id", dictController.GetDictItem)       // GET /api/v1/system/dict/items/:id
-	dictGroup.PUT("/items/:id", dictController.UpdateDictItem)    // PUT /api/v1/system/dict/items/:id
-	dictGroup.DELETE("/items/:id", dictController.DeleteDictItem) // DELETE /api/v1/system/dict/items/:id
+	dictGroup.GET("/items", dictController.GetDictItems)
+	dictGroup.POST("/items", dictController.CreateDictItem)
+	dictGroup.GET("/items/:id", dictController.GetDictItem)
+	dictGroup.PUT("/items/:id", dictController.UpdateDictItem)
+	dictGroup.DELETE("/items/:id", dictController.DeleteDictItem)
 
-	// Convenience API
-	dictGroup.GET("/types/code/:code/items", dictController.GetDictItemsByTypeCode) // GET /api/v1/system/dict/types/code/:code/items
+	dictGroup.GET("/types/code/:code/items", dictController.GetDictItemsByTypeCode)
 }
 
-// setupDepartmentManagement configures department management routes with unified API permission check
 func (pr *ProtectedRoutes) setupDepartmentManagement(systemGroup *gin.RouterGroup) {
 	deptGroup := systemGroup.Group("/department")
 	deptController := pr.factory.CreateDepartmentController()
 
-	deptGroup.GET("", deptController.GetDepartmentList)       // GET /api/v1/system/department（扁平列表，支持 keyword 过滤）
-	deptGroup.GET("/tree", deptController.GetDepartmentTree)  // GET /api/v1/system/department/tree
-	deptGroup.POST("", deptController.CreateDepartment)       // POST /api/v1/system/department
-	deptGroup.GET("/:id", deptController.GetDepartment)       // GET /api/v1/system/department/:id
-	deptGroup.PUT("/:id", deptController.UpdateDepartment)    // PUT /api/v1/system/department/:id
-	deptGroup.DELETE("/:id", deptController.DeleteDepartment) // DELETE /api/v1/system/department/:id
+	deptGroup.GET("", deptController.GetDepartmentList)
+	deptGroup.GET("/tree", deptController.GetDepartmentTree)
+	deptGroup.POST("", deptController.CreateDepartment)
+	deptGroup.GET("/:id", deptController.GetDepartment)
+	deptGroup.PUT("/:id", deptController.UpdateDepartment)
+	deptGroup.DELETE("/:id", deptController.DeleteDepartment)
 }

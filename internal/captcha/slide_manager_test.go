@@ -13,7 +13,7 @@ import (
 	"shadmin/internal/cacher"
 )
 
-// rssKB 读 /proc/self/statm 返回进程 RSS（KB）；非 Linux 或读取失败返回 -1。
+// rssKB 在非 Linux 或读取失败时返回 -1。
 func rssKB() int64 {
 	f, err := os.Open("/proc/self/statm")
 	if err != nil {
@@ -32,7 +32,6 @@ func rssKB() int64 {
 	return v * (int64(os.Getpagesize()) / 1024)
 }
 
-// heapAfterGC 触发两轮 GC 后返回存活堆字节数（≈ 真实滞留量）。
 func heapAfterGC() uint64 {
 	runtime.GC()
 	time.Sleep(100 * time.Millisecond) // 给 finalizer/ scavenger 一点时间
@@ -42,9 +41,7 @@ func heapAfterGC() uint64 {
 	return ms.HeapInuse
 }
 
-// countCaptchaItems 统计 captcha 命名空间下逻辑存活的 challenge 条数。
-// 用 Exists（Get 的惰性过期检查）而非裸条目数：go-cache Items() 会包含
-// 已过期但 janitor 尚未清理的条目。
+// countCaptchaItems 用 Exists 排除尚未被 janitor 清理的过期项。
 func countCaptchaItems(t *testing.T, c cacher.Cacher, ctx context.Context) int {
 	t.Helper()
 	n := 0
@@ -63,8 +60,6 @@ func countCaptchaItems(t *testing.T, c cacher.Cacher, ctx context.Context) int {
 	return n
 }
 
-// TestVerifyFailureReclaimsChallenge 定量验证：校验失败路径上 challenge 记录
-// 是否被正常消费/过期回收，堆内存是否收敛而非单调增长。
 func TestVerifyFailureReclaimsChallenge(t *testing.T) {
 	c := cacher.NewMemoryCache(cacher.MemoryConfig{CleanupInterval: time.Minute})
 	m, err := NewSlideManager(c)
@@ -76,7 +71,7 @@ func TestVerifyFailureReclaimsChallenge(t *testing.T) {
 	baseline := heapAfterGC()
 	t.Logf("baseline: heap=%d KB, rss=%d KB", baseline/1024, rssKB())
 
-	// 阶段 1：模拟连续失败——每个 challenge 生成后连错 3 次（次数耗尽）。
+	// 耗尽尝试次数，验证立即回收。
 	const cycles = 300
 	var responseBytes uint64
 	for i := range cycles {
@@ -85,7 +80,6 @@ func TestVerifyFailureReclaimsChallenge(t *testing.T) {
 			t.Fatalf("generate %d: %v", i, err)
 		}
 		responseBytes += uint64(len(ch.MasterImage) + len(ch.TileImage))
-		// y=9999 必然越界，保证校验失败
 		for j := 0; j < m.maxAttempt; j++ {
 			if err := m.Verify(ctx, ch.CaptchaID, 0, 9999); err == nil {
 				t.Fatalf("cycle %d attempt %d: expected failure", i, j)
@@ -104,7 +98,7 @@ func TestVerifyFailureReclaimsChallenge(t *testing.T) {
 		t.Errorf("heap grew monotonically: baseline=%d KB, after=%d KB", baseline/1024, afterCycles/1024)
 	}
 
-	// 阶段 2：失败 1 次后写回的 challenge 应随剩余 TTL 过期，而不是永久滞留。
+	// 未耗尽次数的挑战应随剩余 TTL 过期。
 	ch, err := m.Generate(ctx, "")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
@@ -127,7 +121,6 @@ func TestVerifyFailureReclaimsChallenge(t *testing.T) {
 	}
 }
 
-// TestGenerateRefreshReleasesOldChallenge 验证带 oldID 的刷新会主动回收旧 challenge。
 func TestGenerateRefreshReleasesOldChallenge(t *testing.T) {
 	c := cacher.NewMemoryCache(cacher.MemoryConfig{CleanupInterval: time.Minute})
 	m, err := NewSlideManager(c)

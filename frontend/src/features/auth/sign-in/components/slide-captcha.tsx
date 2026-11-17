@@ -59,8 +59,7 @@ export const SlideCaptcha = forwardRef<SlideCaptchaHandle, SlideCaptchaProps>(
       [challenge, verified, submitting, onVerified, setVerified]
     )
 
-    // 倒计时每秒触发一次重渲染，这里固定 data/config/events 的引用，
-    // 避免 go-captcha-react 每秒都执行一次内部 state 更新。
+    // 固定引用，避免倒计时触发 go-captcha-react 内部更新。
     const captchaData = useMemo(
       () => ({
         image: challenge?.master_image ?? '',
@@ -89,8 +88,7 @@ export const SlideCaptcha = forwardRef<SlideCaptchaHandle, SlideCaptchaProps>(
       <div className='flex flex-col gap-3'>
         {challenge ? (
           <div className='flex justify-center'>
-            {/* go-captcha-react 在 data 变化时会保留上一份挑战的内部引用（实测每次刷新残留
-                约 80KB 图片数据、不会被 GC 回收），以 captcha_id 作 key 强制重建实例。 */}
+            {/* 用 captcha_id 重建实例，释放上一份挑战的图片引用。 */}
             <GoCaptcha.Slide
               key={challenge.captcha_id}
               ref={(r: unknown) => {

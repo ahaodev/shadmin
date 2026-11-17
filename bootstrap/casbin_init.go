@@ -9,7 +9,6 @@ import (
 	"shadmin/internal/casbin"
 )
 
-// CasbinInitializer builds the startup policy snapshot and owns the sync service.
 type CasbinInitializer struct {
 	syncService *casbin.SyncService
 	manager     casbin.Manager
@@ -33,8 +32,7 @@ func (ci *CasbinInitializer) GetSyncService() *casbin.SyncService {
 	return ci.syncService
 }
 
-// InitCasbin initializes the first snapshot before serving requests, then starts
-// the per-process generation trigger with a low-frequency generation poll fallback.
+// InitCasbin 在服务启动前构建快照，再启用提交触发与轮询同步。
 func InitCasbin(app *Application) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

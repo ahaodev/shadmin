@@ -8,7 +8,6 @@ import (
 	"shadmin/internal/cacher"
 )
 
-// NewTokenBlacklist 返回基于 cacher.Cacher 的黑名单实现（domain.TokenBlacklist）。
 func NewTokenBlacklist(cacher cacher.Cacher) domain.TokenBlacklist {
 	return &blacklist{cacher: cacher}
 }

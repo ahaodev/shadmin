@@ -10,7 +10,6 @@ import (
 	"shadmin/internal/constants"
 )
 
-// EnsureAuthorizationState creates the singleton generation row if it does not exist.
 func EnsureAuthorizationState(ctx context.Context, client *ent.Client) error {
 	exists, err := client.AuthzState.Query().
 		Where(authzstate.ID(constants.AuthorizationStateID)).
@@ -50,8 +49,7 @@ type authorizationTxState struct {
 	generationBumped bool
 }
 
-// WithAuthorizationTx commits a permission-affecting change and advances the
-// shared generation in the same transaction. Nested changes share one generation bump.
+// WithAuthorizationTx 将授权变更与代数推进同事务提交；嵌套调用只推进一次。
 func WithAuthorizationTx(ctx context.Context, client *ent.Client, mutate func(context.Context, *ent.Tx) error) error {
 	return withEntTransaction(ctx, client, func(txCtx context.Context, tx *ent.Tx) error {
 		if err := bumpAuthorizationGenerationOnce(txCtx, tx); err != nil {
@@ -83,8 +81,7 @@ func withEntTransaction(ctx context.Context, client *ent.Client, mutate func(con
 	return nil
 }
 
-// bumpAuthorizationGenerationOnce takes the shared row lock before the first
-// authorization mutation in a transaction and advances its generation once.
+// bumpAuthorizationGenerationOnce 在首次授权变更前锁定并推进代数。
 func bumpAuthorizationGenerationOnce(ctx context.Context, tx *ent.Tx) error {
 	state, ok := ctx.Value(authorizationTxContextKey{}).(*authorizationTxState)
 	if ok && state.generationBumped {
@@ -99,9 +96,7 @@ func bumpAuthorizationGenerationOnce(ctx context.Context, tx *ent.Tx) error {
 	return nil
 }
 
-// BumpAuthorizationGeneration advances the generation in a caller-owned transaction.
-// Use it only when that transaction is not wrapped by WithAuthorizationTx; it does
-// not participate in WithAuthorizationTx's nested bump-once tracking.
+// BumpAuthorizationGeneration 仅用于未被 WithAuthorizationTx 包装的事务，不参与嵌套去重。
 func BumpAuthorizationGeneration(ctx context.Context, tx *ent.Tx) error {
 	if err := tx.AuthzState.UpdateOneID(constants.AuthorizationStateID).
 		AddGeneration(1).
@@ -112,7 +107,6 @@ func BumpAuthorizationGeneration(ctx context.Context, tx *ent.Tx) error {
 	return nil
 }
 
-// CurrentAuthorizationGeneration returns the current committed snapshot version.
 func CurrentAuthorizationGeneration(ctx context.Context, client *ent.Client) (int64, error) {
 	state, err := client.AuthzState.Query().
 		Where(authzstate.ID(constants.AuthorizationStateID)).

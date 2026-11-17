@@ -23,7 +23,6 @@ func (l *casbinLogger) SetEventTypes(types []casbinlog.EventType) error {
 	return nil
 }
 
-// OnBeforeEvent 是 casbinlog.Logger 接口要求的方法。
 func (l *casbinLogger) OnBeforeEvent(entry *casbinlog.LogEntry) error {
 	return nil
 }

@@ -134,7 +134,7 @@ export function UserAuthForm({
         if (error instanceof AxiosError) {
           msg = error.response?.data?.msg || error.message
           const status = error.response?.status
-          // 401 = 账号密码错误, 423 = 账户锁定 — 无需刷新验证码，直接关闭弹窗
+          // 账号密码错误或账户锁定时，无需刷新验证码。
           isCredentialError = status === 401 || status === 423
         } else if (error instanceof Error) {
           msg = error.message

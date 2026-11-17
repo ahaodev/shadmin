@@ -10,12 +10,10 @@ import (
 	"github.com/rs/xid"
 )
 
-// Menu holds the schema definition for the Menu entity.
 type Menu struct {
 	ent.Schema
 }
 
-// Fields of the Menu.
 func (Menu) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -87,10 +85,8 @@ func (Menu) Fields() []ent.Field {
 	}
 }
 
-// Edges of the Menu.
 func (Menu) Edges() []ent.Edge {
 	return []ent.Edge{
-		// 自引用父(唯一) -> 子(多)
 		edge.From("parent", Menu.Type).
 			Ref("children").
 			Field("parent_id").
@@ -103,7 +99,6 @@ func (Menu) Edges() []ent.Edge {
 	}
 }
 
-// Indexes of the Menu.
 func (Menu) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("status"),

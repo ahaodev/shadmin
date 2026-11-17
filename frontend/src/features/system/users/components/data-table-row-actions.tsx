@@ -23,13 +23,12 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { setOpen, setCurrentRow } = useUsersDialog()
   const { hasPermission } = usePermission()
 
-  // 管理员账户锁定：UI 上禁止编辑/删除，避免和后端 403 冲突。
+  // 后端禁止编辑或删除管理员账户。
   const isAdmin = row.original.is_admin === true
 
   const canEdit = !isAdmin && hasPermission(PERMISSIONS.SYSTEM.USER.EDIT)
   const canDelete = !isAdmin && hasPermission(PERMISSIONS.SYSTEM.USER.DELETE)
 
-  // If no permissions, don't render the dropdown
   if (!canEdit && !canDelete) {
     return null
   }

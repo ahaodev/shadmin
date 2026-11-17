@@ -26,20 +26,19 @@ type Application struct {
 	DB                *ent.Client
 	Cacher            cacher.Cacher
 	ApiEngine         *gin.Engine
-	FileStorage       domain.FileRepository // 新的通用文件存储接口
+	FileStorage       domain.FileRepository
 	CasManager        casbin.Manager
-	CasbinInitializer *CasbinInitializer             // Casbin初始化器
-	CasbinScheduler   *scheduler.CasbinSyncScheduler // Casbin同步调度器
-	CaptchaManager    *captchapkg.SlideManager       // 滑块验证码管理器（内部使用共享 Cacher）
-	UserStatusCache   *auth.Cache                    // 用户状态TTL缓存，用于登录/刷新/中间件检查
-	TokenBlacklist    domain.TokenBlacklist          // JWT 登出黑名单（内存或 Redis）
-	Tokens            domain.TokenIssuer             // JWT 签发与解析（路由中间件与用例共用）
-	Usecases          *Usecases                      // 装配完成的全部用例
-	Version           string                         // 应用版本
+	CasbinInitializer *CasbinInitializer
+	CasbinScheduler   *scheduler.CasbinSyncScheduler
+	CaptchaManager    *captchapkg.SlideManager
+	UserStatusCache   *auth.Cache
+	TokenBlacklist    domain.TokenBlacklist
+	Tokens            domain.TokenIssuer
+	Usecases          *Usecases
+	Version           string
 }
 
-// App 构造应用运行时。任何阶段失败都会释放已创建的资源并返回错误，
-// 是否终止进程由调用方（cmd）决定。
+// App 初始化失败时释放已创建的资源，由调用方决定是否退出。
 func App() (*Application, error) {
 	env, err := conf.NewEnv()
 	if err != nil {
@@ -54,7 +53,6 @@ func App() (*Application, error) {
 	if err != nil {
 		return nil, fmt.Errorf("init database: %w", err)
 	}
-	// 之后任一步失败都要关闭已打开的资源。
 	fail := func(format string, args ...any) (*Application, error) {
 		app.CloseDBConnection()
 		return nil, fmt.Errorf(format, args...)
@@ -84,39 +82,32 @@ func App() (*Application, error) {
 		slog.Info("Cacher: memory mode")
 	}
 
-	// 用户状态缓存：直接复用共享 Cacher，Cache 层做 DB 回源与 TTL 协调。
 	app.UserStatusCache = auth.NewUserStatusCacher(
 		repository.NewUserRepository(app.DB),
 		app.Cacher,
 		auth.DefaultTTL,
 	)
 
-	// The Ent relationships are authoritative; Casbin policies are in-memory snapshots.
 	app.CasManager = casbin.NewCasManager()
 
-	// JWT 登出黑名单：复用共享 Cacher，ns="jwt:blacklist"。
 	app.TokenBlacklist = auth.NewTokenBlacklist(app.Cacher)
 
-	// 滑块验证码：复用共享 Cacher，ns="captcha"。
 	cm, err := captchapkg.NewSlideManager(app.Cacher)
 	if err != nil {
 		return fail("init captcha: %w", err)
 	}
 	app.CaptchaManager = cm
 
-	// 初始化 Casbin 快照构建与同步服务；首个快照在服务启动前构建。
 	app.CasbinInitializer = NewCasbinInitializer(repository.NewAuthorizationRepository(app.DB), app.CasManager)
 
-	// Each process refreshes its local snapshot from the shared generation.
 	syncService := app.CasbinInitializer.GetSyncService()
 	app.CasbinScheduler = scheduler.NewCasbinSyncScheduler(
 		syncService,
 		time.Duration(app.Env.AuthzSyncPollIntervalSeconds)*time.Second,
 	)
-	// authz_states generation 提交后立即唤醒当前实例；低频轮询负责兜底恢复。
+	// 提交后唤醒本地同步；轮询兜底遗漏通知。
 	app.registerAuthorizationGenerationHook()
 
-	// 初始化文件存储
 	storageConfig, err := InitStorage(app.Env)
 	if err != nil {
 		return fail("init storage: %w", err)
@@ -125,16 +116,14 @@ func App() (*Application, error) {
 	if app.Env.AppEnv == conf.AppEnvProd {
 		gin.SetMode(gin.ReleaseMode)
 	}
-	// gin 的访问日志与 panic 恢复日志也进入轮换文件。
+	// Gin 访问日志与 panic 日志也写入轮换文件。
 	gin.DefaultWriter = pkg.LogWriter
 	gin.DefaultErrorWriter = pkg.LogWriter
 	app.ApiEngine = gin.New()
 	app.ApiEngine.Use(gin.Logger(), middleware.Recovery())
 
-	// 注册第三方登录 provider（Google/GitHub），并初始化 gothic session store
 	InitIdentityProviders(app.Env)
 
-	// 注册 User ent hook：状态变更时让缓存失效
 	app.registerUserStatusCacheHook()
 
 	app.Tokens = tokenservice.NewTokenService(tokenservice.Config{
@@ -147,7 +136,6 @@ func App() (*Application, error) {
 	return app, nil
 }
 func (app *Application) CloseDBConnection() {
-	// 停止Casbin同步调度器
 	if app.CasbinScheduler != nil {
 		app.CasbinScheduler.Stop()
 	}
@@ -159,8 +147,7 @@ func (app *Application) CloseDBConnection() {
 	CloseEntConnection(app.DB)
 }
 
-// registerAuthorizationGenerationHook 注册 generation 提交触发器。
-// 只能在授权事务提交成功后唤醒同步，不能在 generation 更新的事务中直接构建快照。
+// registerAuthorizationGenerationHook 仅在事务提交后触发同步，避免构建未提交的快照。
 func (app *Application) registerAuthorizationGenerationHook() {
 	if app.CasbinScheduler == nil {
 		return
@@ -191,7 +178,7 @@ func authzGenerationChanged(mutation *ent.AuthzStateMutation) bool {
 	return ok
 }
 
-// registerUserStatusCacheHook 注册 ent hook：User 变更提交成功后失效 UserStatusCache。
+// registerUserStatusCacheHook 在 User 变更提交后失效状态缓存。
 func (app *Application) registerUserStatusCacheHook() {
 	cache := app.UserStatusCache
 	app.DB.Use(func(next ent.Mutator) ent.Mutator {
@@ -223,7 +210,6 @@ func (app *Application) registerUserStatusCacheHook() {
 	})
 }
 
-// userIDsForCacheInvalidation 解析涉及的用户 ID；Create 没有可失效的缓存，直接返回空。
 func userIDsForCacheInvalidation(ctx context.Context, m ent.Mutation) []string {
 	um, ok := m.(*ent.UserMutation)
 	if !ok {

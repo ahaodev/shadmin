@@ -8,38 +8,14 @@ import { getErrorMessage } from '@/lib/error'
 
 interface UseCrudMutationOptions<TData, TVariables> {
   mutationFn: MutationFunction<TData, TVariables>
-  /** Query keys to invalidate on success. Can be static or computed from mutation result. */
+  /** Query keys to invalidate on success. */
   queryKeys: unknown[][] | ((data: TData, variables: TVariables) => unknown[][])
-  /** Toast message on success. Can be static or computed from mutation result. */
   successMessage: string | ((data: TData, variables: TVariables) => string)
-  /** Default error message shown when error has no extractable message. */
+  /** Fallback when the error has no message. */
   errorMessage: string
 }
 
-/**
- * Generic CRUD mutation hook that handles query invalidation, toast notifications, and error handling.
- *
- * @example
- * ```ts
- * // Simple usage
- * export const useDeleteUser = () =>
- *   useCrudMutation({
- *     mutationFn: deleteUser,
- *     queryKeys: [['users']],
- *     successMessage: '用户删除成功',
- *     errorMessage: '删除用户失败',
- *   })
- *
- * // Dynamic messages
- * export const useDeleteUsers = () =>
- *   useCrudMutation({
- *     mutationFn: (ids: string[]) => Promise.all(ids.map(deleteUser)),
- *     queryKeys: [['users']],
- *     successMessage: (_, ids) => `已删除 ${ids.length} 个用户`,
- *     errorMessage: '批量删除用户失败',
- *   })
- * ```
- */
+/** Invalidates queries and reports mutation results via toast. */
 export function useCrudMutation<TData = unknown, TVariables = void>(
   options: UseCrudMutationOptions<TData, TVariables>
 ) {

@@ -10,12 +10,10 @@ import (
 	"github.com/rs/xid"
 )
 
-// DictItem holds the schema definition for the DictItem entity.
 type DictItem struct {
 	ent.Schema
 }
 
-// Fields of the DictItem.
 func (DictItem) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -68,7 +66,6 @@ func (DictItem) Fields() []ent.Field {
 	}
 }
 
-// Edges of the DictItem.
 func (DictItem) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("type", DictType.Type).
@@ -80,22 +77,15 @@ func (DictItem) Edges() []ent.Edge {
 	}
 }
 
-// Indexes of the DictItem.
 func (DictItem) Indexes() []ent.Index {
 	return []ent.Index{
-		// 同一类型下 (type_id, value) 唯一
 		index.Fields("type_id", "value").
 			Unique(),
-		// 同一类型下 (type_id, label) 唯一，避免显示混淆
 		index.Fields("type_id", "label").
 			Unique(),
-		// 类型ID索引
 		index.Fields("type_id"),
-		// 状态索引
 		index.Fields("status"),
-		// 排序索引
 		index.Fields("sort"),
-		// 默认项索引
 		index.Fields("type_id", "is_default"),
 	}
 }

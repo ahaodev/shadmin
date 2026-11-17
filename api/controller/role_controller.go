@@ -33,7 +33,6 @@ func (rc *RoleController) getRoleIDOrBadRequest(c *gin.Context) (string, bool) {
 //	@Failure		500	{object}	domain.Response						"Internal server error"
 //	@Router			/system/role [get]
 func (rc *RoleController) GetRoles(c *gin.Context) {
-	// 获取所有角色
 	roles, err := rc.RoleUseCase.Fetch(c.Request.Context())
 	if err != nil {
 		RespondError(c, err)
@@ -63,12 +62,10 @@ func (rc *RoleController) CreateRole(c *gin.Context) {
 		return
 	}
 
-	// Set default status if not provided
 	if request.Status == "" {
 		request.Status = domain.RoleStatusActive
 	}
 
-	// Create the role
 	err := rc.RoleUseCase.Create(c.Request.Context(), &request)
 	if err != nil {
 		RespondError(c, err)
@@ -78,8 +75,7 @@ func (rc *RoleController) CreateRole(c *gin.Context) {
 	c.JSON(http.StatusCreated, domain.RespSuccess(request.Name))
 }
 
-// getRoleByID extracts the role ID from the path, fetches the role, and writes
-// an error response when something goes wrong. Returns nil if a response was already sent.
+// getRoleByID 返回 nil 时已写入错误响应。
 func (rc *RoleController) getRoleByID(c *gin.Context) *domain.Role {
 	roleID, ok := rc.getRoleIDOrBadRequest(c)
 	if !ok {

@@ -18,9 +18,7 @@ type diskFileRepository struct {
 	basePath string
 }
 
-// validatePath 验证路径是否在basePath内，防止路径遍历攻击
 func (dfr *diskFileRepository) validatePath(targetPath string) error {
-	// 获取绝对路径
 	absPath, err := filepath.Abs(targetPath)
 	if err != nil {
 		return fmt.Errorf("invalid path: %v", err)
@@ -29,7 +27,6 @@ func (dfr *diskFileRepository) validatePath(targetPath string) error {
 	if err != nil {
 		return fmt.Errorf("invalid base path: %v", err)
 	}
-	// 确保目标路径在basePath内
 	if !strings.HasPrefix(absPath, absBase+string(filepath.Separator)) && absPath != absBase {
 		return fmt.Errorf("path traversal detected: access denied")
 	}
@@ -37,7 +34,6 @@ func (dfr *diskFileRepository) validatePath(targetPath string) error {
 }
 
 func NewDiskFileRepository(basePath string) (domain.FileRepository, error) {
-	// 确保基础路径存在
 	if err := os.MkdirAll(basePath, 0755); err != nil {
 		return nil, fmt.Errorf("create storage base path %s: %w", basePath, err)
 	}
@@ -47,7 +43,6 @@ func NewDiskFileRepository(basePath string) (domain.FileRepository, error) {
 }
 
 func (dfr *diskFileRepository) Upload(ctx context.Context, req *domain.UploadRequest) (*domain.UploadResult, error) {
-	// 构建文件路径
 	bucketPath := filepath.Join(dfr.basePath, req.Bucket)
 	if err := os.MkdirAll(bucketPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create bucket directory: %v", err)
@@ -56,7 +51,6 @@ func (dfr *diskFileRepository) Upload(ctx context.Context, req *domain.UploadReq
 	objectName := req.ObjectName
 	if req.Prefix != "" {
 		objectName = req.Prefix + "/" + req.ObjectName
-		// 确保前缀目录存在
 		prefixPath := filepath.Join(bucketPath, req.Prefix)
 		if err := os.MkdirAll(prefixPath, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create prefix directory: %v", err)
@@ -65,41 +59,34 @@ func (dfr *diskFileRepository) Upload(ctx context.Context, req *domain.UploadReq
 
 	filePath := filepath.Join(bucketPath, objectName)
 
-	// 验证路径安全性，防止路径遍历攻击
 	if err := dfr.validatePath(filePath); err != nil {
 		return nil, err
 	}
 
-	// 确保目标文件的目录存在
 	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
 		return nil, fmt.Errorf("failed to create file directory: %v", err)
 	}
 
-	// 创建目标文件
 	file, err := os.Create(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create file: %v", err)
 	}
 	defer func() { _ = file.Close() }()
 
-	// 计算文件哈希和大小
 	hasher := md5.New()
 	writer := io.MultiWriter(file, hasher)
 
-	// 复制文件内容
 	size, err := io.Copy(writer, req.Reader)
 	if err != nil {
-		_ = os.Remove(filePath) // 清理失败的文件
+		_ = os.Remove(filePath)
 		return nil, fmt.Errorf("failed to write file: %v", err)
 	}
 
-	// 验证文件大小
 	if req.Size > 0 && size != req.Size {
 		_ = os.Remove(filePath)
 		return nil, fmt.Errorf("file size mismatch: expected %d, got %d", req.Size, size)
 	}
 
-	// 生成ETag（MD5哈希）
 	etag := fmt.Sprintf("%x", hasher.Sum(nil))
 
 	return &domain.UploadResult{
@@ -114,7 +101,6 @@ func (dfr *diskFileRepository) Upload(ctx context.Context, req *domain.UploadReq
 func (dfr *diskFileRepository) Download(ctx context.Context, req *domain.DownloadRequest) (io.ReadCloser, error) {
 	filePath := filepath.Join(dfr.basePath, req.Bucket, req.ObjectName)
 
-	// 验证路径安全性，防止路径遍历攻击
 	if err := dfr.validatePath(filePath); err != nil {
 		return nil, err
 	}
@@ -133,19 +119,17 @@ func (dfr *diskFileRepository) Download(ctx context.Context, req *domain.Downloa
 func (dfr *diskFileRepository) Delete(ctx context.Context, bucket, objectName string) error {
 	filePath := filepath.Join(dfr.basePath, bucket, objectName)
 
-	// 验证路径安全性，防止路径遍历攻击
 	if err := dfr.validatePath(filePath); err != nil {
 		return err
 	}
 
 	if err := os.Remove(filePath); err != nil {
 		if os.IsNotExist(err) {
-			return nil // 文件不存在，认为删除成功
+			return nil
 		}
 		return fmt.Errorf("failed to delete file: %v", err)
 	}
 
-	// 尝试删除空的父目录
 	dfr.removeEmptyDirs(filepath.Dir(filePath), filepath.Join(dfr.basePath, bucket))
 
 	return nil
@@ -154,12 +138,10 @@ func (dfr *diskFileRepository) Delete(ctx context.Context, bucket, objectName st
 func (dfr *diskFileRepository) List(ctx context.Context, bucket, prefix string) ([]domain.FileInfo, error) {
 	bucketPath := filepath.Join(dfr.basePath, bucket)
 
-	// 验证路径安全性，防止路径遍历攻击
 	if err := dfr.validatePath(bucketPath); err != nil {
 		return nil, err
 	}
 
-	// 检查bucket目录是否存在
 	if _, err := os.Stat(bucketPath); os.IsNotExist(err) {
 		return []domain.FileInfo{}, nil
 	}
@@ -168,7 +150,6 @@ func (dfr *diskFileRepository) List(ctx context.Context, bucket, prefix string) 
 	searchPath := bucketPath
 	if prefix != "" {
 		searchPath = filepath.Join(bucketPath, prefix)
-		// 验证搜索路径安全性
 		if err := dfr.validatePath(searchPath); err != nil {
 			return nil, err
 		}
@@ -179,21 +160,17 @@ func (dfr *diskFileRepository) List(ctx context.Context, bucket, prefix string) 
 			return err
 		}
 
-		// 跳过基础路径本身
 		if fullPath == searchPath {
 			return nil
 		}
 
-		// 计算相对路径（相对于bucket）
 		relPath, err := filepath.Rel(bucketPath, fullPath)
 		if err != nil {
 			return err
 		}
 
-		// 转换路径分隔符为统一的'/'（兼容Windows）
 		relPath = filepath.ToSlash(relPath)
 
-		// 如果是目录且不以'/'结尾，添加'/'
 		if info.IsDir() && !strings.HasSuffix(relPath, "/") {
 			relPath += "/"
 		}
@@ -203,7 +180,6 @@ func (dfr *diskFileRepository) List(ctx context.Context, bucket, prefix string) 
 			fileType = pkg.GetFileType(relPath)
 		}
 
-		// 计算ETag（对于文件）
 		var etag string
 		if !info.IsDir() {
 			if hash, err := dfr.calculateFileHash(fullPath); err == nil {
@@ -236,7 +212,6 @@ func (dfr *diskFileRepository) List(ctx context.Context, bucket, prefix string) 
 func (dfr *diskFileRepository) GetObjectStat(ctx context.Context, bucket, objectName string) (*domain.FileInfo, error) {
 	filePath := filepath.Join(dfr.basePath, bucket, objectName)
 
-	// 验证路径安全性，防止路径遍历攻击
 	if err := dfr.validatePath(filePath); err != nil {
 		return nil, err
 	}
@@ -254,7 +229,6 @@ func (dfr *diskFileRepository) GetObjectStat(ctx context.Context, bucket, object
 		fileType = "folder"
 	}
 
-	// 计算ETag
 	var etag string
 	if !info.IsDir() {
 		if hash, err := dfr.calculateFileHash(filePath); err == nil {
@@ -262,7 +236,6 @@ func (dfr *diskFileRepository) GetObjectStat(ctx context.Context, bucket, object
 		}
 	}
 
-	// 检测内容类型
 	contentType := "application/octet-stream"
 	if !info.IsDir() {
 		if ct := dfr.detectContentType(filePath); ct != "" {
@@ -283,7 +256,6 @@ func (dfr *diskFileRepository) GetObjectStat(ctx context.Context, bucket, object
 	}, nil
 }
 
-// 计算文件的MD5哈希
 func (dfr *diskFileRepository) calculateFileHash(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -299,7 +271,6 @@ func (dfr *diskFileRepository) calculateFileHash(filePath string) (string, error
 	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
 }
 
-// 检测文件内容类型
 func (dfr *diskFileRepository) detectContentType(filePath string) string {
 	if err := dfr.validatePath(filePath); err != nil {
 		return ""
@@ -310,7 +281,6 @@ func (dfr *diskFileRepository) detectContentType(filePath string) string {
 	}
 	defer func() { _ = file.Close() }()
 
-	// 读取前512字节用于检测内容类型
 	buffer := make([]byte, 512)
 	n, err := file.Read(buffer)
 	if err != nil && err != io.EOF {
@@ -320,21 +290,17 @@ func (dfr *diskFileRepository) detectContentType(filePath string) string {
 	return pkg.DetectContentType(buffer[:n], filepath.Ext(filePath))
 }
 
-// 删除空目录（递归）
 func (dfr *diskFileRepository) removeEmptyDirs(dirPath, stopAt string) {
 	if dirPath == stopAt || dirPath == dfr.basePath {
 		return
 	}
 
-	// 检查目录是否为空
 	entries, err := os.ReadDir(dirPath)
 	if err != nil || len(entries) > 0 {
 		return
 	}
 
-	// 删除空目录
 	if err := os.Remove(dirPath); err == nil {
-		// 递归删除父目录（如果也为空）
 		dfr.removeEmptyDirs(filepath.Dir(dirPath), stopAt)
 	}
 }

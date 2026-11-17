@@ -16,14 +16,14 @@ export const apiClient = axios.create({
   timeout: 300000,
 })
 
-// Bare axios instance for token refresh — no interceptors, avoids cycles
+// No interceptors: refresh requests must not trigger another refresh.
 const refreshClient = axios.create({
   baseURL: getApiBaseURL(),
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 })
 
-// Auth routes that should never carry an Authorization header or trigger refresh
+// Public auth requests must not attach credentials or trigger refresh.
 const AUTH_ROUTES = [
   '/api/v1/auth/login',
   '/api/v1/auth/refresh',
@@ -38,7 +38,6 @@ function isAuthRoute(url?: string): boolean {
   return AUTH_ROUTES.some((r) => url?.includes(r))
 }
 
-// --- Request interceptor: attach access token ---
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const beforeSync = session.version
@@ -66,9 +65,6 @@ apiClient.interceptors.request.use(
   (error: unknown) => Promise.reject(error)
 )
 
-// --- Response interceptor: 401 → refresh → retry ---
-
-// Extend AxiosRequestConfig to carry our retry flag
 interface RetryableConfig extends InternalAxiosRequestConfig {
   _accessToken?: string
   _retry?: boolean
@@ -93,7 +89,6 @@ function forceLogout() {
     window.location.replace(`/sign-in?redirect=${redirect}`)
   }
 
-  // Reset flag after navigation starts
   setTimeout(() => {
     isLoggingOut = false
   }, 1000)
@@ -165,8 +160,7 @@ async function refreshAccessToken(
       throw error
     }
   }
-  // Web Locks serialize rotation across same-origin tabs. Unsupported browsers
-  // must sign in again rather than racing a one-use refresh token.
+  // Serialize cross-tab rotation of one-use refresh tokens; require sign-in without Web Locks.
   if (!navigator.locks) {
     forceLogout()
     throw new Error('Token refresh requires Web Locks; sign in again')

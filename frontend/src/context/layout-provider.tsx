@@ -7,9 +7,8 @@ export type Variant = 'inset' | 'sidebar' | 'floating'
 // Cookie constants following the pattern from sidebar.tsx
 const LAYOUT_COLLAPSIBLE_COOKIE_NAME = 'layout_collapsible'
 const LAYOUT_VARIANT_COOKIE_NAME = 'layout_variant'
-const LAYOUT_COOKIE_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
+const LAYOUT_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 
-// Default values
 const DEFAULT_VARIANT = 'inset'
 const DEFAULT_COLLAPSIBLE = 'icon'
 

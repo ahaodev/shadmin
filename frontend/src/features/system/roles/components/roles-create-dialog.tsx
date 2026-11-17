@@ -54,7 +54,7 @@ import { MenuTreeSection } from './menu-tree-section'
 interface RolesCreateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  role?: Role | null // Optional role for edit mode
+  role?: Role | null
 }
 
 export function RolesCreateDialog({
@@ -67,7 +67,6 @@ export function RolesCreateDialog({
 
   const menuSelection = useMenuSelection()
 
-  // Fetch menus for role selection
   const { data: menuData, isLoading: menusLoading } = useQuery({
     queryKey: [MENUS_FOR_ROLE_QUERY_KEY],
     queryFn: () => {
@@ -77,7 +76,6 @@ export function RolesCreateDialog({
     staleTime: 5 * 60 * 1000,
   })
 
-  // Fetch role menus when in edit mode
   const { data: roleMenus } = useQuery({
     queryKey: [ROLE_MENUS_QUERY_KEY, role?.id],
     queryFn: () => getRoleMenus(role!.id),
@@ -92,7 +90,6 @@ export function RolesCreateDialog({
     onMenuSelectionChange: menuSelection.setSelectedMenus,
   })
 
-  // Mutation for both create and update
   const roleMutation = useMutation({
     mutationFn: (data: RoleFormData) => {
       if (isEditMode && role) {
@@ -141,7 +138,6 @@ export function RolesCreateDialog({
     [mutate]
   )
 
-  // Process menu data when it changes
   useEffect(() => {
     if (menuData?.list) {
       const hierarchicalMenus = buildMenuHierarchy(menuData.list)
@@ -150,7 +146,6 @@ export function RolesCreateDialog({
     }
   }, [menuData, menuSelection.setMenusData])
 
-  // Reset menu selection when dialog closes
   useEffect(() => {
     if (!open) {
       menuSelection.resetSelection()

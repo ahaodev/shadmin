@@ -4,12 +4,13 @@ This guide exists to save both sides time.
 
 ## Design first
 
-Shadmin is a layered template, and the layers only look one way: `api` → `usecase` → `repository` → `domain`, with frameworks kept at the edges. Authorization is data, resolved once at the boundary — not conditionals scattered through handlers. Infrastructure (database, storage, cache) sits behind contracts and is chosen by configuration.
+Shadmin is a layered template. Requests flow through controllers, usecases and repositories, while code depends on contracts in `domain/`; usecases never import concrete repositories or infrastructure. `bootstrap` wires the implementations. Authorization is data resolved at the boundary, and infrastructure is selected by configuration. See [AGENTS.md](./AGENTS.md) for the principles.
 
 The rules are written down once:
 
 - [`AGENTS.md`](./AGENTS.md) — the principles, in short.
-- [`.agents`](./.agents) — the authoritative, step-by-step source for how features are built (backend, frontend, permissions, checks).
+- [Agent workflow](./.agents/CONTRIBUTING.md) — checks, generated files and commit/release rules.
+- [Development skill](./.agents/skills/shadmin-dev/SKILL.md) — implementation workflow and references.
 
 If your change breaks one of these — a new dependency direction, a permission hardcoded instead of registered, a new response shape — it is a design change, not a feature. Open an issue and discuss it before writing code.
 
@@ -36,7 +37,7 @@ Minimal repros get fixed; essays get closed. Duplicates and requests that belong
 
 - Do not open a PR for a large design change before it has been agreed on in an issue.
 - Make the smallest change that fully solves the problem, and follow the idiom already in the file you are touching.
-- Do not edit `CHANGELOG.md`. Changelog entries are added by maintainers.
+- Contributors do not edit `CHANGELOG.md`. Maintainers summarize changes when preparing a release; ordinary task completion does not create a version section.
 
 Enable the repository hooks once:
 
@@ -46,27 +47,11 @@ git config core.hooksPath .githooks
 
 They run `gofmt` and the frontend `prettier`/`eslint` checks on staged files.
 
-Then run the gates for the surfaces you changed — the same ones CI runs:
-
-```bash
-# Backend (regenerate first if Ent schemas or annotations changed, and commit the output)
-go generate ./...
-gofmt -l . && go vet ./... && go test -race ./...
-
-# Frontend
-cd frontend && pnpm lint && pnpm format:check && pnpm test && pnpm build
-
-# CLI
-cd cli && make vet && make test
-```
-
-The frontend must be built before the backend, because its assets are embedded in the binary.
-
-Commits use [Conventional Commits](https://www.conventionalcommits.org/) with a subject of at most 72 characters. One logical change per PR.
+Run the [checks for the surfaces changed](./.agents/CONTRIBUTING.md#checks). That file also defines regeneration, tracked output and frontend build prerequisites. Keep one logical change per PR; use the shared [commit conventions](./.agents/CONTRIBUTING.md#commits-and-releases).
 
 ## Docs
 
-User-facing docs live in `docs/` and are bilingual: if you change documented behavior, update both `*.en.md` and `*.zh.md`. If you change a design pattern, update `.agents` and `AGENTS.md` in the same PR — they describe the same design and must not drift apart.
+User-facing docs live in `docs/` and are bilingual: if you change documented behavior, update both `*.en.md` and `*.zh.md`. If a design changes, update its affected `.agents` guidance and any affected principles in `AGENTS.md` in the same PR.
 
 ## Where to start
 

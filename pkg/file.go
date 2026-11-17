@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// GetFileType 根据 key 后缀名返回文件类型
 func GetFileType(key string) string {
 	ext := strings.ToLower(path.Ext(key))
 	switch ext {
@@ -33,12 +32,9 @@ func GetFileType(key string) string {
 	}
 }
 
-// DetectContentType 检测文件内容类型
 func DetectContentType(data []byte, ext string) string {
-	// 首先尝试从内容检测
 	contentType := http.DetectContentType(data)
 
-	// 如果检测结果是通用类型，尝试从扩展名推断
 	if contentType == "application/octet-stream" || contentType == "text/plain; charset=utf-8" {
 		ext = strings.ToLower(ext)
 		switch ext {

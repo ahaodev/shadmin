@@ -11,12 +11,10 @@ import (
 	"entgo.io/ent/schema/index"
 )
 
-// User holds the schema definition for the User entity.
 type User struct {
 	ent.Schema
 }
 
-// Fields of the User.
 func (User) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -83,7 +81,6 @@ func (User) Fields() []ent.Field {
 	}
 }
 
-// Edges of the User.
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("roles", Role.Type).Comment("用户角色关系"),
@@ -96,12 +93,10 @@ func (User) Edges() []ent.Edge {
 	}
 }
 
-// Indexes of the User.
 func (User) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("username"),
-		// 同渠道（source）内 email 唯一：本地用户互不重复、oidc 用户互不重复；
-		// 跨渠道（shadmin / google / github）允许相同 email（oidc 用户不参与密码登录，无歧义）。
+		// 邮箱仅在同一来源内唯一，允许跨 provider 使用相同邮箱。
 		index.Fields("source", "email").
 			Unique(),
 		index.Fields("email"),

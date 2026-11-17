@@ -102,9 +102,11 @@ shadmin/
 
 ## 📚 文档
 
+- [开发规范](.agents/skills/shadmin-dev/SKILL.md)
 - [架构 (中文)](docs/getting-started/architecture.zh.md) · [Architecture (EN)](docs/getting-started/architecture.en.md)
 - [部署 (中文)](docs/getting-started/deployment.zh.md) · [Deployment (EN)](docs/getting-started/deployment.en.md)
 - [面向 AI Agent 的 CLI(中文)](cli/README.zh.md) · [CLI for AI agents（EN)](cli/README.md)
+
 ## 📄 许可证
 
 [MIT](LICENSE)

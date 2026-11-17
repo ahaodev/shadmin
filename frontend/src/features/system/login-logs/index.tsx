@@ -13,7 +13,6 @@ export function LoginLogs() {
   const search = route.useSearch()
   const navigate = route.useNavigate()
 
-  // Extract query parameters from URL search
   const queryParams = {
     page: search.page || 1,
     page_size: search.pageSize || 10,
@@ -26,7 +25,6 @@ export function LoginLogs() {
 
   const { data: logsData, isLoading, error } = useLoginLogs(queryParams)
 
-  // Create a wrapper function to match NavigateFn type
   const navigateWrapper: NavigateFn = ({ search: searchUpdate, replace }) => {
     navigate({ search: searchUpdate, replace })
   }

@@ -10,12 +10,10 @@ import (
 	"entgo.io/ent/schema/index"
 )
 
-// LoginLog holds the schema definition for the LoginLog entity.
 type LoginLog struct {
 	ent.Schema
 }
 
-// Fields of the LoginLog.
 func (LoginLog) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -63,12 +61,10 @@ func (LoginLog) Fields() []ent.Field {
 	}
 }
 
-// Edges of the LoginLog.
 func (LoginLog) Edges() []ent.Edge {
 	return nil
 }
 
-// Indexes of the LoginLog.
 func (LoginLog) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("login_ip"),

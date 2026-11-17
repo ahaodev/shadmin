@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// captureStdout 在 fn 执行期间捕获 os.Stdout 的输出（LogMiddleware 用 fmt.Print 直写 stdout）。
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 
@@ -41,10 +40,8 @@ func newLogEngine() *gin.Engine {
 	return engine
 }
 
-// TestLogMiddleware_LogsFullBodyWithoutTruncation 覆盖两点：请求体与响应体整段打印（无长度限制），
-// 且 handler 收到的请求体与客户端发送的原始字节完全一致。
 func TestLogMiddleware_LogsFullBodyWithoutTruncation(t *testing.T) {
-	// 体量远大于历史上出现过的日志上限（1000 / 10000），用于证明现在不做任何截断
+	// 超过历史截断阈值（1000 / 10000 字节）。
 	blob := strings.Repeat("a", 30*1024)
 	payload := `{"identifier":"admin","blob":"` + blob + `"}`
 
@@ -76,7 +73,7 @@ func TestLogMiddleware_LogsFullBodyWithoutTruncation(t *testing.T) {
 	}
 }
 
-// TestLogMiddleware_CapturesWriteString 覆盖 c.String 路径：gin 的 WriteString 不经过 Write。
+// Gin 的 WriteString 不经过 Write。
 func TestLogMiddleware_CapturesWriteString(t *testing.T) {
 	engine := newLogEngine()
 	engine.GET("/plain", func(c *gin.Context) {

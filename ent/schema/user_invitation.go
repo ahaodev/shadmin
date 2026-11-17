@@ -11,7 +11,7 @@ import (
 	"entgo.io/ent/schema/index"
 )
 
-// UserInvitation stores a one-time invitation token hash, never the raw token.
+// UserInvitation 仅保存一次性邀请令牌的哈希。
 type UserInvitation struct {
 	ent.Schema
 }

@@ -9,14 +9,14 @@ The backend uses Gin for HTTP, Ent for persistence and Casbin for authorization.
 ```mermaid
 flowchart LR
     Route --> Controller
-    Controller --> Usecase
+    Controller --> Contracts
     Usecase --> Contracts[Domain interfaces]
     Repository -. implements .-> Contracts
     Repository --> Ent --> DB[(Database)]
     Infrastructure -. implements .-> Contracts
 ```
 
-Arrows show dependencies. At runtime, the usecase calls an injected implementation through its domain interface.
+Arrows show the main code dependencies. Controllers invoke usecases through domain interfaces; usecases invoke repositories the same way. `bootstrap` injects the implementations. The runtime request flow is shown below.
 
 | Location                                                                | Responsibility                                                       |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------- |

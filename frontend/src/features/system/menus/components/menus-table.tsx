@@ -39,7 +39,6 @@ interface MenusTableProps {
 export function MenusTable({ onMenuSelect }: MenusTableProps) {
   const { setCurrentRow, setOpen } = useMenus()
   const { hasPermission } = usePermission()
-  // Fetch menu data from backend (including buttons)
   const {
     data: menuData,
     isLoading,
@@ -47,12 +46,11 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
   } = useQuery({
     queryKey: [MENUS_QUERY_KEY],
     queryFn: () => {
-      return getMenus() // 菜单不分页，一次取全量用于构建层级
+      return getMenus() // 构建层级需要全量菜单。
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   })
 
-  // Initialize table state hook first
   const {
     expanded,
     sorting,
@@ -62,7 +60,6 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
     handleExpandToggle,
   } = useMenuTableState([])
 
-  // Build hierarchical structure from flat menu data and flatten for table display
   const tableData = useMemo(() => {
     if (!menuData?.list || menuData.list.length === 0) {
       return []
@@ -72,7 +69,6 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
     return flattenMenus(hierarchicalMenus, expanded)
   }, [menuData, expanded])
 
-  // Get filtered data
   const filteredData = useMemo(() => {
     if (!searchTerm) return tableData
 
@@ -114,7 +110,6 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
     onMenuSelect?.(menu)
   }
 
-  // Create table columns
   const columns = createMenusColumns({
     expanded,
     onExpandToggle: handleExpandToggle,
@@ -135,7 +130,6 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
     },
   })
 
-  // Show loading state
   if (isLoading) {
     return (
       <div className='flex h-32 items-center justify-center'>
@@ -145,7 +139,6 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
     )
   }
 
-  // Show error state
   if (error) {
     return (
       <div className='text-muted-foreground flex h-32 items-center justify-center'>
@@ -156,7 +149,6 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
 
   return (
     <div className='space-y-4'>
-      {/* Search bar */}
       <div className='flex items-center justify-between'>
         <Input
           placeholder='搜索菜单名称、编码或路径...'
@@ -166,7 +158,6 @@ export function MenusTable({ onMenuSelect }: MenusTableProps) {
         />
       </div>
 
-      {/* Hierarchical table */}
       <div className='overflow-hidden rounded-md border'>
         <Table>
           <TableHeader>

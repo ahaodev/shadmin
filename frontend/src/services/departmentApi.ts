@@ -23,13 +23,11 @@ function parseDepartment(department: DepartmentResponse): Department {
   }
 }
 
-// GET /system/department/tree - Get department tree
 export async function getDepartmentTree(): Promise<Department[]> {
   const response = await apiClient.get('/api/v1/system/department/tree')
   return response.data.data.map(parseDepartment)
 }
 
-// POST /system/department - Create department
 export async function createDepartment(
   data: CreateDepartmentRequest
 ): Promise<Department> {
@@ -37,7 +35,6 @@ export async function createDepartment(
   return parseDepartment(response.data.data)
 }
 
-// PUT /system/department/:id - Update department
 export async function updateDepartment(
   id: string,
   data: UpdateDepartmentRequest
@@ -46,7 +43,6 @@ export async function updateDepartment(
   return parseDepartment(response.data.data)
 }
 
-// DELETE /system/department/:id - Delete department
 export async function deleteDepartment(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/system/department/${id}`)
 }

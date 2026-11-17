@@ -29,15 +29,13 @@ function providerLabel(provider: string) {
   }
 }
 
-// IdentityProvider 拉取后端已启用的第三方登录 provider 列表，
-// 仅在后端启用至少一个 provider 时显示对应按钮；未启用时整组不显示。
 export function IdentityLoginButtons() {
   const { data: providers = [], isError, isLoading } = useIdentityProviders()
 
   if (isError) return null
 
   if (isLoading) {
-    // 拉取中：占位避免布局抖动
+    // 占位避免布局抖动。
     return (
       <div className='flex items-center justify-center'>
         <Loader2 className='text-muted-foreground size-4 animate-spin' />
@@ -61,7 +59,6 @@ export function IdentityLoginButtons() {
             type='button'
             variant='outline'
             className='flex min-w-35 flex-1 justify-center gap-2'
-            // 直接跳转到后端 OAuth 入口；后端负责重定向到 provider 授权页
             asChild
           >
             <a

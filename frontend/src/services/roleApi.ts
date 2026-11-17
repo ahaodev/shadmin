@@ -8,23 +8,16 @@ import {
 } from '@/types/role'
 import { apiClient } from './config'
 
-// Role Management API - Based on swagger.json /system/role endpoints
-
-// GET /system/role - Get all roles
 export const getRoles = async (): Promise<RoleInfo[]> => {
   const response = await apiClient.get(`/api/v1/system/role`)
   return response.data.data
 }
 
-// Role Management API
-
-// Create a new role
 export const createRole = async (request: CreateRoleRequest): Promise<Role> => {
   const response = await apiClient.post('/api/v1/system/role', request)
   return response.data.data
 }
 
-// Update a role
 export const updateRole = async (
   id: string,
   request: UpdateRoleRequest
@@ -33,17 +26,14 @@ export const updateRole = async (
   return response.data.data
 }
 
-// Delete a role
 export const deleteRole = async (id: string): Promise<void> => {
   await apiClient.delete(`/api/v1/system/role/${id}`)
 }
 
-// Get paginated roles (for backwards compatibility)
 export const getRolesPaged = async (
   params?: QueryParams
 ): Promise<RolePagedResult> => {
-  // Since the unified API doesn't have pagination for getRoles,
-  // we'll need to implement client-side pagination or update the backend
+  // The role API is unpaginated; paginate locally.
   const roles = await getRoles()
 
   const page = params?.page || 1
@@ -53,7 +43,6 @@ export const getRolesPaged = async (
 
   const paginatedRoles = roles.slice(startIndex, endIndex)
 
-  // Convert RoleInfo[] to Role[] format (assuming they have similar structure)
   const roleList: Role[] = paginatedRoles.map((role) => ({
     id: role.id,
     name: role.name,
@@ -73,7 +62,6 @@ export const getRolesPaged = async (
   }
 }
 
-// Get role menus
 export const getRoleMenus = async (roleId: string): Promise<string[]> => {
   const response = await apiClient.get(`/api/v1/system/role/${roleId}/menus`)
   return response.data.data

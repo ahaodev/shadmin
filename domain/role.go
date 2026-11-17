@@ -20,7 +20,6 @@ var (
 	ErrRoleInUse             = errors.New("角色仍被用户使用，无法删除")
 )
 
-// Role represents a custom role in the system
 type Role struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
@@ -32,7 +31,6 @@ type Role struct {
 	MenuIDs   []string  `json:"menus"`
 }
 
-// CreateRoleRequest represents a request to create a new role
 type CreateRoleRequest struct {
 	Name     string   `json:"name" binding:"required,max=100"`
 	Sequence int      `json:"sequence"`
@@ -40,7 +38,6 @@ type CreateRoleRequest struct {
 	MenuIDs  []string `json:"menu_ids,omitempty"`
 }
 
-// UpdateRoleRequest represents a request to update an existing role
 type UpdateRoleRequest struct {
 	Name     *string  `json:"name,omitempty"`
 	Sequence *int     `json:"sequence,omitempty"`
@@ -48,13 +45,11 @@ type UpdateRoleRequest struct {
 	MenuIDs  []string `json:"menu_ids,omitempty"`
 }
 
-// RoleFilters represents filters for role queries
 type RoleFilters struct {
 	Status string `json:"status,omitempty"`
 	Name   string `json:"name,omitempty"`
 }
 
-// RoleUseCase defines the interface for role business logic
 type RoleUseCase interface {
 	Create(ctx context.Context, request *CreateRoleRequest) error
 	Fetch(ctx context.Context) ([]*Role, error)
@@ -63,7 +58,6 @@ type RoleUseCase interface {
 	Delete(ctx context.Context, id string) error
 }
 
-// RoleRepository defines the interface for role data operations
 type RoleRepository interface {
 	Create(ctx context.Context, role *Role) error
 	Fetch(ctx context.Context) ([]*Role, error)

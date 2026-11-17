@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// Department represents a department in the organization
 type Department struct {
 	ID        string       `json:"id"`
 	ParentID  *string      `json:"parent_id"`
@@ -21,7 +20,6 @@ type Department struct {
 	UpdatedAt time.Time    `json:"updated_at"`
 }
 
-// CreateDepartmentRequest represents the request to create a new department
 type CreateDepartmentRequest struct {
 	ParentID *string `json:"parent_id"`
 	Name     string  `json:"name" binding:"required,max=100"`
@@ -32,7 +30,6 @@ type CreateDepartmentRequest struct {
 	Status   string  `json:"status,omitempty"`
 }
 
-// UpdateDepartmentRequest represents the request to update a department (pointer fields for partial update)
 type UpdateDepartmentRequest struct {
 	ParentID *string `json:"parent_id,omitempty"`
 	Name     *string `json:"name,omitempty" binding:"omitempty,max=100"`
@@ -43,14 +40,12 @@ type UpdateDepartmentRequest struct {
 	Status   *string `json:"status,omitempty"`
 }
 
-// DepartmentQueryFilter represents query parameters for department filtering.
 type DepartmentQueryFilter struct {
 	Name    string `json:"name,omitempty" form:"name"`
 	Status  string `json:"status,omitempty" form:"status"`
 	Keyword string `json:"keyword,omitempty" form:"keyword"`
 }
 
-// Department sentinel errors
 var (
 	ErrDepartmentHasChildren       = errors.New("该部门下存在子部门，无法删除")
 	ErrDepartmentHasUsers          = errors.New("该部门下存在用户，无法删除")
@@ -60,7 +55,6 @@ var (
 	ErrDepartmentHasActiveChildren = errors.New("存在已启用的子部门，请先停用所有子部门后再操作")
 )
 
-// DepartmentRepository defines the interface for department data operations
 type DepartmentRepository interface {
 	Create(ctx context.Context, dept *Department) error
 	GetByID(ctx context.Context, id string) (*Department, error)
@@ -74,7 +68,6 @@ type DepartmentRepository interface {
 	HasActiveChildren(ctx context.Context, id string) (bool, error)
 }
 
-// DepartmentUseCase defines the interface for department business logic
 type DepartmentUseCase interface {
 	Create(ctx context.Context, req *CreateDepartmentRequest) (*Department, error)
 	GetByID(ctx context.Context, id string) (*Department, error)

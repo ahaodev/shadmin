@@ -15,11 +15,11 @@ func RespError(msg any) Response {
 	var errMsg string
 	switch v := msg.(type) {
 	case string:
-		errMsg = v // 如果是 string，直接赋值
+		errMsg = v
 	case error:
-		errMsg = v.Error() // 如果是 error 类型，调用其 Error() 方法
+		errMsg = v.Error()
 	default:
-		errMsg = "Unknown error" // 如果是其他类型，返回默认错误信息
+		errMsg = "Unknown error"
 	}
 	return Response{Code: FailCode, Msg: errMsg, Data: nil}
 }
@@ -28,7 +28,6 @@ func RespSuccess(data any) Response {
 	return Response{Code: SuccessCode, Msg: "OK", Data: data}
 }
 
-// PagedResult 通用分页结果
 type PagedResult[T any] struct {
 	List       []T `json:"list"`
 	Total      int `json:"total"`
@@ -37,7 +36,6 @@ type PagedResult[T any] struct {
 	TotalPages int `json:"total_pages"`
 }
 
-// NewPagedResult 创建分页结果。
 func NewPagedResult[T any](data []T, total, page, pageSize int) *PagedResult[T] {
 	if page < DefaultPage {
 		page = DefaultPage
@@ -46,7 +44,7 @@ func NewPagedResult[T any](data []T, total, page, pageSize int) *PagedResult[T] 
 		pageSize = DefaultPageSize
 	}
 	totalPages := (total + pageSize - 1) / pageSize
-	// 空结果时保证 list 为 [] 而非 null，避免前端对 null 的容错缺失
+	// 空列表序列化为 []。
 	if data == nil {
 		data = []T{}
 	}

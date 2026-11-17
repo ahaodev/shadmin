@@ -10,12 +10,10 @@ import (
 	"github.com/rs/xid"
 )
 
-// Role holds the schema definition for the Role entity.
 type Role struct {
 	ent.Schema
 }
 
-// Fields of the Role.
 func (Role) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -53,7 +51,6 @@ func (Role) Fields() []ent.Field {
 	}
 }
 
-// Edges of the Role.
 func (Role) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("users", User.Type).Ref("roles").Comment("角色用户"),
@@ -61,15 +58,11 @@ func (Role) Edges() []ent.Edge {
 	}
 }
 
-// Indexes of the Role.
 func (Role) Indexes() []ent.Index {
 	return []ent.Index{
-		// 角色名称唯一
 		index.Fields("name").
 			Unique(),
-		// 状态索引
 		index.Fields("status"),
-		// 排序索引
 		index.Fields("sequence"),
 	}
 }

@@ -23,12 +23,10 @@ func NewFileRepository(client *minio.Client) domain.FileRepository {
 }
 
 func (fr *minioFileRepository) Upload(ctx context.Context, req *domain.UploadRequest) (*domain.UploadResult, error) {
-	// 构建对象名称
 	objectName := req.ObjectName
 	if req.Prefix != "" {
 		objectName = req.Prefix + "/" + req.ObjectName
 	}
-	// 检查存储桶是否存在,如果不存在创建桶
 	bucketExists, err := fr.client.BucketExists(ctx, req.Bucket)
 	if err != nil {
 		return nil, err
@@ -39,7 +37,6 @@ func (fr *minioFileRepository) Upload(ctx context.Context, req *domain.UploadReq
 			return nil, err
 		}
 	}
-	// 上传对象到 MinIO
 	info, err := fr.client.PutObject(ctx, req.Bucket, objectName, req.Reader, req.Size, minio.PutObjectOptions{
 		ContentType: req.ContentType,
 	})
@@ -79,7 +76,7 @@ func (fr *minioFileRepository) List(ctx context.Context, bucket, prefix string) 
 			return nil, object.Err
 		}
 
-		// 如果对象大小为 0 且关键字以 "/" 结尾，则认为是伪目录，直接跳过
+		// 跳过伪目录对象。
 		if object.Size == 0 && strings.HasSuffix(object.Key, "/") {
 			if prefix == object.Key {
 				continue

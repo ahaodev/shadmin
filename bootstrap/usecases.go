@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-// Usecases 是应用层全部用例实例，由 newUsecases 统一装配。
-// api 层只取用这些实例，不构造 repository，也不感知持久化实现。
 type Usecases struct {
 	Login          domain.LoginUsecase
 	Captcha        domain.CaptchaUsecase
@@ -28,8 +26,7 @@ type Usecases struct {
 	Department     domain.DepartmentUseCase
 }
 
-// newUsecases 依赖注入的唯一位置：repository → usecase。调用前 app 的 DB、Cacher、
-// CaptchaManager、TokenBlacklist、Tokens 与 Env 必须已经初始化。
+// newUsecases 在基础设施就绪后统一装配 repository → usecase。
 func newUsecases(app *Application) *Usecases {
 	env := app.Env
 	db := app.DB

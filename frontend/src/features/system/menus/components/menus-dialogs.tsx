@@ -7,7 +7,7 @@ export function MenusDialogs() {
 
   return (
     <>
-      {/* create 模式下 currentRow 作为父级菜单，因此不放入 currentRow 守卫内 */}
+      {/* 创建时 currentRow 表示父菜单，不能用它限制对话框渲染。 */}
       <MenusCreateDialog
         key='menu-add'
         open={open === 'add'}

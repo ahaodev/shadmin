@@ -27,7 +27,7 @@ import {
 interface ApiResourceSelectorProps {
   apiResources: ApiResource[]
   isLoading: boolean
-  selectedApiResources: string[] // 改为使用菜单中的 apiResources 字段
+  selectedApiResources: string[]
   onResourceSelect: (resource: ApiResource, checked: boolean) => void
   isResourceSelected: (resource: ApiResource) => boolean
 }
@@ -42,9 +42,7 @@ export function ApiResourceSelector({
   const [open, setOpen] = useState(false)
   const [selectedMethod, setSelectedMethod] = useState<string>('ALL')
 
-  // 辅助函数：检查资源是否被选中
   const checkIsResourceSelected = (resource: ApiResource) => {
-    // Check both direct ID match and method:path format
     const methodPathFormat = `${resource.method}:${resource.path}`
     return (
       selectedApiResources.includes(resource.id) ||

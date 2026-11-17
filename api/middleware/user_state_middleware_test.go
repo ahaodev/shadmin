@@ -16,7 +16,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// stubStatusLoader 是 auth.Loader 的桩，记录回源次数以便验证缓存生效。
 type stubStatusLoader struct {
 	status string
 	err    error
@@ -34,7 +33,7 @@ func newStatusCache(t *testing.T, loader auth.Loader) *auth.Cache {
 		cacher.NewMemoryCache(cacher.MemoryConfig{CleanupInterval: time.Minute}), time.Minute)
 }
 
-// newUserStateRouter 用 x-user-id 请求头模拟上游已解析出的用户，未提供时不出入 userID。
+// newUserStateRouter 用 x-user-id 模拟上游认证结果。
 func newUserStateRouter(statusCache *auth.Cache) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -60,7 +59,6 @@ func userStateProbe(t *testing.T, r *gin.Engine, userID string) *httptest.Respon
 	return w
 }
 
-// 未认证的请求没有 userID，应在状态校验前就被拒绝
 func TestUserStateMiddleware_RejectsMissingUserID(t *testing.T) {
 	loader := &stubStatusLoader{status: domain.UserStatusActive}
 	r := newUserStateRouter(newStatusCache(t, loader))
@@ -73,7 +71,6 @@ func TestUserStateMiddleware_RejectsMissingUserID(t *testing.T) {
 	}
 }
 
-// 未配置状态缓存时只依赖上游认证，直接放行
 func TestUserStateMiddleware_SkipsCheckWithoutCache(t *testing.T) {
 	r := newUserStateRouter(nil)
 
@@ -90,7 +87,6 @@ func TestUserStateMiddleware_AllowsActiveUser(t *testing.T) {
 	}
 }
 
-// 非 active 的任何状态（未激活/被禁用等）都等价于无权访问
 func TestUserStateMiddleware_RejectsInactiveStatuses(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -112,7 +108,6 @@ func TestUserStateMiddleware_RejectsInactiveStatuses(t *testing.T) {
 	}
 }
 
-// 账户被删除或禁用属于用户自身的可判定状态，返回 401 而非 503
 func TestUserStateMiddleware_MapsUserErrorsToUnauthorized(t *testing.T) {
 	for _, loadErr := range []error{domain.ErrUserDisabled, domain.ErrUserNotFound} {
 		t.Run(loadErr.Error(), func(t *testing.T) {
@@ -125,8 +120,7 @@ func TestUserStateMiddleware_MapsUserErrorsToUnauthorized(t *testing.T) {
 	}
 }
 
-// 回源链路故障不能伪装成鉴权失败，否则用户会被莫名登出；
-// 同时必须拒绝放行，避免状态未知时凭 token 通过。
+// 回源故障返回 503，既拒绝访问，也避免误判为认证失败。
 func TestUserStateMiddleware_ReturnsServiceUnavailableOnLoadFailure(t *testing.T) {
 	loader := &stubStatusLoader{err: errors.New("db is down")}
 	r := newUserStateRouter(newStatusCache(t, loader))
@@ -141,7 +135,6 @@ func TestUserStateMiddleware_ReturnsServiceUnavailableOnLoadFailure(t *testing.T
 	}
 }
 
-// 状态走缓存，禁用后源库状态变化在 TTL 内不会重复回源
 func TestUserStateMiddleware_CachesStatus(t *testing.T) {
 	loader := &stubStatusLoader{status: domain.UserStatusActive}
 	r := newUserStateRouter(newStatusCache(t, loader))

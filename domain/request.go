@@ -6,7 +6,6 @@ const (
 	MaxPageSize     = 10000
 )
 
-// QueryParams 通用查询参数，包含分页和排序信息。
 type QueryParams struct {
 	Page     int    `json:"page" form:"page"`
 	PageSize int    `json:"page_size" form:"page_size"`

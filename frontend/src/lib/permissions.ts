@@ -1,9 +1,6 @@
 import type { UserPermissions } from '@/stores/auth-store'
 
-/**
- * Segment-boundary wildcard match: `system:*:*` matches `system:user:read`;
- * `*` matches a single segment, segment counts must match.
- */
+/** Each * matches one colon-delimited segment; segment counts must match. */
 export function matchWildcard(pattern: string, permission: string): boolean {
   const patternParts = pattern.split(':')
   const permParts = permission.split(':')
@@ -11,10 +8,6 @@ export function matchWildcard(pattern: string, permission: string): boolean {
   return patternParts.every((part, i) => part === '*' || part === permParts[i])
 }
 
-/**
- * Normalize a permission token — backend payload may be either a single
- * string or a string[] (split by ':' for each segment). Collapse to a string.
- */
 export function normalizePermissionToken(p: string | string[]): string {
   return Array.isArray(p) ? (p.length === 1 ? p[0] : p.join(':')) : p
 }
@@ -37,10 +30,7 @@ export function hasPermission(
   })
 }
 
-/**
- * Returns true if the user is assigned the given role.
- * Does NOT bypass for admins — use `isAdmin()` separately if needed.
- */
+/** Admins still need an explicit role assignment. */
 export function hasRole(
   permissions: UserPermissions | null | undefined,
   role: string

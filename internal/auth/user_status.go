@@ -9,25 +9,21 @@ import (
 	"shadmin/domain"
 )
 
-// DefaultTTL 是默认缓存有效期。短 TTL 保证即使 ent hook 失效通知遗漏，
-// 被禁用用户的 token 也会在 DefaultTTL 内失效。
+// DefaultTTL 限制失效通知遗漏时的用户状态缓存滞后时间。
 const DefaultTTL = 30 * time.Second
 
 const userStatusNS = "UserStatus"
 
-// Loader fetches the user's status from the source of truth.
 type Loader interface {
 	GetStatusByID(ctx context.Context, id string) (string, error)
 }
 
-// Cache 是用户状态缓存，结合 Loader（DB 回源）与 Cacher（缓存后端）。
 type Cache struct {
 	loader Loader
 	cacher cacher.Cacher
 	ttl    time.Duration
 }
 
-// NewUserStatusCacher 返回一个 Cache。cacher 决定缓存落地，ttl 控制写入有效期。
 func NewUserStatusCacher(loader Loader, cacher cacher.Cacher, ttl time.Duration) *Cache {
 	if ttl <= 0 {
 		ttl = DefaultTTL
@@ -54,7 +50,6 @@ func (c *Cache) Get(ctx context.Context, userID string) (string, error) {
 
 	status, err := c.loader.GetStatusByID(ctx, userID)
 	if err != nil {
-		// 透传源头错误，让调用方根据错误类型决定是账户禁用还是服务暂时不可用。
 		return "", err
 	}
 
@@ -64,7 +59,6 @@ func (c *Cache) Get(ctx context.Context, userID string) (string, error) {
 	return status, nil
 }
 
-// Invalidate drops the cached entry for userID.
 func (c *Cache) Invalidate(userID string) {
 	if userID == "" {
 		return

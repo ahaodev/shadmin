@@ -16,7 +16,6 @@ func (ru *roleUsecase) Create(ctx context.Context, request *domain.CreateRoleReq
 	ctx, cancel := context.WithTimeout(ctx, ru.contextTimeout)
 	defer cancel()
 
-	// Check if role with same name already exists
 	exists, err := ru.roleRepository.ExistsByName(ctx, request.Name)
 	if err != nil {
 		return fmt.Errorf("check role name: %w", err)
@@ -25,7 +24,6 @@ func (ru *roleUsecase) Create(ctx context.Context, request *domain.CreateRoleReq
 		return domain.ErrRoleNameExists
 	}
 
-	// Create the role domain model
 	role := &domain.Role{
 		Name:     request.Name,
 		Sequence: request.Sequence,
@@ -33,12 +31,10 @@ func (ru *roleUsecase) Create(ctx context.Context, request *domain.CreateRoleReq
 		MenuIDs:  request.MenuIDs,
 	}
 
-	// Set default status if not provided
 	if role.Status == "" {
 		role.Status = domain.RoleStatusActive
 	}
 
-	// Create the role
 	err = ru.roleRepository.Create(ctx, role)
 	if err != nil {
 		return fmt.Errorf("failed to create role: %w", err)
@@ -65,18 +61,16 @@ func (ru *roleUsecase) Update(ctx context.Context, id string, request *domain.Up
 	ctx, cancel := context.WithTimeout(ctx, ru.contextTimeout)
 	defer cancel()
 
-	// Get existing role
 	existingRole, err := ru.roleRepository.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get role: %w", err)
 	}
 
-	// 系统内置角色名称受保护，不允许修改
 	if existingRole.IsSystem && request.Name != nil && *request.Name != existingRole.Name {
 		return nil, domain.ErrCannotRenameAdminRole
 	}
 
-	// 改名需先检查重名，否则只能由唯一索引兜底并表现为 500
+	// 预查重名以返回领域错误，避免唯一约束错误变成 500。
 	if request.Name != nil && *request.Name != existingRole.Name {
 		exists, err := ru.roleRepository.ExistsByName(ctx, *request.Name)
 		if err != nil {
@@ -108,7 +102,6 @@ func (ru *roleUsecase) Update(ctx context.Context, id string, request *domain.Up
 		return nil, fmt.Errorf("failed to update role: %w", err)
 	}
 
-	// Fetch and return updated role
 	updatedRole, err := ru.roleRepository.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve updated role: %w", err)
@@ -121,18 +114,16 @@ func (ru *roleUsecase) Delete(ctx context.Context, id string) error {
 	ctx, cancel := context.WithTimeout(ctx, ru.contextTimeout)
 	defer cancel()
 
-	// 1. 检查角色是否存在
 	role, err := ru.roleRepository.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to get role: %w", err)
 	}
 
-	// 系统内置角色受保护，不允许删除
 	if role.IsSystem {
 		return domain.ErrCannotDeleteAdminRole
 	}
 
-	// 2. 删除角色记录；使用情况检查和删除在 repository 事务内完成
+	// 使用情况检查与删除在仓储事务内完成。
 	if err := ru.roleRepository.DeleteIfUnused(ctx, id, role.Name); err != nil {
 		return fmt.Errorf("failed to delete role from database: %w", err)
 	}

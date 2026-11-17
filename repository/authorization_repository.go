@@ -14,7 +14,6 @@ type entAuthorizationRepository struct {
 	client *ent.Client
 }
 
-// NewAuthorizationRepository 构造 Casbin 快照的权限数据源（ent 实现）。
 func NewAuthorizationRepository(client *ent.Client) domain.AuthorizationSource {
 	return &entAuthorizationRepository{client: client}
 }

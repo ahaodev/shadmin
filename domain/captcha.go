@@ -5,7 +5,6 @@ import (
 	"errors"
 )
 
-// SlideCaptchaChallenge Slide 模式验证码挑战返回给前端的数据
 type SlideCaptchaChallenge struct {
 	CaptchaID    string `json:"captcha_id"`
 	MasterImage  string `json:"master_image"`
@@ -19,21 +18,18 @@ type SlideCaptchaChallenge struct {
 	ExpiresIn    int    `json:"expires_in"`
 }
 
-// SlideCaptchaManager 滑块验证码的挑战生成与校验（由 internal/captcha 实现）。
 type SlideCaptchaManager interface {
 	Generate(ctx context.Context, oldID string) (*SlideCaptchaChallenge, error)
 	Verify(ctx context.Context, id string, x, y int) error
 	Invalidate(ctx context.Context, id string)
 }
 
-// CaptchaUsecase Slide 验证码用例接口
 type CaptchaUsecase interface {
 	GenerateSlide(ctx context.Context, oldID string) (*SlideCaptchaChallenge, error)
 	VerifySlide(ctx context.Context, id string, x, y int) error
 	InvalidateSlide(ctx context.Context, id string)
 }
 
-// 验证码相关错误
 var (
 	ErrCaptchaRequired = errors.New("captcha required")
 	ErrCaptchaInvalid  = errors.New("captcha invalid")

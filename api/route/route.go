@@ -10,36 +10,29 @@ import (
 
 const ApiUri = "/api/v1"
 
-// Setup initializes and configures all routes and server settings
 func Setup(app *bootstrap.Application, engine *gin.Engine) error {
-	// Apply server configuration
 	config := DefaultServerConfig()
 	if err := config.Apply(engine); err != nil {
 		return err
 	}
 
-	// Register static assets (skip in development — Vite dev server handles frontend)
 	if app.Env.AppEnv != conf.AppEnvDev {
 		frontend.Register(engine)
 	}
 	setupSwagger(engine)
 
-	// Setup API routes
 	setupApiRoutes(app, engine)
 
 	return nil
 }
 
-// setupApiRoutes configures all API routes
 func setupApiRoutes(app *bootstrap.Application, engine *gin.Engine) {
 	apiV1 := engine.Group(ApiUri)
 	factory := NewControllerFactory(app)
 
-	// Setup public routes (no authentication required)
 	publicRoutes := NewPublicRoutes(factory)
 	publicRoutes.Setup(apiV1, app)
 
-	// Setup protected routes (authentication required)
 	protectedRoutes := NewProtectedRoutes(factory)
 	protectedRoutes.Setup(apiV1, app)
 }

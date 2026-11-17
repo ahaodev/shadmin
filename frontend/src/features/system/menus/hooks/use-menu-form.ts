@@ -70,7 +70,6 @@ export function useMenuForm({
 
   const menuMutation = useMutation({
     mutationFn: (data: CreateMenuFormData) => {
-      // sanitize inputs: trim leading/trailing spaces for route path
       const trimmedPath = (data.path || '').trim()
 
       const apiData = {

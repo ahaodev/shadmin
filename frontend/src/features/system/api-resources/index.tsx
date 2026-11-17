@@ -13,7 +13,6 @@ export function ApiResources() {
   const search = route.useSearch()
   const navigate = route.useNavigate()
 
-  // Extract query parameters from URL search
   const queryParams = {
     page: search.page || 1,
     page_size: search.page_size || 10,
@@ -26,7 +25,6 @@ export function ApiResources() {
     path: search.path || undefined,
   }
 
-  // Use regular hook with forced refresh on parameter changes
   const {
     data: apiResourcesData,
     isLoading,
@@ -34,14 +32,11 @@ export function ApiResources() {
     error,
   } = useApiResources(queryParams)
 
-  // Create a wrapper function to match NavigateFn type
   const navigateWrapper: NavigateFn = ({ search: searchUpdate, replace }) => {
     navigate({ search: searchUpdate, replace })
   }
 
-  // Reset function to clear all filters and reset to defaults
   const handleReset = () => {
-    // Use window.location to force a complete navigation refresh
     window.location.href = '/system/api-resources'
   }
 

@@ -28,7 +28,6 @@ interface ApiResourceApiResponse {
   total_pages: number
 }
 
-// GET /system/api-resources - Get API resources with pagination
 export async function getApiResources(
   params?: ApiResourceQueryParams
 ): Promise<ApiResourcePagedResult> {

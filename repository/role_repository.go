@@ -19,7 +19,6 @@ func NewRoleRepository(client *ent.Client) domain.RoleRepository {
 	}
 }
 
-// convertEntRoleToDomain converts an ent Role to domain Role
 func (rr *entRoleRepository) convertEntRoleToDomain(entRole *ent.Role) *domain.Role {
 	if entRole == nil {
 		return nil
@@ -35,7 +34,6 @@ func (rr *entRoleRepository) convertEntRoleToDomain(entRole *ent.Role) *domain.R
 		UpdatedAt: entRole.UpdatedAt,
 	}
 
-	// Extract menu IDs from edges if available
 	if entRole.Edges.Menus != nil {
 		menuIDs := make([]string, len(entRole.Edges.Menus))
 		for i, menu := range entRole.Edges.Menus {
@@ -119,7 +117,6 @@ func (rr *entRoleRepository) GetByName(ctx context.Context, name string) (*domai
 	return rr.convertEntRoleToDomain(entRole), nil
 }
 
-// GetByIDs 批量按 ID 查询角色（含菜单 ID），把逐条 GetByID 的 N+1 回查收敛为单次查询。
 func (rr *entRoleRepository) GetByIDs(ctx context.Context, ids []string) ([]*domain.Role, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -140,7 +137,6 @@ func (rr *entRoleRepository) GetByIDs(ctx context.Context, ids []string) ([]*dom
 	return roles, nil
 }
 
-// ExistsByName 仅判定角色名称是否被占用
 func (rr *entRoleRepository) ExistsByName(ctx context.Context, name string) (bool, error) {
 	exists, err := clientFromContext(ctx, rr.client).Role.Query().
 		Where(role.Name(name)).
@@ -152,8 +148,7 @@ func (rr *entRoleRepository) ExistsByName(ctx context.Context, name string) (boo
 	return exists, nil
 }
 
-// Update 更新角色信息
-// 🔒 安全: IsSystem 字段是 Immutable 的，Ent 层面禁止更新
+// IsSystem 由 Ent Immutable 约束保护。
 func (rr *entRoleRepository) Update(ctx context.Context, role *domain.Role) error {
 	role.UpdatedAt = time.Now()
 

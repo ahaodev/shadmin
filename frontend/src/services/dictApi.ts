@@ -13,9 +13,6 @@ import {
 import { buildSearchParams } from '@/lib/query-params'
 import { apiClient } from './config'
 
-// Dictionary Type Management API
-
-// Helpers to normalize date fields from API
 const parseDictType = (t: DictType): DictType => ({
   ...t,
   created_at: new Date(t.created_at as unknown as string),
@@ -28,7 +25,6 @@ const parseDictItem = (i: DictItem): DictItem => ({
   updated_at: new Date(i.updated_at as unknown as string),
 })
 
-// GET /system/dict/types - Get dictionary types with pagination
 export const getDictTypes = async (
   params?: DictTypeQueryParams
 ): Promise<DictTypePagedResult> => {
@@ -44,7 +40,6 @@ export const getDictTypes = async (
   }
 }
 
-// POST /system/dict/types - Create a new dictionary type
 export const createDictType = async (
   data: CreateDictTypeRequest
 ): Promise<DictType> => {
@@ -52,7 +47,6 @@ export const createDictType = async (
   return parseDictType(response.data.data)
 }
 
-// PUT /system/dict/types/{id} - Update dictionary type
 export const updateDictType = async (
   id: string,
   data: UpdateDictTypeRequest
@@ -60,14 +54,10 @@ export const updateDictType = async (
   await apiClient.put(`/api/v1/system/dict/types/${id}`, data)
 }
 
-// DELETE /system/dict/types/{id} - Delete dictionary type
 export const deleteDictType = async (id: string): Promise<void> => {
   await apiClient.delete(`/api/v1/system/dict/types/${id}`)
 }
 
-// Dictionary Item Management API
-
-// GET /system/dict/items - Get dictionary items with pagination
 export const getDictItems = async (
   params?: DictItemQueryParams
 ): Promise<DictItemPagedResult> => {
@@ -83,7 +73,6 @@ export const getDictItems = async (
   }
 }
 
-// POST /system/dict/items - Create a new dictionary item
 export const createDictItem = async (
   data: CreateDictItemRequest
 ): Promise<DictItem> => {
@@ -91,7 +80,6 @@ export const createDictItem = async (
   return parseDictItem(response.data.data)
 }
 
-// PUT /system/dict/items/{id} - Update dictionary item
 export const updateDictItem = async (
   id: string,
   data: UpdateDictItemRequest
@@ -99,14 +87,10 @@ export const updateDictItem = async (
   await apiClient.put(`/api/v1/system/dict/items/${id}`, data)
 }
 
-// DELETE /system/dict/items/{id} - Delete dictionary item
 export const deleteDictItem = async (id: string): Promise<void> => {
   await apiClient.delete(`/api/v1/system/dict/items/${id}`)
 }
 
-// Utility functions for common operations
-
-// Get dictionary items for a specific type (by type ID)
 export const getDictItemsByTypeId = async (
   typeId: string,
   params?: Omit<DictItemQueryParams, 'type_id'>
@@ -114,7 +98,6 @@ export const getDictItemsByTypeId = async (
   return getDictItems({ ...params, type_id: typeId })
 }
 
-// Toggle dictionary item status
 export const toggleDictItemStatus = async (
   id: string,
   currentStatus: 'active' | 'inactive'
@@ -123,7 +106,6 @@ export const toggleDictItemStatus = async (
   await updateDictItem(id, { status: newStatus })
 }
 
-// Set dictionary item as default
 export const setDictItemAsDefault = async (id: string): Promise<void> => {
   await updateDictItem(id, { is_default: true })
 }

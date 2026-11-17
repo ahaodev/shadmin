@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// LoginLog 结构体定义了登录日志的信息
 type LoginLog struct {
 	ID            string    `json:"id"`
 	Email         string    `json:"email,omitempty"`
@@ -15,12 +14,11 @@ type LoginLog struct {
 	OS            string    `json:"os,omitempty"`
 	Device        string    `json:"device,omitempty"`
 	Status        string    `json:"status"`           // success, failed
-	Source        string    `json:"source,omitempty"` // local / oauth
+	Source        string    `json:"source,omitempty"` // shadmin / provider 名
 	FailureReason string    `json:"failure_reason,omitempty"`
 	LoginTime     time.Time `json:"login_time"`
 }
 
-// CreateLoginLogRequest 创建登录日志请求
 type CreateLoginLogRequest struct {
 	Email         string `json:"email,omitempty"`
 	LoginIP       string `json:"login_ip" binding:"required"`
@@ -29,14 +27,12 @@ type CreateLoginLogRequest struct {
 	OS            string `json:"os,omitempty"`
 	Device        string `json:"device,omitempty"`
 	Status        string `json:"status" binding:"required"` // success, failed
-	Source        string `json:"source,omitempty"`          // local / oauth
+	Source        string `json:"source,omitempty"`          // shadmin / provider 名
 	FailureReason string `json:"failure_reason,omitempty"`
 }
 
-// LoginLogPagedResult 登录日志分页查询结果
 type LoginLogPagedResult = PagedResult[*LoginLog]
 
-// LoginLogQueryFilter 登录日志查询过滤器
 type LoginLogQueryFilter struct {
 	Email     string     `json:"email,omitempty"`
 	LoginIP   string     `json:"login_ip,omitempty"`

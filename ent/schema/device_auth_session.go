@@ -10,12 +10,10 @@ import (
 	"entgo.io/ent/schema/index"
 )
 
-// DeviceAuthSession holds OAuth 2.0 device authorization session state.
 type DeviceAuthSession struct {
 	ent.Schema
 }
 
-// Fields of the DeviceAuthSession.
 func (DeviceAuthSession) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -69,12 +67,10 @@ func (DeviceAuthSession) Fields() []ent.Field {
 	}
 }
 
-// Edges of the DeviceAuthSession.
 func (DeviceAuthSession) Edges() []ent.Edge {
 	return nil
 }
 
-// Indexes of the DeviceAuthSession.
 func (DeviceAuthSession) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("device_code").Unique(),

@@ -11,13 +11,10 @@ import (
 	"entgo.io/ent/schema/index"
 )
 
-// UserIdentity holds the schema definition for the UserIdentity entity.
-// 用于把第三方身份（如 Google / GitHub 用户ID）关联。
 type UserIdentity struct {
 	ent.Schema
 }
 
-// Fields of the UserIdentity.
 func (UserIdentity) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").
@@ -41,7 +38,6 @@ func (UserIdentity) Fields() []ent.Field {
 	}
 }
 
-// Edges of the UserIdentity.
 func (UserIdentity) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("user", User.Type).
@@ -52,7 +48,6 @@ func (UserIdentity) Edges() []ent.Edge {
 	}
 }
 
-// Indexes of the UserIdentity.
 func (UserIdentity) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("provider", "provider_subject").Unique(),

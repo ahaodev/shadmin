@@ -4,7 +4,7 @@ import { menuService } from '@/lib/menu-service'
 import { Button } from '@/components/ui/button'
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout'
 
-// Routes that are always accessible for authenticated users (not menu-managed)
+// Authenticated routes outside menu authorization.
 const ALWAYS_ALLOWED_PATHS = ['/', '/settings', '/errors', '/auth/device']
 
 export const Route = createFileRoute('/_authenticated')({
@@ -20,7 +20,6 @@ export const Route = createFileRoute('/_authenticated')({
       })
     }
 
-    // Fetch profile if not already loaded
     if (!auth.profile && auth.accessToken) {
       try {
         await auth.fetchProfile()
@@ -33,12 +32,10 @@ export const Route = createFileRoute('/_authenticated')({
       throw redirect({ to: '/sign-in', search: { redirect: location.href } })
     }
 
-    // Load menu data (cached after first load) and check route authorization
     await auth.loadMenus()
 
     const pathname = location.pathname
 
-    // Skip check for always-allowed non-menu routes
     const isAlwaysAllowed = ALWAYS_ALLOWED_PATHS.some(
       (p) => pathname === p || pathname.startsWith(p + '/')
     )

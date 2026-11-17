@@ -31,7 +31,6 @@ interface MenuPermissionsProps {
   selectedType: string
 }
 
-// Extract all permission values from the nested PERMISSIONS object
 function getAllPermissions(): string[] {
   const extractPermissions = (obj: Record<string, unknown>): string[] => {
     const result: string[] = []
@@ -93,7 +92,6 @@ export function MenuPermissions({ form, selectedType }: MenuPermissionsProps) {
                       value={field.value}
                       onValueChange={(value) => {
                         field.onChange(value)
-                        // Auto-close popover when exact match is selected
                         if (allPermissions.includes(value)) {
                           setOpen(false)
                         }

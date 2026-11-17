@@ -41,5 +41,4 @@ func InitLogger() {
 	})))
 }
 
-// SetLogLevel 调整全局日志级别。
 func SetLogLevel(l slog.Level) { logLevel.Set(l) }

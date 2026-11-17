@@ -43,7 +43,6 @@ export default defineConfig(
           ignoreRestSiblings: true,
         },
       ],
-      // Enforce type-only imports for TypeScript types
       '@typescript-eslint/consistent-type-imports': [
         'error',
         {
@@ -52,7 +51,6 @@ export default defineConfig(
           disallowTypeAnnotations: false,
         },
       ],
-      // Prevent duplicate imports from the same module
       'no-duplicate-imports': 'error',
     },
   }

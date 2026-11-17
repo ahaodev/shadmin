@@ -33,27 +33,22 @@ type Env struct {
 	AuthzSyncPollIntervalSeconds int    `mapstructure:"AUTHZ_SYNC_POLL_INTERVAL_SECONDS"`
 	Port                         string `mapstructure:"PORT"`
 
-	// Database configuration
 	DBAutoMigrate bool   `mapstructure:"DB_AUTO_MIGRATE"`
-	DBType        string `mapstructure:"DB_TYPE"` // "sqlite" or "postgres"
-	DBDSN         string `mapstructure:"DB_DSN"`  // PostgreSQL connection string
+	DBType        string `mapstructure:"DB_TYPE"` // sqlite / postgres / mysql
+	DBDSN         string `mapstructure:"DB_DSN"`
 
-	// 令牌配置
 	AccessTokenExpiryMinute  int    `mapstructure:"ACCESS_TOKEN_EXPIRY_MINUTE"`
 	RefreshTokenExpiryMinute int    `mapstructure:"REFRESH_TOKEN_EXPIRY_MINUTE"`
 	AccessTokenSecret        string `mapstructure:"ACCESS_TOKEN_SECRET"`
 	RefreshTokenSecret       string `mapstructure:"REFRESH_TOKEN_SECRET"`
 
-	// 管理员配置
 	AdminUsername string `mapstructure:"ADMIN_USERNAME"`
 	AdminPassword string `mapstructure:"ADMIN_PASSWORD"`
 	AdminEmail    string `mapstructure:"ADMIN_EMAIL"`
 
-	// 存储配置
-	StorageType     string `mapstructure:"STORAGE_TYPE"`      // "disk" 或 "minio"
-	StorageBasePath string `mapstructure:"STORAGE_BASE_PATH"` // 本地存储基础路径
+	StorageType     string `mapstructure:"STORAGE_TYPE"` // "disk" 或 "minio"
+	StorageBasePath string `mapstructure:"STORAGE_BASE_PATH"`
 
-	// S3/MinIO 配置
 	S3Secure    bool   `mapstructure:"S3_SECURE"`
 	S3Address   string `mapstructure:"S3_ADDRESS"`
 	S3AccessKey string `mapstructure:"S3_ACCESS_KEY"`
@@ -61,68 +56,57 @@ type Env struct {
 	S3Bucket    string `mapstructure:"S3_BUCKET"`
 	S3Token     string `mapstructure:"S3_TOKEN"`
 
-	// 缓存配置（mem=内存，redis=Redis）
 	CacheType     string `mapstructure:"CACHE_TYPE"`
 	RedisAddress  string `mapstructure:"REDIS_ADDRESS"`
 	RedisUsername string `mapstructure:"REDIS_USERNAME"`
 	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
 	RedisDB       int    `mapstructure:"REDIS_DB"`
 
-	// 身份登录配置
-	IdentityBaseURL       string `mapstructure:"IDENTITY_BASE_URL"`       // 后端外部可达地址，用于拼接 OAuth 回调 URL
-	IdentityRedirectURL   string `mapstructure:"IDENTITY_REDIRECT_URL"`   // 前端回调地址，登录成功后带 token 重定向到这里
+	IdentityBaseURL       string `mapstructure:"IDENTITY_BASE_URL"`       // OAuth 回调的后端外部地址
+	IdentityRedirectURL   string `mapstructure:"IDENTITY_REDIRECT_URL"`   // 接收一次性 code 的前端地址
 	IdentitySessionSecret string `mapstructure:"IDENTITY_SESSION_SECRET"` // gothic session cookie 签名密钥
 	GoogleClientID        string `mapstructure:"GOOGLE_CLIENT_ID"`
 	GoogleClientSecret    string `mapstructure:"GOOGLE_CLIENT_SECRET"`
 	GitHubClientID        string `mapstructure:"GITHUB_CLIENT_ID"`
 	GitHubClientSecret    string `mapstructure:"GITHUB_CLIENT_SECRET"`
 
-	// 邮件邀请配置
 	ResendKey             string `mapstructure:"RESEND_KEY"`
 	ResendFromEmail       string `mapstructure:"RESEND_FROM_EMAIL"`
 	InvitationAcceptURL   string `mapstructure:"INVITATION_ACCEPT_URL"`
 	InvitationExpiryHours int    `mapstructure:"INVITATION_EXPIRY_HOURS"`
 }
 
-// CacheTypeValue 返回规范化后的缓存类型。
 func (e *Env) CacheTypeValue() string {
 	return strings.ToLower(strings.TrimSpace(e.CacheType))
 }
 
-// RedisEnabled 返回是否启用 Redis 缓存后端。
 func (e *Env) RedisEnabled() bool {
 	return e.CacheTypeValue() == CacheTypeRedis && strings.TrimSpace(e.RedisAddress) != ""
 }
 
 func setDefaults() {
 	defaults := map[string]any{
-		// 基础配置
 		"APP_ENV":                          AppEnvDev,
 		"CONTEXT_TIMEOUT":                  60,
 		"AUTHZ_SYNC_POLL_INTERVAL_SECONDS": 3600,
 		"PORT":                             ":55667",
 
-		// 数据库配置
 		"DB_TYPE":         DbTypeSqlite,
 		"DB_DSN":          "",
 		"DB_AUTO_MIGRATE": true,
 
-		// 令牌配置
 		"ACCESS_TOKEN_EXPIRY_MINUTE":  180,
 		"REFRESH_TOKEN_EXPIRY_MINUTE": 1800,
 		"ACCESS_TOKEN_SECRET":         defaultAccessTokenSecret,
 		"REFRESH_TOKEN_SECRET":        defaultRefreshTokenSecret,
 
-		// 管理员配置
 		"ADMIN_USERNAME": "admin",
 		"ADMIN_PASSWORD": "123",
 		"ADMIN_EMAIL":    "admin@gmail.com",
 
-		// 存储配置
 		"STORAGE_TYPE":      StoreTypeDisk,
 		"STORAGE_BASE_PATH": ".uploads",
 
-		// S3/MinIO 配置
 		"S3_ADDRESS":    "",
 		"S3_SECURE":     true,
 		"S3_ACCESS_KEY": "",
@@ -130,14 +114,12 @@ func setDefaults() {
 		"S3_BUCKET":     "shadmin",
 		"S3_TOKEN":      "",
 
-		// 缓存配置
 		"CACHE_TYPE":     CacheTypeMem,
 		"REDIS_ADDRESS":  "",
 		"REDIS_USERNAME": "",
 		"REDIS_PASSWORD": "",
 		"REDIS_DB":       0,
 
-		// 身份登录配置
 		"IDENTITY_BASE_URL":       "http://localhost:55667",
 		"IDENTITY_REDIRECT_URL":   "http://localhost:5173/oauth-callback",
 		"IDENTITY_SESSION_SECRET": defaultIdentitySessionSecret,
@@ -146,13 +128,11 @@ func setDefaults() {
 		"GITHUB_CLIENT_ID":        "",
 		"GITHUB_CLIENT_SECRET":    "",
 
-		// 邮件邀请配置
 		"RESEND_KEY":              "",
 		"RESEND_FROM_EMAIL":       "Shadmin <no-reply@send.ahaodev.com>",
 		"INVITATION_ACCEPT_URL":   "http://localhost:5173/accept-invitation",
 		"INVITATION_EXPIRY_HOURS": 72,
 	}
-	// 绑定环境变量
 	viper.AutomaticEnv()
 	for key, value := range defaults {
 		viper.SetDefault(key, value)
@@ -331,7 +311,6 @@ func (e *Env) validate() error {
 		errs = append(errs, "REDIS_DB不能小于0")
 	}
 
-	// 身份登录配置验证
 	if len(e.IdentitySessionSecret) < 16 {
 		errs = append(errs, "IDENTITY_SESSION_SECRET长度不能少于16位")
 	}
@@ -364,8 +343,7 @@ func isDevelopmentSecret(secret string) bool {
 	}
 }
 
-// NewEnv 加载并校验配置。配置缺失（首次启动写入默认 .env）可恢复；
-// 读取、解析或校验失败一律返回错误，由调用方决定是否终止启动。
+// NewEnv 缺少配置时写入默认 .env；读取、解析或校验失败时返回错误。
 func NewEnv() (*Env, error) {
 	setDefaults()
 

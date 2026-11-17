@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// BindQueryParams extracts common pagination and sorting query parameters from the request.
 func BindQueryParams(c *gin.Context) domain.QueryParams {
 	var params domain.QueryParams
 	if p := c.Query("page"); p != "" {
@@ -27,8 +26,7 @@ func BindQueryParams(c *gin.Context) domain.QueryParams {
 	return params
 }
 
-// MustBindJSON binds JSON body to the target and writes a 400 error response on failure.
-// Returns true if binding succeeded, false if an error response was already written.
+// MustBindJSON 失败时写入 400 响应并返回 false。
 func MustBindJSON(c *gin.Context, obj any) bool {
 	if err := c.ShouldBindJSON(obj); err != nil {
 		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))
@@ -37,8 +35,7 @@ func MustBindJSON(c *gin.Context, obj any) bool {
 	return true
 }
 
-// MustBindQuery binds the query string to the target and writes a 400 error response on failure.
-// Returns true if binding succeeded, false if an error response was already written.
+// MustBindQuery 失败时写入 400 响应并返回 false。
 func MustBindQuery(c *gin.Context, obj any) bool {
 	if err := c.ShouldBindQuery(obj); err != nil {
 		c.JSON(http.StatusBadRequest, domain.RespError(err.Error()))

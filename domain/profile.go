@@ -18,7 +18,7 @@ type Profile struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// ProfileUsecase subject 为 JWT 的 sub 声明，格式为 shadmin:<user_id> 或 <provider>:<provider_subject>，
+// ProfileUsecase 的 subject 格式为 shadmin:<user_id> 或 <provider>:<provider_subject>。
 type ProfileUsecase interface {
 	GetProfile(ctx context.Context, userID, subject string) (*Profile, error)
 	UpdateProfile(ctx context.Context, userID string, updateData ProfileUpdate) error

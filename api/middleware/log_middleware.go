@@ -12,29 +12,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// LogMiddleware 请求和响应日志中间件。 仅用于本地开发调试：请求体与响应体原样整段打印，不脱敏,不限长
+// LogMiddleware 的请求体和响应体不脱敏、不截断，仅供开发调试。
 func LogMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 记录请求开始时间
 		start := time.Now()
 
-		// 读取请求体：必须读全量才能回填给后续 handler
 		var requestBody []byte
 		if c.Request.Body != nil {
 			body, err := io.ReadAll(c.Request.Body)
 			if err != nil {
-				// 读取失败也要回填已读部分，否则 handler 收到空 body 更难排查
+				// 读取失败也回填已读部分，供后续 handler 使用。
 				slog.Warn("LogMiddleware: failed to read request body", "error", err)
 			}
 			requestBody = body
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(requestBody))
 		}
 
-		// 创建响应体捕获器
 		w := &responseBodyWriter{body: &bytes.Buffer{}, ResponseWriter: c.Writer}
 		c.Writer = w
 
-		// 执行请求
 		c.Next()
 
 		duration := time.Since(start)
@@ -42,7 +38,6 @@ func LogMiddleware() gin.HandlerFunc {
 		statusEmoji := getStatusEmoji(statusCode)
 		responseBody := w.body.String()
 
-		// 组装日志：标题行（Result 合并进首行）+ 缩进详情，无边框
 		var lines []string
 
 		target := c.Request.URL.Path
@@ -51,7 +46,6 @@ func LogMiddleware() gin.HandlerFunc {
 		}
 		result := fmt.Sprintf("[%d] %s %s", statusCode, statusEmoji, duration)
 
-		// ▶ 图标按状态码着色：2xx 绿、4xx/5xx 红，其余无色
 		icon := "▶"
 		switch {
 		case statusCode >= 200 && statusCode < 300:
@@ -61,7 +55,6 @@ func LogMiddleware() gin.HandlerFunc {
 		}
 		lines = append(lines, fmt.Sprintf("%s %s %s %s", icon, c.Request.Method, target, result))
 
-		// 只显示重要的请求头（Authorization 脱敏）
 		importantHeaders := []string{"Content-Type", constants.Authorization, "Accept"}
 		for _, header := range importantHeaders {
 			if value := c.Request.Header.Get(header); value != "" {
@@ -72,7 +65,6 @@ func LogMiddleware() gin.HandlerFunc {
 			}
 		}
 
-		// 请求内容（请求体），仅在存在时输出，置于 Resp 之前
 		if len(requestBody) > 0 {
 			lines = append(lines, fmt.Sprintf("    Request : %s", requestBody))
 		}
@@ -81,13 +73,11 @@ func LogMiddleware() gin.HandlerFunc {
 			lines = append(lines, fmt.Sprintf("    Resp   : %s", responseBody))
 		}
 
-		// 末尾空一行，便于在连续请求之间区分
 		lines = append(lines, "")
 		fmt.Print(strings.Join(lines, "\n"))
 	}
 }
 
-// responseBodyWriter 用于捕获响应体
 type responseBodyWriter struct {
 	gin.ResponseWriter
 	body *bytes.Buffer
@@ -98,24 +88,23 @@ func (r *responseBodyWriter) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
-// WriteString 覆盖 gin 的 WriteString：c.String 与 io.WriteString 不经过 Write，需单独转发。
+// WriteString 需单独捕获，因为 Gin 的该路径不经过 Write。
 func (r *responseBodyWriter) WriteString(s string) (int, error) {
 	r.body.WriteString(s)
 	return r.ResponseWriter.WriteString(s)
 }
 
-// getStatusEmoji 根据状态码返回对应的表情符号
 func getStatusEmoji(statusCode int) string {
 	switch {
 	case statusCode >= 200 && statusCode < 300:
-		return "✅" // 成功
+		return "✅"
 	case statusCode >= 300 && statusCode < 400:
-		return "🔄" // 重定向
+		return "🔄"
 	case statusCode >= 400 && statusCode < 500:
-		return "❌" // 客户端错误
+		return "❌"
 	case statusCode >= 500:
-		return "💥" // 服务器错误
+		return "💥"
 	default:
-		return "ℹ️" // 信息
+		return "ℹ️"
 	}
 }

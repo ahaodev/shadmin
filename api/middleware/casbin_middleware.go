@@ -12,19 +12,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CasbinMiddleware API权限鉴权中间件
 type CasbinMiddleware struct {
 	Checker domain.PermissionChecker
 }
 
-// NewCasbinMiddleware 创建新的 Casbin 中间件实例
 func NewCasbinMiddleware(checker domain.PermissionChecker) *CasbinMiddleware {
 	return &CasbinMiddleware{
 		Checker: checker,
 	}
 }
 
-// CheckAPIPermission API网关权限检查中间件
 func (m *CasbinMiddleware) CheckAPIPermission() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetString(constants.UserID)

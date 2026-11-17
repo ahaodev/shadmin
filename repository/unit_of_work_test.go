@@ -8,7 +8,6 @@ import (
 	"shadmin/domain"
 )
 
-// 验证 UnitOfWork 经 ctx 传递事务：事务内的仓储写入随 Do 一起提交或回滚。
 func TestUnitOfWorkRollsBackRepositoryWritesOnError(t *testing.T) {
 	client := newAuthorizationStateTestClient(t)
 	ctx := context.Background()
@@ -20,7 +19,6 @@ func TestUnitOfWorkRollsBackRepositoryWritesOnError(t *testing.T) {
 		if err := roles.Create(txCtx, &domain.Role{Name: "operator", Status: domain.RoleStatusActive}); err != nil {
 			return err
 		}
-		// 事务内可见：读取走同一个事务。
 		if exists, err := roles.ExistsByName(txCtx, "operator"); err != nil || !exists {
 			t.Fatalf("role inside transaction: exists = %v, err = %v; want true", exists, err)
 		}
@@ -38,7 +36,6 @@ func TestUnitOfWorkRollsBackRepositoryWritesOnError(t *testing.T) {
 	}
 }
 
-// 事务内的多次授权变更与 WithAuthorizationTx 共享同一次代数推进。
 func TestUnitOfWorkCommitsAndSharesOneGenerationBump(t *testing.T) {
 	client := newAuthorizationStateTestClient(t)
 	ctx := context.Background()
@@ -65,7 +62,6 @@ func TestUnitOfWorkCommitsAndSharesOneGenerationBump(t *testing.T) {
 	}
 }
 
-// 所有 repository 都经 clientFromContext 取 client：在 uow.Do 内的写入随事务回滚。
 func TestUnitOfWorkCoversDepartmentAndDictRepositories(t *testing.T) {
 	client := newAuthorizationStateTestClient(t)
 	ctx := context.Background()

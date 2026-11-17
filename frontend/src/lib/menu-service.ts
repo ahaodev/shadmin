@@ -4,10 +4,6 @@ import type { NavGroup } from '@/types/layout'
 import type { MenuTreeNode, ResourcesResponse } from '@/types/menu'
 import { BackendMenuAdapter } from '@/lib/backend-menu-adapter'
 
-/**
- * Recursively extract all route paths from a menu tree.
- * Only collects paths from visible, active, non-button menus.
- */
 function collectMenuPaths(menus: MenuTreeNode[]): string[] {
   const paths: string[] = []
   for (const menu of menus) {
@@ -23,18 +19,12 @@ function collectMenuPaths(menus: MenuTreeNode[]): string[] {
   return paths
 }
 
-/**
- * Check if a pathname matches an allowed path using segment-boundary logic.
- * Exact match or the pathname starts with allowedPath followed by '/'.
- */
+/** Matches a path or its descendants at a slash boundary. */
 function isPathMatch(pathname: string, allowedPath: string): boolean {
   if (pathname === allowedPath) return true
   return pathname.startsWith(allowedPath + '/')
 }
 
-/**
- * Menu service for loading and caching menu data from backend API
- */
 class MenuService {
   private cachedMenuData: NavGroup[] | null = null
   private resources: ResourcesResponse | null = null

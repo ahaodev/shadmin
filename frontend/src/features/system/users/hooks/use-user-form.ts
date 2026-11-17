@@ -21,7 +21,6 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
   const updateUser = useUpdateUser()
   const queryClient = useQueryClient()
 
-  // Fetch user roles if editing
   const { data: userRoles = [] } = useQuery<string[]>({
     queryKey: [USER_ROLES_QUERY_KEY, currentRow?.id],
     queryFn: () => getUserRoleList(currentRow!.id),
@@ -29,7 +28,6 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
     select: (data) => (Array.isArray(data) ? data : []),
   })
 
-  // Fetch all roles for selection
   const { data: allRoles = [] } = useQuery({
     queryKey: [ROLES_QUERY_KEY],
     queryFn: getRoles,
@@ -50,7 +48,6 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
     },
   })
 
-  // Update form roles when userRoles data is loaded
   useEffect(() => {
     if (isEdit && userRoles.length > 0) {
       form.setValue('roles', userRoles)
@@ -72,7 +69,6 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
           updateData.password = values.password
         }
 
-        // Create mapping from role name to role ID for the new roles
         const roleNameToIdMap = allRoles.reduce(
           (map, role) => {
             map[role.name] = role.id
@@ -81,12 +77,10 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
           {} as Record<string, string>
         )
 
-        // Convert role names to role IDs
         const roleIds = values.roles
           .map((roleName) => roleNameToIdMap[roleName])
           .filter(Boolean)
 
-        // Update user with roles included
         const updateDataWithRoles = {
           ...updateData,
           role_ids: roleIds,
@@ -97,13 +91,11 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
           data: updateDataWithRoles,
         })
 
-        // Invalidate queries
         queryClient.invalidateQueries({
           queryKey: [USER_ROLES_QUERY_KEY, currentRow!.id],
         })
         queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] })
       } else {
-        // Create mapping from role name to role ID
         const roleNameToIdMap = allRoles.reduce(
           (map, role) => {
             map[role.name] = role.id
@@ -112,12 +104,10 @@ export function useUserForm({ currentRow, onSuccess }: UseUserFormProps) {
           {} as Record<string, string>
         )
 
-        // Convert role names to role IDs
         const roleIds = values.roles
           .map((roleName) => roleNameToIdMap[roleName])
           .filter(Boolean)
 
-        // Create user with roles
         await createUser.mutateAsync({
           username: values.username,
           email: values.email,

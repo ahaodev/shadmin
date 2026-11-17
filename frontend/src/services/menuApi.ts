@@ -9,7 +9,6 @@ import {
 import { buildSearchParams } from '@/lib/query-params'
 import { apiClient } from './config'
 
-// GET /system/menu - Get /menu
 export const getMenus = async (
   params?: MenuQueryParams
 ): Promise<MenuPagedResult> => {
@@ -21,13 +20,11 @@ export const getMenus = async (
   return response.data.data
 }
 
-// POST /system/menu - Create menu
 export const createMenu = async (request: CreateMenuRequest): Promise<Menu> => {
   const response = await apiClient.post('/api/v1/system/menu', request)
   return response.data.data
 }
 
-// GET /system/menu/tree - Get menu tree
 export const getMenuTree = async (status?: string): Promise<MenuTreeNode[]> => {
   const params = new URLSearchParams()
   if (status) params.append('status', status)
@@ -38,7 +35,6 @@ export const getMenuTree = async (status?: string): Promise<MenuTreeNode[]> => {
   return response.data.data
 }
 
-// PUT /system/menu/{id} - Update menu
 export const updateMenu = async (
   id: string,
   request: UpdateMenuRequest
@@ -47,7 +43,6 @@ export const updateMenu = async (
   return response.data.data
 }
 
-// DELETE /system/menu/{id} - Delete menu
 export const deleteMenu = async (id: string): Promise<void> => {
   await apiClient.delete(`/api/v1/system/menu/${id}`)
 }

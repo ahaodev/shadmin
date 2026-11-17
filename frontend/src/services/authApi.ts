@@ -2,7 +2,6 @@ import { apiClient, getApiBaseURL } from '@/services/config'
 import { type ApiResponse } from '@/types/api'
 import { getRefreshToken } from '@/lib/token-storage'
 
-// 登录请求类型
 export interface LoginRequest {
   identifier: string
   password: string
@@ -11,7 +10,6 @@ export interface LoginRequest {
   captcha_y: number
 }
 
-// Slide 验证码挑战
 export interface SlideCaptchaChallenge {
   captcha_id: string
   master_image: string
@@ -25,7 +23,6 @@ export interface SlideCaptchaChallenge {
   expires_in: number
 }
 
-// 登录响应类型
 export interface LoginResponse {
   accessToken: string
   refreshToken: string
@@ -39,7 +36,6 @@ export interface DeviceActivateResponse {
   status: string
 }
 
-// 用户登录
 export async function login(
   credentials: LoginRequest
 ): Promise<ApiResponse<LoginResponse>> {
@@ -47,7 +43,6 @@ export async function login(
   return resp.data
 }
 
-// 获取/刷新 Slide 验证码挑战
 export async function getSlideCaptcha(
   oldCaptchaId?: string
 ): Promise<ApiResponse<SlideCaptchaChallenge>> {
@@ -72,13 +67,11 @@ export function getIdentityLoginHref(provider: string): string {
   ).toString()
 }
 
-// 获取后端当前已启用的第三方登录 provider 列表
 export async function getIdentityProviders(): Promise<ApiResponse<string[]>> {
   const resp = await apiClient.get('/api/v1/auth/identity/providers')
   return resp.data
 }
 
-// 用一次性 code 交换第三方登录的 JWT 令牌
 export async function exchangeUserIdentityCode(
   code: string
 ): Promise<ApiResponse<LoginResponse>> {
@@ -86,9 +79,7 @@ export async function exchangeUserIdentityCode(
   return resp.data
 }
 
-// 登出
 export async function logout(): Promise<ApiResponse<void>> {
-  // 使用 token-storage 获取 refresh token，保持存储策略一致性
   const refreshToken = getRefreshToken()
 
   const requestBody = refreshToken ? { refresh_token: refreshToken } : {}

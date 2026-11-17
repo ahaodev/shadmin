@@ -1,8 +1,7 @@
-// 角色信息 (对应后端RoleInfo)
 export interface RoleInfo {
-  id: string // 角色ID
-  name: string // 角色显示名称
-  type?: string // 角色类型
+  id: string
+  name: string
+  type?: string
   status?: 'active' | 'inactive'
   sequence?: number
   created_at?: string | Date
@@ -11,7 +10,6 @@ export interface RoleInfo {
   is_system?: boolean
 }
 
-// Role Management
 export interface Role {
   id: string
   name: string

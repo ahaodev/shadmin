@@ -8,8 +8,7 @@ import (
 	"time"
 )
 
-// writeLoginLog 异步记录一次登录尝试，不阻塞登录流程。
-// 使用 WithoutCancel：请求结束/超时后仍要落库，否则日志会丢。
+// writeLoginLog 异步落库；脱离请求取消，避免请求结束后丢失日志。
 func writeLoginLog(parent context.Context, logUsecase domain.LoginLogUseCase, meta domain.LoginMeta, source, status, failureReason, email string) {
 	if logUsecase == nil {
 		return
@@ -42,11 +41,9 @@ func NewLoginLogUsecase(loginLogRepository domain.LoginLogRepository, timeout ti
 	}
 }
 
-// parseUserAgent 解析User-Agent字符串提取浏览器和操作系统信息
 func (luc *loginLogUsecase) parseUserAgent(userAgent string) (browser, os, device string) {
 	ua := strings.ToLower(userAgent)
 
-	// 解析浏览器
 	switch {
 	case strings.Contains(ua, "firefox"):
 		browser = "Firefox"
@@ -64,7 +61,6 @@ func (luc *loginLogUsecase) parseUserAgent(userAgent string) (browser, os, devic
 		browser = "Unknown"
 	}
 
-	// 解析操作系统
 	switch {
 	case strings.Contains(ua, "windows nt 10.0"):
 		os = "Windows 10"
@@ -86,7 +82,6 @@ func (luc *loginLogUsecase) parseUserAgent(userAgent string) (browser, os, devic
 		os = "Unknown"
 	}
 
-	// 解析设备类型
 	switch {
 	case strings.Contains(ua, "mobile"):
 		device = "Mobile"
@@ -103,10 +98,8 @@ func (luc *loginLogUsecase) CreateLoginLog(ctx context.Context, request *domain.
 	ctx, cancel := context.WithTimeout(ctx, luc.contextTimeout)
 	defer cancel()
 
-	// 解析User-Agent字符串
 	browser, os, device := luc.parseUserAgent(request.UserAgent)
 
-	// 如果请求中没有提供browser、os、device，则使用解析的结果
 	if request.Browser == "" {
 		request.Browser = browser
 	}
@@ -117,7 +110,6 @@ func (luc *loginLogUsecase) CreateLoginLog(ctx context.Context, request *domain.
 		request.Device = device
 	}
 
-	// 未指定来源时默认本地密码登录
 	if request.Source == "" {
 		request.Source = domain.UserSourceLocal
 	}

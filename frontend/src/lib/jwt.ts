@@ -1,7 +1,4 @@
-/**
- * Decode a JWT token payload without verification.
- * Returns the payload as a record, or null if decoding fails.
- */
+/** Decodes the payload without verifying the signature. */
 export function decodeJwt(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split('.')
@@ -23,10 +20,6 @@ export function decodeJwt(token: string): Record<string, unknown> | null {
   }
 }
 
-/**
- * Build an AuthUser from a JWT token string.
- * Returns null if the token cannot be decoded.
- */
 export function authUserFromJwt(token: string): {
   accountNo: string
   email: string

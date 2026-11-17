@@ -6,7 +6,7 @@ type ResolvedTheme = Exclude<Theme, 'system'>
 
 const DEFAULT_THEME = 'system'
 const THEME_COOKIE_NAME = 'vite-ui-theme'
-const THEME_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 // 1 year
+const THEME_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 type ThemeProviderProps = {
   children: React.ReactNode
@@ -42,7 +42,6 @@ export function ThemeProvider({
     () => (getCookie(storageKey) as Theme) || defaultTheme
   )
 
-  // Optimized: Memoize the resolved theme calculation to prevent unnecessary re-computations
   const resolvedTheme = useMemo((): ResolvedTheme => {
     if (theme === 'system') {
       return window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -57,8 +56,8 @@ export function ThemeProvider({
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
     const applyTheme = (currentResolvedTheme: ResolvedTheme) => {
-      root.classList.remove('light', 'dark') // Remove existing theme classes
-      root.classList.add(currentResolvedTheme) // Add the new theme class
+      root.classList.remove('light', 'dark')
+      root.classList.add(currentResolvedTheme)
     }
 
     const handleChange = () => {

@@ -17,9 +17,8 @@ const (
 	UserStatusSuspended = domain.UserStatusSuspended
 )
 
-// 用户来源定义：区分本地原生用户与第三方登录来源用户
 const (
-	UserSourceLocal  = domain.UserSourceLocal  // shadmin 本地原生用户
-	UserSourceGitHub = domain.UserSourceGitHub // GitHub 第三方登录来源用户
-	UserSourceGoogle = domain.UserSourceGoogle // Google 第三方登录来源用户
+	UserSourceLocal  = domain.UserSourceLocal
+	UserSourceGitHub = domain.UserSourceGitHub
+	UserSourceGoogle = domain.UserSourceGoogle
 )
