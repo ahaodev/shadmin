@@ -101,7 +101,12 @@ Use a database host reachable from the container; `localhost` inside the contain
 
 ### File storage
 
-Disk storage defaults to `.uploads/`. If you change `STORAGE_BASE_PATH`, update the corresponding mount. For MinIO/S3, set `STORAGE_TYPE=minio` and the `S3_*` fields in [.env.example](../../.env.example). `S3_ADDRESS` is a `host:port` endpoint without a URL scheme; `S3_SECURE` selects HTTPS. Use a bucket and credentials appropriate for the deployment.
+Disk storage defaults to `.uploads/`. If you change `STORAGE_BASE_PATH`, update the corresponding mount.
+
+For object storage, select the bucket with `S3_BUCKET`. Allow listing its objects, reading, writing and deleting them, and aborting multipart uploads. To supply credentials explicitly, set both `S3_ACCESS_KEY` and `S3_SECRET_KEY`. For temporary credentials, also set `S3_TOKEN`. See [.env.example](../../.env.example).
+
+- **AWS S3 (`STORAGE_TYPE=s3`).** Use a pre-created bucket. Set its region with `S3_REGION` or the AWS SDK configuration, such as `AWS_REGION`. The SDK uses its default credential chain, including IAM roles, when explicit credentials are absent.
+- **MinIO (`STORAGE_TYPE=minio`).** Supply explicit credentials and set `S3_ADDRESS` to the S3 API endpoint (`host:port`). Use `S3_SECURE=false` for HTTP. The region defaults to `us-east-1`. Set `S3_REGION` for other regions before deploying or upgrading. Uploads create missing buckets if permitted.
 
 | Container path   | Persist                                      |
 | ---------------- | -------------------------------------------- |

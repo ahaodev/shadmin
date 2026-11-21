@@ -83,7 +83,7 @@ Password login returns an access/refresh token pair. `auth.startSession()` start
 Database, storage and cache choices are configured in [.env.example](../../.env.example):
 
 - Ent supports SQLite, PostgreSQL and MySQL.
-- File storage implements `domain.FileRepository` for local disk or MinIO/S3.
+- File storage uses `domain.FileRepository` for local disk and an AWS SDK for Go v2 adapter shared by AWS S3 and MinIO.
 - Cache implementations use memory or Redis behind the cache contract.
 
 See the [deployment guide](deployment.en.md) for configuration, migrations and persistence.

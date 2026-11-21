@@ -101,7 +101,12 @@ DB_DSN=shadmin:password@tcp(database-host:3306)/shadmin?parseTime=true&loc=Local
 
 ### 文件存储
 
-磁盘存储默认使用 `.uploads/`。修改 `STORAGE_BASE_PATH` 时，同时调整挂载路径。使用 MinIO/S3 时，设置 `STORAGE_TYPE=minio` 和 [.env.example](../../.env.example) 中的 `S3_*` 字段。`S3_ADDRESS` 是不带 URL 协议头的 `host:port` 地址，`S3_SECURE` 决定是否使用 HTTPS。使用适合部署环境的 bucket 和凭据。
+磁盘存储默认使用 `.uploads/`。修改 `STORAGE_BASE_PATH` 时，同时调整挂载路径。
+
+对象存储通过 `S3_BUCKET` 选择桶。应用需要列出桶内对象、读写和删除对象、中止分片上传的权限。显式配置凭证时，同时设置 `S3_ACCESS_KEY` 和 `S3_SECRET_KEY`。使用临时凭证时再设置 `S3_TOKEN`。参见 [.env.example](../../.env.example)。
+
+- **AWS S3（`STORAGE_TYPE=s3`）。** 使用预先创建的桶，通过 `S3_REGION` 或 AWS SDK 配置（如 `AWS_REGION`）指定区域。未显式提供凭证时，SDK 使用默认凭证链，支持 IAM 角色。
+- **MinIO（`STORAGE_TYPE=minio`）。** 必须提供显式凭证，并将 `S3_ADDRESS` 设为 S3 API 地址（`host:port`）。使用 HTTP 时设置 `S3_SECURE=false`。默认区域为 `us-east-1`，其他区域须在部署或升级前设置 `S3_REGION`。有建桶权限时，上传会创建缺失的桶。
 
 | 容器路径         | 持久化内容                         |
 | ---------------- | ---------------------------------- |

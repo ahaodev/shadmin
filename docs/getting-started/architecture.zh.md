@@ -83,7 +83,7 @@ routes/ → features/ → query hooks → services/ → apiClient → API
 数据库、存储和缓存通过 [.env.example](../../.env.example) 中的配置选择：
 
 - Ent 支持 SQLite、PostgreSQL 和 MySQL。
-- 文件存储通过 `domain.FileRepository` 对接本地磁盘或 MinIO/S3。
+- 文件存储通过 `domain.FileRepository` 对接本地磁盘、AWS S3 和 MinIO，后两者共用基于 AWS SDK for Go v2 的实现。
 - 缓存通过契约对接内存或 Redis 实现。
 
 配置、迁移和持久化操作见[部署指南](deployment.zh.md)。

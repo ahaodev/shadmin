@@ -20,6 +20,7 @@ const (
 	CacheTypeMem   = "mem"
 	CacheTypeRedis = "redis"
 	StoreTypeMinio = "minio"
+	StoreTypeS3    = "s3"
 	StoreTypeDisk  = "disk"
 
 	defaultAccessTokenSecret     = "default-access-secret"
@@ -46,11 +47,12 @@ type Env struct {
 	AdminPassword string `mapstructure:"ADMIN_PASSWORD"`
 	AdminEmail    string `mapstructure:"ADMIN_EMAIL"`
 
-	StorageType     string `mapstructure:"STORAGE_TYPE"` // "disk" 或 "minio"
+	StorageType     string `mapstructure:"STORAGE_TYPE"` // disk / s3 / minio
 	StorageBasePath string `mapstructure:"STORAGE_BASE_PATH"`
 
 	S3Secure    bool   `mapstructure:"S3_SECURE"`
 	S3Address   string `mapstructure:"S3_ADDRESS"`
+	S3Region    string `mapstructure:"S3_REGION"`
 	S3AccessKey string `mapstructure:"S3_ACCESS_KEY"`
 	S3SecretKey string `mapstructure:"S3_SECRET_KEY"`
 	S3Bucket    string `mapstructure:"S3_BUCKET"`
@@ -108,6 +110,7 @@ func setDefaults() {
 		"STORAGE_BASE_PATH": ".uploads",
 
 		"S3_ADDRESS":    "",
+		"S3_REGION":     "",
 		"S3_SECURE":     true,
 		"S3_ACCESS_KEY": "",
 		"S3_SECRET_KEY": "",
@@ -174,7 +177,7 @@ func generateEnvFile() error {
 		},
 		{
 			title: "# S3/MinIO 配置",
-			keys:  []string{"S3_SECURE", "S3_ADDRESS", "S3_ACCESS_KEY", "S3_SECRET_KEY", "S3_BUCKET", "S3_TOKEN"},
+			keys:  []string{"S3_SECURE", "S3_ADDRESS", "S3_REGION", "S3_ACCESS_KEY", "S3_SECRET_KEY", "S3_BUCKET", "S3_TOKEN"},
 		},
 		{
 			title: "# 缓存配置（mem=内存，redis=Redis）",
@@ -277,28 +280,7 @@ func (e *Env) validate() error {
 		errs = append(errs, "ADMIN_PASSWORD长度不能少于3位")
 	}
 
-	if e.StorageType != StoreTypeDisk && e.StorageType != StoreTypeMinio {
-		errs = append(errs, "STORAGE_TYPE必须是disk或minio")
-	}
-
-	if e.StorageType == StoreTypeDisk && e.StorageBasePath == "" {
-		errs = append(errs, "使用本地存储时必须提供STORAGE_BASE_PATH")
-	}
-
-	if e.StorageType == StoreTypeMinio {
-		if e.S3Address == "" {
-			errs = append(errs, "使用MinIO时S3_ADDRESS不能为空")
-		}
-		if e.S3AccessKey == "" {
-			errs = append(errs, "使用MinIO时S3_ACCESS_KEY不能为空")
-		}
-		if e.S3SecretKey == "" {
-			errs = append(errs, "使用MinIO时S3_SECRET_KEY不能为空")
-		}
-		if e.S3Bucket == "" {
-			errs = append(errs, "使用MinIO时S3_BUCKET不能为空")
-		}
-	}
+	errs = append(errs, e.storageConfigErrors()...)
 
 	cacheType := e.CacheTypeValue()
 	if cacheType != CacheTypeMem && cacheType != CacheTypeRedis {
@@ -332,6 +314,33 @@ func (e *Env) validate() error {
 	}
 
 	return nil
+}
+
+func (e *Env) storageConfigErrors() []string {
+	var errs []string
+	switch e.StorageType {
+	case StoreTypeDisk:
+		if e.StorageBasePath == "" {
+			errs = append(errs, "使用本地存储时必须提供STORAGE_BASE_PATH")
+		}
+	case StoreTypeMinio, StoreTypeS3:
+		if strings.TrimSpace(e.S3Bucket) == "" {
+			errs = append(errs, "S3_BUCKET不能为空")
+		}
+		if e.StorageType == StoreTypeMinio {
+			if strings.TrimSpace(e.S3Address) == "" {
+				errs = append(errs, "使用MinIO时S3_ADDRESS不能为空")
+			}
+			if e.S3AccessKey == "" || e.S3SecretKey == "" {
+				errs = append(errs, "使用MinIO时必须提供S3_ACCESS_KEY和S3_SECRET_KEY")
+			}
+		} else if (e.S3AccessKey == "") != (e.S3SecretKey == "") || (e.S3Token != "" && e.S3AccessKey == "") {
+			errs = append(errs, "S3_ACCESS_KEY和S3_SECRET_KEY必须成对设置，S3_TOKEN需要同时配置这两项")
+		}
+	default:
+		errs = append(errs, "STORAGE_TYPE必须是disk、s3或minio")
+	}
+	return errs
 }
 
 func isDevelopmentSecret(secret string) bool {

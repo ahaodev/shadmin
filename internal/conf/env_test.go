@@ -111,3 +111,30 @@ func TestNewEnvRejectsProductionDefaults(t *testing.T) {
 		t.Fatalf("NewEnv = %v; want production default key errors", err)
 	}
 }
+
+func TestS3StorageConfig(t *testing.T) {
+	t.Chdir(t.TempDir())
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	t.Setenv("APP_ENV", AppEnvDev)
+	t.Setenv("STORAGE_TYPE", StoreTypeS3)
+	t.Setenv("S3_REGION", "eu-central-1")
+	t.Setenv("S3_ACCESS_KEY", "")
+	t.Setenv("S3_SECRET_KEY", "")
+	t.Setenv("S3_TOKEN", "")
+	if err := os.WriteFile(".env", []byte("S3_REGION=us-east-2\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	env, err := NewEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if env.S3Region != "eu-central-1" {
+		t.Fatalf("S3Region = %q; want environment override", env.S3Region)
+	}
+	t.Setenv("S3_ACCESS_KEY", "explicit-key")
+	if _, err := NewEnv(); err == nil || !strings.Contains(err.Error(), "S3_SECRET_KEY") {
+		t.Fatalf("NewEnv with partial credentials = %v; want S3_SECRET_KEY error", err)
+	}
+}
