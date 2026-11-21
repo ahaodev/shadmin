@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.8] - 2026-11-21
+
+### Added
+
+- Added `STORAGE_TYPE=s3` for AWS S3 alongside `minio`, using a pre-created bucket, the region from `S3_REGION` or the AWS SDK configuration, and the default credential chain when explicit keys are absent.
+- Added `S3_REGION`, which defaults to `us-east-1` for MinIO and to the resolved AWS region for S3.
+
+### Changed
+
+- Object storage now uses the AWS SDK for Go v2 instead of `minio-go`, reaching MinIO through a path-style endpoint built from `S3_ADDRESS` and `S3_SECURE` and rejecting addresses with a mismatched scheme, path, query or credentials at startup.
+- Storage validation now covers both object backends: `S3_BUCKET` is always required, explicit S3 credentials must be set as an access/secret pair, `S3_TOKEN` requires both, and unknown `STORAGE_TYPE` values are reported as `disk`, `s3` or `minio`.
+- Object listings are read one folder level per page with folder entries synthesized from common prefixes, URL-decoded keys and unquoted ETags.
+- Uploads verify the declared size before committing a single PUT or completing a multipart upload.
+
+### Tooling
+
+- Refreshed Go and frontend dependencies, including the AWS SDK v2, the MySQL driver, `resend`, `x/crypto`, Atlas, axios, TanStack Query, ESLint, Vite and Prettier.
+
 ## [0.5.7] - 2026-11-17
 
 ### Added
