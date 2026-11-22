@@ -309,6 +309,9 @@ func initDefaultAdmin(app *Application, ctx context.Context) error {
 	}
 
 	if app.Env.AppEnv == conf.AppEnvProd {
+		if app.Env.AdminPassword == conf.DefaultAdminPassword {
+			return fmt.Errorf("生产环境首次创建管理员必须修改默认的 ADMIN_PASSWORD")
+		}
 		if err := domain.ValidateNewPassword(app.Env.AdminPassword); err != nil {
 			return fmt.Errorf("生产环境首次创建管理员必须配置有效的ADMIN_PASSWORD: %w", err)
 		}

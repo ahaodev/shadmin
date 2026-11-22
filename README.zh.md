@@ -19,6 +19,13 @@
 
 ---
 
+## 在线演示
+
+<https://shadmin.ahaodev.com>
+
+- 用户名 `admin`
+- 密码 `admin123`
+
 ## ✨ 特性
 
 - 🏗️ **整洁架构** — 领域驱动的分层设计（Controller → Usecase → Repository）
@@ -55,7 +62,10 @@ go generate ./ent
 go run .
 ```
 
-打开 <http://localhost:55667>，使用 `admin` / `123` 登录。全新开发环境下，服务会创建 `.env`、SQLite 数据库和种子数据。配置说明见 [.env.example](.env.example)；部署前请修改默认凭据。
+全新开发环境下，服务会创建 `.env`、SQLite 数据库和种子数据。配置说明见 [.env.example](.env.example)。
+启动后，打开 <http://localhost:55667>，使用admin/admin123登录。
+
+### 开发工具
 
 开发前端时，保持后端运行，在 `frontend/` 中执行 `pnpm dev`，访问 <http://localhost:5173>。Vite 会将 API 请求代理到后端；修改后端端口时，同时调整 [vite.config.ts](frontend/vite.config.ts) 中的代理地址。
 
@@ -66,46 +76,12 @@ go install github.com/swaggo/swag/cmd/swag@v1.16.6
 go generate ./...
 ```
 
-生产构建、Docker、迁移和持久化见[部署指南](docs/getting-started/deployment.zh.md)。
-
-## 🔐 认证与权限
-
-- **认证**：JWT 访问令牌 + 刷新令牌，通过 `Authorization: Bearer <token>` 传递
-- **API 鉴权**：Casbin 中间件对受保护路由检查 `(userID, path, method)`
-- **前端守卫**：通过 `usePermission()` hook 与 `auth-store` 的 `hasPermission()` / `hasRole()` 判定控制 UI 显隐
-- **菜单系统**：通过 `/api/v1/resources` 获取动态菜单树，自动适配用户权限
-
-<details>
-<summary>📁 <b>项目结构</b></summary>
-
-```
-shadmin/
-├── api/            # 控制器和路由（Gin）
-├── bootstrap/      # 应用引导、数据库、Casbin、种子数据
-├── domain/         # 实体、DTO、接口定义
-├── ent/schema/     # Ent ORM 数据模型
-├── repository/     # 数据访问层
-├── usecase/        # 业务逻辑层
-├── internal/       # 内部工具
-├── pkg/            # 公共包
-├── frontend/            # React 前端（Vite + shadcn/ui）
-│   └── src/
-│       ├── routes/       # TanStack 文件路由
-│       ├── features/     # 功能模块
-│       ├── services/     # API 封装（Axios）
-│       └── stores/       # Zustand 状态管理
-├── docs/           # 文档和图片
-└── main.go         # 入口文件
-```
-
-</details>
-
 ## 📚 文档
 
+- [架构与权限](docs/getting-started/architecture.zh.md)
+- [部署、迁移与持久化](docs/getting-started/deployment.zh.md)
 - [开发规范](.agents/skills/shadmin-dev/SKILL.md)
-- [架构 (中文)](docs/getting-started/architecture.zh.md) · [Architecture (EN)](docs/getting-started/architecture.en.md)
-- [部署 (中文)](docs/getting-started/deployment.zh.md) · [Deployment (EN)](docs/getting-started/deployment.en.md)
-- [面向 AI Agent 的 CLI(中文)](cli/README.zh.md) · [CLI for AI agents（EN)](cli/README.md)
+- [面向 AI Agent 的 CLI](cli/README.zh.md)
 
 ## 📄 许可证
 

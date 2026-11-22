@@ -23,6 +23,8 @@ const (
 	StoreTypeS3    = "s3"
 	StoreTypeDisk  = "disk"
 
+	DefaultAdminPassword = "admin123"
+
 	defaultAccessTokenSecret     = "default-access-secret"
 	defaultRefreshTokenSecret    = "default-refresh-secret"
 	defaultIdentitySessionSecret = "shadmin-identity-session-secret-change-me"
@@ -103,7 +105,7 @@ func setDefaults(config *viper.Viper) map[string]any {
 		"REFRESH_TOKEN_SECRET":        defaultRefreshTokenSecret,
 
 		"ADMIN_USERNAME": "admin",
-		"ADMIN_PASSWORD": "123",
+		"ADMIN_PASSWORD": DefaultAdminPassword,
 		"ADMIN_EMAIL":    "admin@gmail.com",
 
 		"STORAGE_TYPE":      StoreTypeDisk,

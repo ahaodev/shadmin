@@ -6,13 +6,13 @@ services:
     ports:
       - "55667:55667"
     environment:
-      - APP_ENV=production
+      - APP_ENV=dev
       - DB_TYPE=mysql
       - DB_DSN=shadmin:shadmin@tcp(mysql:3306)/shadmin?parseTime=true&loc=Local&charset=utf8mb4
       - ACCESS_TOKEN_SECRET=change-me-to-a-secure-secret-1
       - REFRESH_TOKEN_SECRET=change-me-to-a-secure-secret-2
       - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=abc123
+      - ADMIN_PASSWORD=admin123
       - ADMIN_EMAIL=admin@example.com
       - STORAGE_TYPE=disk
       - STORAGE_BASE_PATH=/app/uploads

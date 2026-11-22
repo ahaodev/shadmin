@@ -6,7 +6,7 @@ services:
     ports:
       - "55667:55667"
     environment:
-      - APP_ENV=production
+      - APP_ENV=dev
       - DB_TYPE=sqlite
       - ACCESS_TOKEN_SECRET=abcdef1234567890
       - REFRESH_TOKEN_SECRET=abcdef1234567890

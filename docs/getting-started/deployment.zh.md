@@ -20,6 +20,8 @@ REFRESH_TOKEN_SECRET=replace-with-generated-refresh-secret
 ADMIN_PASSWORD=replace-with-a-strong-admin-password
 ```
 
+首次创建生产环境管理员时，请设置与开发环境默认密码 `admin123` 不同的密码。
+
 生产环境拒绝内置 JWT 密钥。种子密码仅在首次创建管理员时使用，不会重置已有账号。本地密码要求至少 8 个字符，且不超过 72 UTF-8 字节。
 
 启用 Google/GitHub 登录时，配置 provider 凭据和独立的 `IDENTITY_SESSION_SECRET`。`IDENTITY_BASE_URL` 应为后端公网 origin，`IDENTITY_REDIRECT_URL` 应为前端 `/oauth-callback` 地址。启用邮件邀请时，将 `INVITATION_ACCEPT_URL` 设为前端公网 `/accept-invitation` 地址，并配置 Resend 字段。

@@ -20,6 +20,8 @@ REFRESH_TOKEN_SECRET=replace-with-generated-refresh-secret
 ADMIN_PASSWORD=replace-with-a-strong-admin-password
 ```
 
+For the initial administrator, choose a password different from the development default `admin123`.
+
 Production rejects built-in JWT secrets. The seed password is used only when creating the first administrator; it does not reset an existing account. Local passwords must contain at least 8 characters and at most 72 UTF-8 bytes.
 
 For Google/GitHub login, configure provider credentials and an independent `IDENTITY_SESSION_SECRET`. Set `IDENTITY_BASE_URL` to the public backend origin and `IDENTITY_REDIRECT_URL` to the frontend `/oauth-callback` URL. When using email invitations, set `INVITATION_ACCEPT_URL` to the public frontend `/accept-invitation` URL and configure the Resend fields.

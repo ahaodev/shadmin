@@ -93,7 +93,7 @@ func TestProductionSecrets(t *testing.T) {
 		StorageType: StoreTypeDisk, StorageBasePath: ".uploads",
 		AccessTokenExpiryMinute: 180, RefreshTokenExpiryMinute: 1800,
 		AccessTokenSecret: "configured-access-secret-for-test", RefreshTokenSecret: "configured-refresh-secret-for-test",
-		IdentitySessionSecret: defaultIdentitySessionSecret, AdminUsername: "admin", AdminPassword: "123",
+		IdentitySessionSecret: defaultIdentitySessionSecret, AdminUsername: "admin", AdminPassword: DefaultAdminPassword,
 	}
 	for _, test := range []struct {
 		name   string

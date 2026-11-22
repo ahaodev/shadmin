@@ -72,11 +72,11 @@ func TestInitDefaultAdminPasswordPolicy(t *testing.T) {
 		name, env, password string
 		valid               bool
 	}{
-		{"production default", conf.AppEnvProd, "123", false},
+		{"production default", conf.AppEnvProd, conf.DefaultAdminPassword, false},
 		{"production short", conf.AppEnvProd, "1234567", false},
 		{"production over bcrypt limit", conf.AppEnvProd, strings.Repeat("x", 73), false},
 		{"production configured", conf.AppEnvProd, "admin-password-123", true},
-		{"development default", conf.AppEnvDev, "123", true},
+		{"development default", conf.AppEnvDev, conf.DefaultAdminPassword, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			client := newTestEntClient(t)
@@ -93,7 +93,7 @@ func TestInitDefaultAdminPasswordPolicy(t *testing.T) {
 			}}
 			err := InitDefaultAdmin(app)
 			if !test.valid {
-				if !errors.Is(err, domain.ErrPasswordLength) {
+				if err == nil || (test.password != conf.DefaultAdminPassword && !errors.Is(err, domain.ErrPasswordLength)) {
 					t.Fatalf("InitDefaultAdmin = %v; want password validation error", err)
 				}
 				if count, err := client.User.Query().Count(ctx); err != nil || count != 0 {

@@ -4,7 +4,7 @@
 
 **An Enterprise-Grade Full-Stack RBAC Permission Management System Built with Go + React**
 
-[简体中文](./README.zh.md) · English
+English · [简体中文](./README.zh.md)
 
 ![Shadmin Showcase](docs/images/showcase-dark-en.jpg)
 
@@ -18,6 +18,13 @@
 </div>
 
 ---
+
+## Online demo
+
+<https://shadmin.ahaodev.com>
+
+- Username `admin`
+- Password `admin123`
 
 ## ✨ Features
 
@@ -55,7 +62,11 @@ go generate ./ent
 go run .
 ```
 
-Open <http://localhost:55667> and sign in with `admin` / `123`. On a fresh development setup, the server creates `.env`, the SQLite database, and seed data. Configuration is described in [.env.example](.env.example); change the default credentials before deployment.
+On a fresh development setup, the server creates `.env`, the SQLite database, and seed data. See [.env.example](.env.example) for configuration.
+
+Once the server is running, open <http://localhost:55667> and sign in with `admin` / `admin123`.
+
+### Development tools
 
 For frontend development, keep the backend running and run `pnpm dev` in `frontend/`. Open <http://localhost:5173>; Vite proxies API requests to the backend. If you change the backend port, update the proxy in [vite.config.ts](frontend/vite.config.ts).
 
@@ -66,47 +77,13 @@ go install github.com/swaggo/swag/cmd/swag@v1.16.6
 go generate ./...
 ```
 
-For production builds, Docker, migrations and persistence, see the [deployment guide](docs/getting-started/deployment.en.md).
-
-## 🔐 Auth & Permissions
-
-- **Authentication**: JWT access + refresh tokens via `Authorization: Bearer <token>`
-- **API Authorization**: Casbin middleware checks `(userID, path, method)` on protected routes
-- **Frontend Guards**: Permission‑aware UI via the `usePermission()` hook and `auth-store` checks (`hasPermission()` / `hasRole()`)
-- **Menu System**: Dynamic menus from `/api/v1/resources`, auto‑adapted to user permissions
-
-<details>
-<summary>📁 <b>Project Structure</b></summary>
-
-```
-shadmin/
-├── api/            # Controllers & routes (Gin)
-├── bootstrap/      # App bootstrap, DB, Casbin, seed
-├── domain/         # Entities, DTOs, interfaces
-├── ent/schema/     # Ent ORM schemas
-├── repository/     # Data access layer
-├── usecase/        # Business logic
-├── internal/       # Internal utilities
-├── pkg/            # Shared packages
-├── frontend/            # React frontend (Vite + shadcn/ui)
-│   └── src/
-│       ├── routes/       # TanStack file‑based routing
-│       ├── features/     # Feature modules
-│       ├── services/     # API wrappers (Axios)
-│       └── stores/       # Zustand state management
-├── docs/           # Documentation & images
-└── main.go         # Entry point
-```
-
-</details>
-
 ## 📚 Documentation
 
+- [Architecture and permissions](docs/getting-started/architecture.en.md)
+- [Deployment, migrations, and persistence](docs/getting-started/deployment.en.md)
 - [Development standards](.agents/skills/shadmin-dev/SKILL.md)
-- [Architecture (EN)](docs/getting-started/architecture.en.md) · [架构 (中文)](docs/getting-started/architecture.zh.md)
-- [Deployment (EN)](docs/getting-started/deployment.en.md) · [部署 (中文)](docs/getting-started/deployment.zh.md)
-- [CLI for AI agents](cli/README.md) · [面向 AI Agent 的 CLI(中文)](cli/README.zh.md)
+- [CLI for AI agents](cli/README.md)
+
 ## 📄 License
 
 [MIT](LICENSE)
-

@@ -6,13 +6,13 @@ services:
     ports:
       - "55667:55667"
     environment:
-      - APP_ENV=production
+      - APP_ENV=dev
       - DB_TYPE=postgres
       - DB_DSN=postgres://shadmin:shadmin@postgres:5432/shadmin?sslmode=disable
       - ACCESS_TOKEN_SECRET=change-me-to-a-secure-secret-1
       - REFRESH_TOKEN_SECRET=change-me-to-a-secure-secret-2
       - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=abc123
+      - ADMIN_PASSWORD=admin123
       - ADMIN_EMAIL=admin@example.com
       - STORAGE_TYPE=minio
       - S3_ADDRESS=minio:9000
