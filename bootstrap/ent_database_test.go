@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"bytes"
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -12,13 +11,9 @@ import (
 	"shadmin/internal/conf"
 )
 
-func TestProductionRequiresExplicitMigration(t *testing.T) {
+func TestAdditiveMigrationPreservesLegacyData(t *testing.T) {
 	t.Chdir(t.TempDir())
-	env := &conf.Env{AppEnv: conf.AppEnvProd, DBType: "sqlite", DBAutoMigrate: true}
-	if client, err := NewEntDatabase(env); err == nil {
-		client.Close()
-		t.Fatal("production created schema implicitly")
-	}
+	env := &conf.Env{AppEnv: conf.AppEnvProd, DBType: conf.DbTypeSqlite}
 	if err := MigrateDatabase(env); err != nil {
 		t.Fatal(err)
 	}
@@ -27,37 +22,54 @@ func TestProductionRequiresExplicitMigration(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if _, err := db.Exec("ALTER TABLE users ADD COLUMN legacy_data TEXT; INSERT INTO users (id, username, created_at, updated_at, legacy_data) VALUES ('legacy', 'legacy', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'keep')"); err != nil {
+	if _, err := db.Exec(`
+		DROP TABLE authz_states;
+		ALTER TABLE users ADD COLUMN legacy_data TEXT;
+		INSERT INTO users (id, username, created_at, updated_at, legacy_data)
+		VALUES ('legacy', 'legacy', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'keep');
+	`); err != nil {
 		t.Fatal(err)
 	}
-	for _, mode := range []string{conf.AppEnvDev, conf.AppEnvProd} {
-		env.AppEnv = mode
-		client, err := NewEntDatabase(env)
-		if err != nil {
-			t.Fatal(err)
-		}
-		client.Close()
-		var value string
-		if err := db.QueryRow("SELECT legacy_data FROM users WHERE id='legacy'").Scan(&value); err != nil || value != "keep" {
-			t.Fatalf("legacy data = %q, %v", value, err)
-		}
+	env.DBAutoMigrate = true
+	client, err := NewEntDatabase(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.Close()
+	var value string
+	if err := db.QueryRow("SELECT legacy_data FROM users WHERE id='legacy'").Scan(&value); err != nil || value != "keep" {
+		t.Fatalf("legacy data = %q, %v", value, err)
 	}
 }
 
-func TestDevelopmentAutoMigrate(t *testing.T) {
-	for _, enabled := range []bool{true, false} {
-		t.Run(fmt.Sprintf("enabled=%t", enabled), func(t *testing.T) {
+func TestStartupAutoMigrate(t *testing.T) {
+	for _, test := range []struct {
+		name, mode, override string
+		wantSchema           bool
+	}{
+		{name: "no configuration", wantSchema: true},
+		{name: "production default", mode: conf.AppEnvProd, wantSchema: true},
+		{name: "production opt-out", mode: conf.AppEnvProd, override: "false"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())
-			env := &conf.Env{AppEnv: conf.AppEnvDev, DBType: "sqlite", DBAutoMigrate: enabled}
+			t.Setenv("APP_ENV", test.mode)
+			t.Setenv("DB_TYPE", "")
+			t.Setenv("DB_AUTO_MIGRATE", test.override)
+			if test.mode == conf.AppEnvProd {
+				t.Setenv("ACCESS_TOKEN_SECRET", "configured-access-secret-for-test")
+				t.Setenv("REFRESH_TOKEN_SECRET", "configured-refresh-secret-for-test")
+			}
+			env, err := conf.NewEnv()
+			if err != nil {
+				t.Fatal(err)
+			}
 			client, err := NewEntDatabase(env)
-			if enabled {
-				if err != nil {
-					t.Fatal(err)
-				}
+			if client != nil {
 				client.Close()
-			} else if err == nil {
-				client.Close()
-				t.Fatal("created schema with auto-migration disabled")
+			}
+			if (err == nil) != test.wantSchema {
+				t.Fatalf("NewEntDatabase error = %v, want schema = %t", err, test.wantSchema)
 			}
 		})
 	}

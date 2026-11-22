@@ -24,7 +24,7 @@ Production rejects built-in JWT secrets. The seed password is used only when cre
 
 For Google/GitHub login, configure provider credentials and an independent `IDENTITY_SESSION_SECRET`. Set `IDENTITY_BASE_URL` to the public backend origin and `IDENTITY_REDIRECT_URL` to the frontend `/oauth-callback` URL. When using email invitations, set `INVITATION_ACCEPT_URL` to the public frontend `/accept-invitation` URL and configure the Resend fields.
 
-Environment variables override `.env`. Changing configuration requires restarting the service.
+On startup, Shadmin creates `.env` with the built-in defaults if the file is missing. An existing `.env` is read as-is. Environment variables override file values, and missing settings use built-in defaults at runtime. Invalid configuration stops startup with an error. Changing configuration requires restarting the service.
 
 ## Docker Compose
 
@@ -52,15 +52,14 @@ mkdir -p .database .uploads .logs
 sudo chown 1000:1000 .database .uploads .logs
 
 docker compose build
-docker compose run --rm shadmin ./shadmin-runner -migrate
 docker compose up -d
 ```
 
-Migration must succeed before starting the service. Inspect startup with `docker compose logs --tail=100 shadmin`. The port is bound to localhost for access through a reverse proxy; use SSH forwarding for remote administrative checks before the proxy is configured.
+Inspect startup and any automatic migration errors with `docker compose logs --tail=100 shadmin`. The port is bound to localhost for access through a reverse proxy. Use SSH forwarding for remote administrative checks before the proxy is configured.
 
 ## Database migrations
 
-Production startup never changes the schema, even if `DB_AUTO_MIGRATE=true`. Outside production, automatic additive schema synchronization is enabled by default and can be disabled with `DB_AUTO_MIGRATE=false`.
+Ent applies additive schema changes at startup by default in every mode, including `prod`. Set `DB_AUTO_MIGRATE=false` to manage migrations explicitly.
 
 `-migrate` applies additive Ent schema changes and exits without starting the server. Run it with the same configuration and database as the serving process:
 
@@ -78,8 +77,8 @@ For an upgrade:
 
 1. Build the new image or binary.
 2. Stop the application and back up the database, `.env` and uploaded files. For SQLite, back up the whole `.database/` directory while the service is stopped.
-3. Apply the required migrations using the new version. If they fail, resolve the failure before starting the service.
-4. Start the new version and verify health, login and role access. A binary rollback does not reverse database changes.
+3. Start the new version to apply automatic migrations, or run `-migrate` before startup if automatic migration is disabled.
+4. Verify health, login and role access. A binary rollback does not reverse database changes.
 
 ## Database, storage and cache choices
 
@@ -120,6 +119,8 @@ Keep `.env` and backups outside the image. Protect and back up database/object s
 
 All instances must use the same authoritative database and consistent token secrets. Use shared object storage for uploads and `CACHE_TYPE=redis` with the `REDIS_*` fields to share user-state, Captcha and JWT blacklist caches.
 
+When upgrading instances that share a database, start one instance to apply the migration before starting the rest.
+
 Each system request checks the database authorization generation before using its local Casbin snapshot. A changed generation triggers a rebuild; read/build failures return HTTP 503. Each protected system request therefore adds a database read. Local commit triggers and `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` polling only warm and recover snapshots; Redis does not refresh other instances' Enforcers.
 
 ## Reverse proxy and health
@@ -155,4 +156,4 @@ Build the frontend and generate Ent as described in the [README](../../README.md
 CGO_ENABLED=1 go build -o shadmin .
 ```
 
-On the target host, place `.env` in the working directory, grant the service user write access to the configured data/log directories, run `./shadmin -migrate`, and start `./shadmin` under your process supervisor. The binary embeds the frontend and Swagger; it still needs its runtime libraries and persistent data. Apply the same migration, backup and proxy steps as for Docker.
+On the target host, place `.env` in the working directory, grant the service user write access to the configured data and log directories, and start `./shadmin` under your process supervisor. The binary embeds the frontend and Swagger and needs its runtime libraries and persistent data. Apply the same migration, backup and proxy steps as for Docker.

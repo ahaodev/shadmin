@@ -17,7 +17,7 @@ import (
 )
 
 func NewEntDatabase(env *conf.Env) (*ent.Client, error) {
-	return openDatabase(env, env.AppEnv != conf.AppEnvProd && env.DBAutoMigrate)
+	return openDatabase(env, env.DBAutoMigrate)
 }
 
 // MigrateDatabase 仅执行增量迁移；破坏性变更使用经审查的版本化 SQL。
@@ -63,7 +63,7 @@ func openDatabase(env *conf.Env, migrate bool) (*ent.Client, error) {
 	}
 	if err := repository.EnsureAuthorizationState(ctx, client); err != nil {
 		_ = client.Close()
-		return nil, fmt.Errorf("initialize authorization state (apply the reviewed schema migration before starting production): %w", err)
+		return nil, fmt.Errorf("initialize authorization state: %w", err)
 	}
 
 	slog.Info("database initialization completed", "type", strings.ToUpper(dbType))

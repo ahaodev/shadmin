@@ -24,7 +24,7 @@ ADMIN_PASSWORD=replace-with-a-strong-admin-password
 
 启用 Google/GitHub 登录时，配置 provider 凭据和独立的 `IDENTITY_SESSION_SECRET`。`IDENTITY_BASE_URL` 应为后端公网 origin，`IDENTITY_REDIRECT_URL` 应为前端 `/oauth-callback` 地址。启用邮件邀请时，将 `INVITATION_ACCEPT_URL` 设为前端公网 `/accept-invitation` 地址，并配置 Resend 字段。
 
-环境变量优先于 `.env`。修改配置后需重启服务。
+启动时，Shadmin 仅在缺少 `.env` 时用内置默认值创建文件。已有文件按原样读取。运行时环境变量优先于文件中的值，缺失项使用内置默认值。配置校验失败时，服务会报错并停止启动。修改配置后需重启服务。
 
 ## Docker Compose
 
@@ -52,15 +52,14 @@ mkdir -p .database .uploads .logs
 sudo chown 1000:1000 .database .uploads .logs
 
 docker compose build
-docker compose run --rm shadmin ./shadmin-runner -migrate
 docker compose up -d
 ```
 
-迁移成功后再启动服务。通过 `docker compose logs --tail=100 shadmin` 检查启动日志。端口仅绑定本机，供反向代理访问；远程检查且尚未配置代理时，可通过 SSH 转发访问。
+通过 `docker compose logs --tail=100 shadmin` 检查启动日志和自动迁移错误。端口仅绑定本机，供反向代理访问。尚未配置代理时，可通过 SSH 转发远程检查。
 
 ## 数据库迁移
 
-生产启动不会修改表结构，即使 `DB_AUTO_MIGRATE=true`。非生产环境默认启用增量表结构同步，可设置 `DB_AUTO_MIGRATE=false` 关闭。
+所有模式（含 `prod`）默认在启动时通过 Ent 执行增量表结构迁移。设置 `DB_AUTO_MIGRATE=false` 可改为手动迁移。
 
 `-migrate` 执行 Ent 增量表结构变更后退出，不启动服务。使用与服务进程一致的配置和数据库运行：
 
@@ -78,8 +77,8 @@ docker compose run --rm shadmin ./shadmin-runner -migrate
 
 1. 构建新镜像或二进制。
 2. 停止应用，备份数据库、`.env` 和上传文件。SQLite 应在服务停止后备份整个 `.database/` 目录。
-3. 使用新版本执行所需迁移；失败时先排查解决，再启动服务。
-4. 启动新版本，验证健康接口、登录和角色访问。回退二进制不会撤销数据库变更。
+3. 启动新版本并自动应用迁移。若关闭了自动迁移，先运行 `-migrate` 再启动。
+4. 验证健康接口、登录和角色访问。回退二进制不会撤销数据库变更。
 
 ## 数据库、存储与缓存选择
 
@@ -120,6 +119,8 @@ DB_DSN=shadmin:password@tcp(database-host:3306)/shadmin?parseTime=true&loc=Local
 
 所有实例必须连接同一权威数据库，使用一致的 Token 密钥。上传文件使用共享对象存储；设置 `CACHE_TYPE=redis` 和 `REDIS_*` 字段，共享用户状态、Captcha 和 JWT 黑名单缓存。
 
+升级共用数据库的多个实例时，先启动一个实例完成迁移，再启动其他实例。
+
 每个系统请求先读取数据库授权 generation，再使用本地 Casbin 快照。generation 变化时重建快照，读取或重建失败返回 HTTP 503。因此，每个受保护系统请求会增加一次数据库读取。本地提交触发器和 `AUTHZ_SYNC_POLL_INTERVAL_SECONDS` 轮询仅负责快照预热与恢复，Redis 不会刷新其他实例的 Enforcer。
 
 ## 反向代理与健康检查
@@ -155,4 +156,4 @@ curl --fail http://127.0.0.1:55667/api/v1/health
 CGO_ENABLED=1 go build -o shadmin .
 ```
 
-在目标主机的工作目录放置 `.env`，赋予服务用户所配置数据与日志目录的写权限，执行 `./shadmin -migrate`，再通过进程管理器启动 `./shadmin`。二进制嵌入了前端和 Swagger，但仍需要运行时库和持久化数据。迁移、备份和反向代理步骤与 Docker 部署一致。
+在目标主机的工作目录放置 `.env`，赋予服务用户所配置数据与日志目录的写权限，再通过进程管理器启动 `./shadmin`。二进制嵌入了前端和 Swagger，但仍需要运行时库和持久化数据。迁移、备份和反向代理步骤与 Docker 部署一致。

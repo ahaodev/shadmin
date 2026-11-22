@@ -86,7 +86,7 @@ func (e *Env) RedisEnabled() bool {
 	return e.CacheTypeValue() == CacheTypeRedis && strings.TrimSpace(e.RedisAddress) != ""
 }
 
-func setDefaults() {
+func setDefaults(config *viper.Viper) map[string]any {
 	defaults := map[string]any{
 		"APP_ENV":                          AppEnvDev,
 		"CONTEXT_TIMEOUT":                  60,
@@ -136,17 +136,14 @@ func setDefaults() {
 		"INVITATION_ACCEPT_URL":   "http://localhost:5173/accept-invitation",
 		"INVITATION_EXPIRY_HOURS": 72,
 	}
-	viper.AutomaticEnv()
+	config.AutomaticEnv()
 	for key, value := range defaults {
-		viper.SetDefault(key, value)
-		err := viper.BindEnv(key)
-		if err != nil {
-			return
-		}
+		config.SetDefault(key, value)
 	}
+	return defaults
 }
 
-func generateEnvFile() error {
+func generateEnvFile(path string, defaults map[string]any) error {
 	configSections := []struct {
 		title string
 		keys  []string
@@ -197,26 +194,17 @@ func generateEnvFile() error {
 	for _, section := range configSections {
 		content.WriteString(section.title + "\n")
 		for _, key := range section.keys {
-			fmt.Fprintf(&content, "%s=%v\n", key, viper.Get(key))
+			fmt.Fprintf(&content, "%s=%v\n", key, defaults[key])
 		}
 		content.WriteString("\n")
 	}
 
-	return os.WriteFile(".env", []byte(content.String()), 0644)
-}
-
-func loadConfig() (*Env, error) {
-	viper.SetConfigFile(".env")
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("读取配置文件失败: %w", err)
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
 	}
-
-	var env Env
-	if err := viper.Unmarshal(&env); err != nil {
-		return nil, fmt.Errorf("解析配置失败: %w", err)
-	}
-
-	return &env, nil
+	_, writeErr := file.WriteString(content.String())
+	return errors.Join(writeErr, file.Close())
 }
 
 func (e *Env) validate() error {
@@ -352,20 +340,31 @@ func isDevelopmentSecret(secret string) bool {
 	}
 }
 
-// NewEnv 缺少配置时写入默认 .env；读取、解析或校验失败时返回错误。
+// NewEnv 仅在 .env 不存在时创建文件，环境变量优先于文件配置。
 func NewEnv() (*Env, error) {
-	setDefaults()
-
-	if _, err := os.Stat(".env"); err != nil {
-		slog.Info("没有找到 .env 文件，使用默认配置并写入.env")
-		if err := generateEnvFile(); err != nil {
-			return nil, fmt.Errorf("写入.env文件失败: %w", err)
+	config := viper.New()
+	defaults := setDefaults(config)
+	config.SetConfigFile(".env")
+	err := config.ReadInConfig()
+	if errors.Is(err, os.ErrNotExist) {
+		writeErr := generateEnvFile(config.ConfigFileUsed(), defaults)
+		switch {
+		case writeErr == nil:
+			slog.Info("没有找到 .env 文件，已写入默认配置")
+			err = nil
+		case errors.Is(writeErr, os.ErrExist):
+			err = config.ReadInConfig()
+		default:
+			return nil, fmt.Errorf("写入.env文件失败: %w", writeErr)
 		}
 	}
-
-	env, err := loadConfig()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("读取配置文件失败: %w", err)
+	}
+
+	var env Env
+	if err := config.Unmarshal(&env); err != nil {
+		return nil, fmt.Errorf("解析配置失败: %w", err)
 	}
 
 	if err := env.validate(); err != nil {
@@ -376,5 +375,5 @@ func NewEnv() (*Env, error) {
 		slog.Info("The App is running in development env")
 	}
 
-	return env, nil
+	return &env, nil
 }
