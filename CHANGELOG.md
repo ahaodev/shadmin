@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.5.9] - 2026-11-22
+
+### Changed
+
+- Startup now applies additive Ent schema changes in every environment, including `prod`, whenever `DB_AUTO_MIGRATE` is true; `-migrate` remains for explicit pre-start runs.
+- `.env` is created only when absent and contains built-in defaults instead of environment overrides; an existing file is read as-is, and environment variables still override it at runtime.
+
+### Security
+
+- Generated `.env` files are created with `0600` instead of `0644`.
+
+### Breaking
+
+- Production startup migrates the schema by default, reversing the previous no-migration startup: set `DB_AUTO_MIGRATE=false` and run `shadmin -migrate` before startup to keep manual control, and back up the database first.
+
 ## [0.5.8] - 2026-11-21
 
 ### Added
