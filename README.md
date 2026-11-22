@@ -17,8 +17,6 @@ English · [简体中文](./README.zh.md)
 
 </div>
 
----
-
 ## ✨ Features
 
 - 🏗️ **Clean Architecture** — Domain‑driven layered design (Controller → Usecase → Repository)
