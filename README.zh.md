@@ -53,8 +53,9 @@ go generate ./ent
 go run .
 ```
 
-全新开发环境下，服务会创建 `.env`、SQLite 数据库和种子数据。配置说明见 [.env.example](.env.example)。
-启动后，打开 <http://localhost:55667>，使用admin/admin123登录。
+首次启动自动创建 `.env`、SQLite 数据库和种子数据。配置见 [.env.example](.env.example)。
+
+本地登录 <http://localhost:55667>（`admin` / `admin123`）。
 
 ### 开发工具
 

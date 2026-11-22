@@ -53,9 +53,9 @@ go generate ./ent
 go run .
 ```
 
-On a fresh development setup, the server creates `.env`, the SQLite database, and seed data. See [.env.example](.env.example) for configuration.
+First launch creates `.env`, initializes SQLite, and seeds data. See [.env.example](.env.example) for configuration.
 
-Once the server is running, open <http://localhost:55667> and sign in with `admin` / `admin123`.
+Sign in at <http://localhost:55667> (`admin` / `admin123`).
 
 ### Development tools
 
