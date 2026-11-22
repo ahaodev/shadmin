@@ -19,13 +19,6 @@ English · [简体中文](./README.zh.md)
 
 ---
 
-## Online demo
-
-<https://shadmin.ahaodev.com>
-
-- Username `admin`
-- Password `admin123`
-
 ## ✨ Features
 
 - 🏗️ **Clean Architecture** — Domain‑driven layered design (Controller → Usecase → Repository)
