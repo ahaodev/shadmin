@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"shadmin/internal/cacher"
+	cacher "github.com/ahaodev/go-cache"
 )
 
 func newTestManager() *LoginSecurityManager {

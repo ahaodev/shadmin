@@ -10,10 +10,11 @@ import (
 
 	"shadmin/domain"
 	"shadmin/internal/auth"
-	"shadmin/internal/cacher"
 	"shadmin/internal/constants"
 	"shadmin/internal/tokenservice"
 	"shadmin/internal/tokenutil"
+
+	cacher "github.com/ahaodev/go-cache"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

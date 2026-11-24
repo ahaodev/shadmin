@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"shadmin/domain"
 	"shadmin/internal/auth"
-	"shadmin/internal/cacher"
 	"shadmin/usecase"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	cacher "github.com/ahaodev/go-cache"
 )
 
 type refreshUserRepo struct{ domain.UserRepository }

@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"shadmin/domain"
-	"shadmin/internal/cacher"
+
+	cacher "github.com/ahaodev/go-cache"
 )
 
 func NewTokenBlacklist(cacher cacher.Cacher) domain.TokenBlacklist {

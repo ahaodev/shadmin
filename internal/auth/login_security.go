@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"shadmin/internal/cacher"
+	cacher "github.com/ahaodev/go-cache"
 )
 
 const loginFailNS = "auth:login:fail"

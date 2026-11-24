@@ -10,8 +10,9 @@ import (
 
 	"shadmin/domain"
 	"shadmin/internal/auth"
-	"shadmin/internal/cacher"
 	"shadmin/internal/constants"
+
+	cacher "github.com/ahaodev/go-cache"
 
 	"github.com/gin-gonic/gin"
 )

@@ -3,8 +3,9 @@ package auth
 import (
 	"context"
 	"log/slog"
-	"shadmin/internal/cacher"
 	"time"
+
+	cacher "github.com/ahaodev/go-cache"
 
 	"shadmin/domain"
 )

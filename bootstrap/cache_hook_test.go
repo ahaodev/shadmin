@@ -10,7 +10,8 @@ import (
 
 	"shadmin/ent"
 	"shadmin/internal/auth"
-	"shadmin/internal/cacher"
+
+	cacher "github.com/ahaodev/go-cache"
 )
 
 func newTestEntClient(t *testing.T) *ent.Client {

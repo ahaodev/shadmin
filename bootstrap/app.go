@@ -8,7 +8,6 @@ import (
 	"shadmin/domain"
 	"shadmin/ent"
 	"shadmin/internal/auth"
-	"shadmin/internal/cacher"
 	captchapkg "shadmin/internal/captcha"
 	"shadmin/internal/casbin"
 	"shadmin/internal/conf"
@@ -18,6 +17,9 @@ import (
 	"shadmin/repository"
 	"time"
 
+	cacher "github.com/ahaodev/go-cache"
+	"github.com/ahaodev/go-storage"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -26,7 +28,7 @@ type Application struct {
 	DB                *ent.Client
 	Cacher            cacher.Cacher
 	ApiEngine         *gin.Engine
-	FileStorage       domain.FileRepository
+	FileStorage       storage.Store
 	CasManager        casbin.Manager
 	CasbinInitializer *CasbinInitializer
 	CasbinScheduler   *scheduler.CasbinSyncScheduler

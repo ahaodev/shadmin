@@ -10,8 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"shadmin/domain"
 	"shadmin/internal/conf"
+
+	storepkg "github.com/ahaodev/go-storage"
 )
 
 func TestMinioEndpoint(t *testing.T) {
@@ -118,14 +119,14 @@ func TestS3Storage(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := storage.FileStorage.Upload(context.Background(), &domain.UploadRequest{
+			result, err := storage.FileStorage.Upload(context.Background(), &storepkg.UploadRequest{
 				Bucket: "test-bucket", Prefix: "prefix", ObjectName: "file.txt",
 				Reader: io.LimitReader(strings.NewReader("hello"), 5), Size: -1,
 			})
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := domain.UploadResult{Bucket: "test-bucket", Key: "prefix/file.txt", ObjectName: "prefix/file.txt", ETag: "test-tag", Size: 5}
+			want := storepkg.UploadResult{Bucket: "test-bucket", Key: "prefix/file.txt", ObjectName: "prefix/file.txt", ETag: "test-tag", Size: 5}
 			if *result != want {
 				t.Fatalf("Upload = %+v; want %+v", *result, want)
 			}

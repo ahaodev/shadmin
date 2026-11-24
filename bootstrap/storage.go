@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"strings"
 
-	"shadmin/domain"
 	"shadmin/internal/conf"
-	"shadmin/repository"
+
+	"github.com/ahaodev/go-storage"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -18,7 +18,7 @@ import (
 )
 
 type StorageConfig struct {
-	FileStorage domain.FileRepository
+	FileStorage storage.Store
 }
 
 func InitStorage(env *conf.Env) (*StorageConfig, error) {
@@ -71,7 +71,7 @@ func initS3Storage(env *conf.Env, minio bool) (*StorageConfig, error) {
 		}
 	})
 	slog.Info("文件存储: 使用 S3 对象存储", "type", env.StorageType, "region", cfg.Region)
-	return &StorageConfig{FileStorage: repository.NewS3FileRepository(client, minio)}, nil
+	return &StorageConfig{FileStorage: storage.NewS3(client, minio)}, nil
 }
 
 func minioEndpoint(address string, secure bool) (string, error) {
@@ -91,7 +91,7 @@ func minioEndpoint(address string, secure bool) (string, error) {
 }
 
 func initDiskStorage(env *conf.Env) (*StorageConfig, error) {
-	fs, err := repository.NewDiskFileRepository(env.StorageBasePath)
+	fs, err := storage.NewDisk(env.StorageBasePath)
 	if err != nil {
 		return nil, err
 	}

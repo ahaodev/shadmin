@@ -3,11 +3,12 @@ package auth
 import (
 	"context"
 	"os"
-	"shadmin/internal/cacher"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	cacher "github.com/ahaodev/go-cache"
 )
 
 func TestTokenConsumption(t *testing.T) {

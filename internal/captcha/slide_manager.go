@@ -14,7 +14,8 @@ import (
 	"github.com/wenlng/go-captcha/v2/slide"
 
 	"shadmin/domain"
-	"shadmin/internal/cacher"
+
+	cacher "github.com/ahaodev/go-cache"
 )
 
 const (

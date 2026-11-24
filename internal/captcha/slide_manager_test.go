@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"shadmin/internal/cacher"
+	cacher "github.com/ahaodev/go-cache"
 )
 
 // rssKB 在非 Linux 或读取失败时返回 -1。
