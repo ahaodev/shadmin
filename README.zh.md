@@ -59,14 +59,8 @@ go run .
 
 ### 开发工具
 
-开发前端时，保持后端运行，在 `frontend/` 中执行 `pnpm dev`，访问 <http://localhost:5173>。Vite 会将 API 请求代理到后端；修改后端端口时，同时调整 [vite.config.ts](frontend/vite.config.ts) 中的代理地址。
-
-Swagger 地址为 <http://localhost:55667/swagger/index.html>。修改 API 注解后，安装与 [Dockerfile](Dockerfile) 一致的工具版本，再执行 `go generate ./...`：
-
-```bash
-go install github.com/swaggo/swag/cmd/swag@v1.16.6
-go generate ./...
-```
+- **前端** — 保持后端运行，在 `frontend/` 中执行 `pnpm dev`，访问 <http://localhost:5173>。如果更改了后端端口，请调整 [vite.config.ts](frontend/vite.config.ts) 中的代理地址。
+- **Swagger** — 访问 <http://localhost:55667/swagger/index.html>。修改 API 注解后，执行 `go install github.com/swaggo/swag/cmd/swag@v1.16.6` 安装 `swag`，再在仓库根目录运行 `go generate ./...`。
 
 ## 📚 文档
 
