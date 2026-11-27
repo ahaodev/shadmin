@@ -1,0 +1,133 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths: &backend_paths
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'cli/**'
+      - 'docs/swagger.json'
+      - 'docs/swagger.yaml'
+      - 'backend.yml'
+  pull_request:
+    branches: [main]
+    paths: *backend_paths
+  workflow_call:
+    inputs:
+      use_frontend_artifact:
+        description: Use the frontend build from this workflow run
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type == 'branch' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            cli/go.sum
+
+      - name: Download verified frontend build
+        if: inputs.use_frontend_artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - name: Create frontend embed fixture
+        if: "!inputs.use_frontend_artifact"
+        run: |
+          mkdir -p frontend/dist
+          printf '<!doctype html>\n' > frontend/dist/index.html
+
+      - name: Verify embedded entry point
+        run: test -s frontend/dist/index.html
+
+      - name: Download Go dependencies
+        run: go mod download
+
+      - name: Install swag
+        run: go install github.com/swaggo/swag/cmd/swag@v1.16.6
+
+      - name: Generate code (ent & swagger)
+        run: go generate ./...
+
+      - name: Verify committed swagger docs match annotations
+        run: git diff --exit-code -- docs
+
+      - name: Go fmt check
+        run: |
+          DIFF=$(gofmt -l .)
+          if [ -n "$DIFF" ]; then
+            echo "Files not formatted:"
+            echo "$DIFF"
+            exit 1
+          fi
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test -race -v ./...
+
+      - name: CLI vet and tests
+        working-directory: cli
+        run: go vet ./... && go test -race ./...
+
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: shadmin_test
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 20
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: shadmin_test
+        ports: ['3306:3306']
+        options: --health-cmd "mysqladmin ping -ptest" --health-interval 5s --health-retries 30
+      redis:
+        image: redis:7.4
+        ports: ['6379:6379']
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go generate ./ent
+      - name: PostgreSQL authorization transactions
+        run: go test -race ./repository
+        env:
+          SHADMIN_TEST_DB_DRIVER: postgres
+          SHADMIN_TEST_DB_DSN: postgres://postgres:test@localhost:5432/shadmin_test?sslmode=disable
+      - name: MySQL authorization transactions
+        run: go test -race ./repository
+        env:
+          SHADMIN_TEST_DB_DRIVER: mysql
+          SHADMIN_TEST_DB_DSN: root:test@tcp(localhost:3306)/shadmin_test?parseTime=true
+      - name: Redis atomic token consumption
+        run: go test -race ./internal/auth -run TestTokenConsumption
+        env:
+          SHADMIN_TEST_REDIS: localhost:6379
