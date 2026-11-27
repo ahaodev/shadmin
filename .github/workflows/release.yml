@@ -19,7 +19,7 @@ jobs:
 
   backend:
     needs: frontend
-    uses: backend.yml
+    uses: ./.github/workflows/backend.yml
     with:
       use_frontend_artifact: true
 

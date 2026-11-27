@@ -10,7 +10,7 @@ on:
       - 'cli/**'
       - 'docs/swagger.json'
       - 'docs/swagger.yaml'
-      - 'backend.yml'
+      - '.github/workflows/backend.yml'
   pull_request:
     branches: [main]
     paths: *backend_paths
