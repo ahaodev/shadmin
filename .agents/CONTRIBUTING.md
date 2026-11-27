@@ -4,7 +4,7 @@ Follow the principles in [AGENTS.md](../AGENTS.md). For features, read the [deve
 
 ## Checks
 
-Run commands from the repository root. Apply every row whose code or runtime configuration changed; documentation-only and agent-instruction changes use the documentation row. CI runs its full suite when triggered; the local checks below are selected by the affected surface.
+Run commands from the repository root. Apply every row whose code or runtime configuration changed; documentation-only and agent-instruction changes use the documentation row.
 
 Before backend Go checks on a fresh checkout, build the embedded frontend assets and generate Ent. Rebuild frontend assets when frontend code/configuration changes or `frontend/dist/` is absent; see the [README](../README.md#-get-running). Run `go generate ./ent` when Ent output is missing or schemas change. When API annotations change, install swag as described in the README and run `go generate ./...`, which also generates Ent.
 
@@ -25,7 +25,9 @@ if [ -n "$shadmin_unformatted" ]; then
 fi
 ```
 
-After regeneration, inspect tracked output for the intended changes. If a check cannot run, report the reason and what was skipped; never report a skipped check as passed. CI configuration is in [ci.yml](../.github/workflows/ci.yml), including the database/Redis integration jobs.
+After regeneration, inspect tracked output for the intended changes. If a check cannot run, report the reason and what was skipped; never report a skipped check as passed.
+
+Pushes to `main` and PRs targeting `main` run [frontend CI](../.github/workflows/frontend.yml) and [backend CI](../.github/workflows/backend.yml) by changed paths. Backend CI uses a minimal HTML fixture for `go:embed`.
 
 ## Generated files
 
@@ -41,6 +43,8 @@ Do not hand-edit generated output. Update its source and regenerate it when requ
 The tracked route tree must remain available because `pnpm build` runs TypeScript before Vite. Do not delete it as unused code or add it to `.gitignore`.
 
 ## Commits and releases
+
+Pushing a `v*` tag [checks and builds the frontend, tests the backend with that `dist`, then publishes the image and GitHub Release](../.github/workflows/release.yml). The image embeds the same `dist`.
 
 Use Conventional Commits with a subject of at most 72 characters. Stage only changes belonging to the task. A commit request does not imply push, comments, issue closure or a release; follow the actions authorized in the conversation.
 
