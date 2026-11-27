@@ -57,7 +57,7 @@ go run .
 
 本地登录 <http://localhost:55667>（`admin` / `admin123`）。
 
-### 开发工具
+### 🛠️ 开发工具
 
 - **前端** — 保持后端运行，在 `frontend/` 中执行 `pnpm dev`，访问 <http://localhost:5173>。如果更改了后端端口，请调整 [vite.config.ts](frontend/vite.config.ts) 中的代理地址。
 - **Swagger** — 访问 <http://localhost:55667/swagger/index.html>。修改 API 注解后，执行 `go install github.com/swaggo/swag/cmd/swag@v1.16.6` 安装 `swag`，再在仓库根目录运行 `go generate ./...`。

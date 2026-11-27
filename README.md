@@ -57,7 +57,7 @@ First launch creates `.env`, initializes SQLite, and seeds data. See [.env.examp
 
 Sign in at <http://localhost:55667> (`admin` / `admin123`).
 
-### Development tools
+### 🛠️ Development tools
 
 - **Frontend** — With the backend running, run `pnpm dev` in `frontend/` and open <http://localhost:5173>. For a custom backend port, update the proxy in [vite.config.ts](frontend/vite.config.ts).
 - **Swagger** — Open <http://localhost:55667/swagger/index.html>. After editing API annotations, install `swag` with `go install github.com/swaggo/swag/cmd/swag@v1.16.6`, then run `go generate ./...` from the repo root.
