@@ -1,9 +1,10 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"shadmin/domain"
+
+	"github.com/gin-gonic/gin"
 )
 
 func Recovery() gin.HandlerFunc {
